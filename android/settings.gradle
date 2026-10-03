@@ -4,3 +4,12 @@ extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autoli
 rootProject.name = 'CodeDoRN'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
+
+// The Stage 4/5 activity hosts the prebuilt CodeDo web experience in a
+// Capacitor bridge. These modules are installed with this React Native app.
+include ':capacitor-android'
+project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
+include ':capacitor-app'
+project(':capacitor-app').projectDir = new File('../node_modules/@capacitor/app/android')
+include ':capacitor-status-bar'
+project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacitor/status-bar/android')

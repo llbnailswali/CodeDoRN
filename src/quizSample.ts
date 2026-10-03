@@ -1,0 +1,262 @@
+// GENERATED from src/data/quizBank/world1Quiz.ts: a 12-question sample session (all seven question types) for the React Native Quiz.
+// Only World 1 has a quiz bank in the new question format, so every World card plays this sample for now. UI only.
+import { QuizQuestion } from './quizQuestions';
+
+export const SAMPLE_QUIZ: QuizQuestion[] = [
+ {
+  "id": "w1q-what-1",
+  "type": "single_choice",
+  "worldId": "world-1",
+  "lessonId": "world-1-what-is-kotlin",
+  "topic": "What is Kotlin?",
+  "concept": "Who created Kotlin",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "Which company created the Kotlin language?",
+  "options": [
+   "Google",
+   "JetBrains",
+   "Oracle",
+   "Microsoft"
+  ],
+  "answer": 1,
+  "hint": "This company also makes the IntelliJ IDEA editor.",
+  "explanation": "JetBrains created Kotlin. Google later made it an officially supported language for Android apps."
+ },
+ {
+  "id": "w1q-syntax-1",
+  "type": "single_choice",
+  "worldId": "world-1",
+  "lessonId": "world-1-kotlin-syntax",
+  "topic": "Kotlin Syntax & main()",
+  "concept": "Entry point main()",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "Where does a Kotlin program start running?",
+  "options": [
+   "fun start()",
+   "println()",
+   "fun main()",
+   "val main"
+  ],
+  "monoOptions": true,
+  "answer": 2,
+  "hint": "Every program has one special function that the computer calls first.",
+  "explanation": "Execution begins in fun main(). The other names are not entry points, and println() only prints text."
+ },
+ {
+  "id": "w1q-syntax-3",
+  "type": "fill_blank",
+  "worldId": "world-1",
+  "lessonId": "world-1-kotlin-syntax",
+  "topic": "Kotlin Syntax & main()",
+  "concept": "Entry point main()",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "Complete the code so the program starts running when you launch it.",
+  "code": [
+   "fun ___() {",
+   "  println(\"Hi\")",
+   "}"
+  ],
+  "chips": [
+   "run",
+   "begin",
+   "main",
+   "start"
+  ],
+  "answer": "main",
+  "hint": "It is the same name used by every Kotlin program.",
+  "explanation": "A Kotlin program starts in a function called main. Without that exact name there is no starting point."
+ },
+ {
+  "id": "w1q-comments-1",
+  "type": "predict_output",
+  "worldId": "world-1",
+  "lessonId": "world-1-comments",
+  "topic": "Comments",
+  "concept": "Line comments",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "What will this code print?",
+  "code": [
+   "fun main() {",
+   "  // println(\"A\")",
+   "  println(\"B\")",
+   "}"
+  ],
+  "options": [
+   "B",
+   "A",
+   "AB",
+   "Nothing"
+  ],
+  "monoOptions": true,
+  "answer": 0,
+  "hint": "What does the // at the start of a line do?",
+  "explanation": "The first println is inside a // comment, so Kotlin ignores it. Only println(\"B\") runs."
+ },
+ {
+  "id": "w1q-comments-2",
+  "type": "true_false",
+  "worldId": "world-1",
+  "lessonId": "world-1-comments",
+  "topic": "Comments",
+  "concept": "Block comments",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "A comment that starts with /* and ends with */ can cover several lines.",
+  "answer": true,
+  "hint": "Think about which comment style has both an opening and a closing mark.",
+  "explanation": "Everything between /* and */ is a comment, even across many lines. A // comment ends at the end of its line."
+ },
+ {
+  "id": "w1q-print-1",
+  "type": "predict_output",
+  "worldId": "world-1",
+  "lessonId": "world-1-print-println",
+  "topic": "print() and println()",
+  "concept": "print vs println",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "What will this code print?",
+  "code": [
+   "print(\"Hi\")",
+   "print(\"!\")",
+   "println(\" there\")"
+  ],
+  "options": [
+   "Hi! there",
+   "Hi!there",
+   "Hi ! there",
+   "Hi!"
+  ],
+  "monoOptions": true,
+  "answer": 0,
+  "hint": "print does not move to a new line. Look at the space inside \" there\".",
+  "explanation": "All three calls write on the same line: Hi, then !, then \" there\" (with its leading space). println only ends the line after the last text."
+ },
+ {
+  "id": "w1q-valvar-1",
+  "type": "find_error",
+  "worldId": "world-1",
+  "lessonId": "world-1-val-vs-var",
+  "topic": "val vs var",
+  "concept": "val is read-only",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "Tap the line that contains an error.",
+  "code": [
+   "val lives = 3",
+   "lives = 2",
+   "println(lives)"
+  ],
+  "errorLine": 1,
+  "hint": "Look for a line that changes a value declared with val.",
+  "errorNote": "lives is a val, so it cannot get a new value.",
+  "explanation": "A val is read-only, so lives = 2 is not allowed. Declare it with var if the value has to change."
+ },
+ {
+  "id": "w1q-valvar-3",
+  "type": "true_false",
+  "worldId": "world-1",
+  "lessonId": "world-1-val-vs-var",
+  "topic": "val vs var",
+  "concept": "Choosing val or var",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "If a value never changes after it is set, Kotlin style prefers val over var.",
+  "answer": true,
+  "hint": "Which keyword makes the code safer because the value cannot change by mistake?",
+  "explanation": "Use val by default and var only when the value really must change. It makes accidental changes impossible."
+ },
+ {
+  "id": "w1q-char-2",
+  "type": "find_error",
+  "worldId": "world-1",
+  "lessonId": "world-1-char",
+  "topic": "Char",
+  "concept": "Char vs String",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "Tap the line that contains an error.",
+  "code": [
+   "val first = 'K'",
+   "val second = \"L\"",
+   "val third: Char = \"M\"",
+   "println(first)"
+  ],
+  "errorLine": 2,
+  "hint": "Look at which quotes a Char needs.",
+  "errorNote": "A Char needs single quotes: 'M'.",
+  "explanation": "val third is declared as Char, but \"M\" in double quotes is a String. A Char value is written with single quotes: 'M'."
+ },
+ {
+  "id": "w1q-template-1",
+  "type": "fill_blank",
+  "worldId": "world-1",
+  "lessonId": "world-1-string-templates",
+  "topic": "String Templates",
+  "concept": "Variable templates",
+  "difficulty": "easy",
+  "xp": 10,
+  "question": "Complete the code so it prints Hello, Mia.",
+  "code": [
+   "val name = \"Mia\"",
+   "println(\"Hello, ___name\")"
+  ],
+  "chips": [
+   "%",
+   "#",
+   "$",
+   "@"
+  ],
+  "answer": "$",
+  "hint": "Which symbol puts a variable into a string?",
+  "explanation": "A $ before a variable name inserts its value into the string, so \"Hello, $name\" prints Hello, Mia."
+ },
+ {
+  "id": "w1q-print-3",
+  "type": "code_comparison",
+  "worldId": "world-1",
+  "lessonId": "world-1-print-println",
+  "topic": "print() and println()",
+  "concept": "Line breaks",
+  "difficulty": "medium",
+  "xp": 15,
+  "question": "Which code prints Hello and World on two separate lines?",
+  "a": [
+   "print(\"Hello\")",
+   "print(\"World\")"
+  ],
+  "b": [
+   "println(\"Hello\")",
+   "println(\"World\")"
+  ],
+  "answer": 1,
+  "hint": "Which call ends the line after printing?",
+  "explanation": "println ends the line after its text, so World starts on a new line. With print the output would be HelloWorld on one line."
+ },
+ {
+  "id": "w1q-valvar-4",
+  "type": "code_comparison",
+  "worldId": "world-1",
+  "lessonId": "world-1-val-vs-var",
+  "topic": "val vs var",
+  "concept": "val vs var",
+  "difficulty": "medium",
+  "xp": 15,
+  "question": "Which code compiles without an error?",
+  "a": [
+   "val count = 0",
+   "count = count + 1"
+  ],
+  "b": [
+   "var count = 0",
+   "count = count + 1"
+  ],
+  "answer": 1,
+  "hint": "The second line changes count. Which keyword allows that?",
+  "explanation": "count changes on the second line, so it must be declared with var. Code A tries to change a val, which is an error."
+ }
+];

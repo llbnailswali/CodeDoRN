@@ -1,0 +1,485 @@
+// GENERATED from src/data/curriculum/masterCurriculumCatalog.ts: every World's title, subtitle, lesson titles and boss challenge, as the web
+// Curriculum screen shows them. UI only.
+export interface CurriculumWorld {
+  order: number;
+  title: string;
+  subtitle: string;
+  lessonCount: number;
+  available: boolean;
+  lessons: string[];
+  boss: string | null;
+}
+
+export const CURRICULUM_WORLDS: CurriculumWorld[] = [
+ {
+  "order": 1,
+  "title": "Kotlin Awakening",
+  "subtitle": "Kotlin Fundamentals",
+  "lessonCount": 13,
+  "available": true,
+  "lessons": [
+   "What is Kotlin?",
+   "Kotlin Syntax & main()",
+   "Comments",
+   "print() and println()",
+   "val vs var",
+   "Variables & Type Inference",
+   "Int & Long",
+   "Float & Double",
+   "Boolean",
+   "Char",
+   "Strings",
+   "String Templates"
+  ],
+  "boss": "Personal Profile Program"
+ },
+ {
+  "order": 2,
+  "title": "Operator Forge",
+  "subtitle": "Operators",
+  "lessonCount": 7,
+  "available": true,
+  "lessons": [
+   "Arithmetic operators",
+   "Comparison operators",
+   "Logical operators",
+   "Assignment operators",
+   "Increment / decrement",
+   "Operator precedence"
+  ],
+  "boss": "Smart Calculator"
+ },
+ {
+  "order": 3,
+  "title": "Decision Maker",
+  "subtitle": "Conditions",
+  "lessonCount": 9,
+  "available": true,
+  "lessons": [
+   "if",
+   "if-else",
+   "else-if",
+   "when",
+   "when with ranges",
+   "when as an expression",
+   "Multiple conditions and nested conditions",
+   "Type checks with is where appropriate"
+  ],
+  "boss": "Grade & Eligibility System"
+ },
+ {
+  "order": 4,
+  "title": "Loop Master",
+  "subtitle": "Loops, Ranges & Progressions",
+  "lessonCount": 11,
+  "available": true,
+  "lessons": [
+   "for",
+   "while",
+   "do-while",
+   "Ranges",
+   "Progressions",
+   "downTo",
+   "step",
+   "break",
+   "continue",
+   "Nested loops"
+  ],
+  "boss": "Pattern & Number Analyzer"
+ },
+ {
+  "order": 5,
+  "title": "Function Forge",
+  "subtitle": "Functions",
+  "lessonCount": 9,
+  "available": true,
+  "lessons": [
+   "Defining functions",
+   "Function parameters",
+   "Return values",
+   "Default parameters",
+   "Named arguments",
+   "Single-expression functions",
+   "Local functions",
+   "vararg"
+  ],
+  "boss": "Utility Toolkit"
+ },
+ {
+  "order": 6,
+  "title": "Collection Valley",
+  "subtitle": "Collections",
+  "lessonCount": 11,
+  "available": true,
+  "lessons": [
+   "Arrays",
+   "Lists",
+   "Sets",
+   "Maps",
+   "Mutable vs read-only collections",
+   "Creating and accessing collections",
+   "Adding/removing/updating mutable elements",
+   "Iterating over collections",
+   "Basic collection operations",
+   "Choosing the right collection type"
+  ],
+  "boss": "Student Records"
+ },
+ {
+  "order": 7,
+  "title": "Null Safety Shield",
+  "subtitle": "Null Safety",
+  "lessonCount": 11,
+  "available": true,
+  "lessons": [
+   "Nullable types",
+   "Nullable variables",
+   "Safe call ?.",
+   "Elvis operator ?:",
+   "Non-null assertion !!",
+   "Null checks",
+   "Smart casts",
+   "Safe casts as?",
+   "Nullable collections and collection values",
+   "Chaining nullable operations"
+  ],
+  "boss": "Safe Data Processor"
+ },
+ {
+  "order": 8,
+  "title": "Object Kingdom",
+  "subtitle": "Basic OOP",
+  "lessonCount": 14,
+  "available": true,
+  "lessons": [
+   "Classes",
+   "Objects",
+   "Properties",
+   "Methods",
+   "Constructors",
+   "Primary constructors",
+   "init",
+   "Visibility modifiers",
+   "Data classes",
+   "Enums",
+   "Basic inheritance",
+   "Interfaces",
+   "Overriding members"
+  ],
+  "boss": "Student Grade Manager"
+ },
+ {
+  "order": 9,
+  "title": "Lambda Lab",
+  "subtitle": "Advanced Functions",
+  "lessonCount": 12,
+  "available": true,
+  "lessons": [
+   "Lambda expressions",
+   "Anonymous functions",
+   "Function types",
+   "Higher-order functions",
+   "it",
+   "Function references",
+   "Returning from lambdas",
+   "Local returns",
+   "Inline functions",
+   "noinline",
+   "crossinline"
+  ],
+  "boss": "Functional Utility Engine"
+ },
+ {
+  "order": 10,
+  "title": "Collection Wizardry",
+  "subtitle": "Functional Collection Operations",
+  "lessonCount": 10,
+  "available": true,
+  "lessons": [
+   "map & mapNotNull & filter",
+   "filterNot & filterIsInstance & flatMap",
+   "flatten & reduce & fold",
+   "groupBy & associate & partition",
+   "zip & chunked & windowed",
+   "distinct & sorted",
+   "sortedBy & min / max",
+   "sum / average & any / all / none",
+   "first / find & Collection pipelines and chaining"
+  ],
+  "boss": "Data Transformation Engine"
+ },
+ {
+  "order": 11,
+  "title": "OOP Evolution",
+  "subtitle": "Advanced OOP & Kotlin Types",
+  "lessonCount": 14,
+  "available": true,
+  "lessons": [
+   "Inheritance & Abstract classes",
+   "Interfaces & Multiple interface implementation",
+   "Sealed classes & Sealed interfaces",
+   "Data classes in domain modeling & Enum classes",
+   "Nested classes",
+   "Inner classes",
+   "Object declarations",
+   "Companion objects",
+   "Extension functions",
+   "Extension properties",
+   "Delegation",
+   "Delegated properties",
+   "Visibility and API design"
+  ],
+  "boss": "Domain Model Engine"
+ },
+ {
+  "order": 12,
+  "title": "Generic Realm",
+  "subtitle": "Generics & Type System",
+  "lessonCount": 15,
+  "available": true,
+  "lessons": [
+   "Generic classes",
+   "Generic functions",
+   "Type parameters",
+   "Generic constraints",
+   "Multiple constraints",
+   "in variance",
+   "out variance",
+   "Invariance",
+   "Declaration-site variance",
+   "Use-site variance",
+   "Star projections",
+   "Reified type parameters",
+   "Type aliases",
+   "Type-safe generic APIs"
+  ],
+  "boss": "Generic Data Toolkit"
+ },
+ {
+  "order": 13,
+  "title": "Scope Masters",
+  "subtitle": "Scope Functions",
+  "lessonCount": 10,
+  "available": true,
+  "lessons": [
+   "let & run",
+   "apply",
+   "also",
+   "with",
+   "this vs it",
+   "Return values of scope functions",
+   "Choosing the appropriate scope function",
+   "Scope-function chaining",
+   "Avoiding overuse and nesting"
+  ],
+  "boss": "Configuration Builder"
+ },
+ {
+  "order": 14,
+  "title": "Sequence Dimension",
+  "subtitle": "Sequences & Lazy Processing",
+  "lessonCount": 13,
+  "available": true,
+  "lessons": [
+   "What sequences are",
+   "Eager collection processing",
+   "Lazy processing",
+   "Creating sequences",
+   "asSequence()",
+   "Intermediate operations",
+   "Terminal operations",
+   "Sequence evaluation order",
+   "Short-circuiting",
+   "Sequences vs collections",
+   "Performance trade-offs",
+   "When sequences should and should not be used"
+  ],
+  "boss": "Large Dataset Processor"
+ },
+ {
+  "order": 15,
+  "title": "Error Fortress",
+  "subtitle": "Exceptions & Error Handling",
+  "lessonCount": 15,
+  "available": true,
+  "lessons": [
+   "Exceptions & try",
+   "catch",
+   "finally",
+   "throw",
+   "Multiple catch blocks",
+   "try as an expression",
+   "Custom exceptions",
+   "Checked vs unchecked exception model",
+   "Result",
+   "runCatching",
+   "Success/failure handling",
+   "Error-handling patterns",
+   "Avoiding swallowed errors",
+   "Designing meaningful failure paths"
+  ],
+  "boss": "Reliable Order Engine"
+ },
+ {
+  "order": 16,
+  "title": "Coroutine Academy",
+  "subtitle": "Coroutines",
+  "lessonCount": 12,
+  "available": true,
+  "lessons": [
+   "Coroutine fundamentals & Coroutine builders",
+   "launch & async",
+   "await & Suspending functions",
+   "suspend & Coroutine context",
+   "Dispatchers & Jobs",
+   "Cancellation & Cooperative cancellation",
+   "Structured concurrency",
+   "coroutineScope",
+   "supervisorScope",
+   "Exception handling in coroutines",
+   "Coroutine best practices"
+  ],
+  "boss": "Concurrent Task Runner"
+ },
+ {
+  "order": 17,
+  "title": "Flow Universe",
+  "subtitle": "Flow & Reactive Streams",
+  "lessonCount": 10,
+  "available": true,
+  "lessons": [
+   "Flow fundamentals & Cold Flow",
+   "Hot streams & flow",
+   "collect & Intermediate Flow operators",
+   "map & filter",
+   "transform & catch",
+   "onEach & StateFlow",
+   "SharedFlow & State vs events",
+   "Flow cancellation & Combining flows",
+   "Flow lifecycle & Backpressure/conflation concepts where applicable"
+  ],
+  "boss": "Live Data Pipeline"
+ },
+ {
+  "order": 18,
+  "title": "Concurrency Arena",
+  "subtitle": "Concurrency",
+  "lessonCount": 14,
+  "available": false,
+  "lessons": [
+   "Threads",
+   "Shared mutable state",
+   "Thread safety",
+   "Race conditions",
+   "Synchronization",
+   "Mutex",
+   "Atomic operations",
+   "Thread confinement",
+   "Coroutine concurrency",
+   "Concurrent access patterns",
+   "Deadlock concepts",
+   "Avoiding shared mutable state",
+   "Structured concurrency vs uncontrolled concurrency"
+  ],
+  "boss": "Concurrent Data Processor"
+ },
+ {
+  "order": 19,
+  "title": "Kotlin Blacksmith",
+  "subtitle": "Advanced Kotlin Language Features",
+  "lessonCount": 16,
+  "available": false,
+  "lessons": [
+   "Delegation & Delegated properties",
+   "Custom delegates",
+   "DSL design",
+   "Type-safe builders",
+   "Value classes",
+   "Inline classes / value-class concepts",
+   "Contracts",
+   "Contract limitations and use cases",
+   "Advanced extension design",
+   "Operator overloading",
+   "Infix functions",
+   "Destructuring",
+   "Advanced sealed/data modeling",
+   "Advanced language idioms",
+   "Advanced standard-library patterns"
+  ],
+  "boss": "Mini DSL"
+ },
+ {
+  "order": 20,
+  "title": "JVM Bridge",
+  "subtitle": "JVM & Java Interoperability",
+  "lessonCount": 10,
+  "available": false,
+  "lessons": [
+   "Java interoperability & Calling Java from Kotlin",
+   "Calling Kotlin from Java & Platform types",
+   "Nullability across the Java boundary & JVM annotations",
+   "@JvmStatic & @JvmOverloads",
+   "@JvmField & Java/Kotlin collection interoperability",
+   "SAM conversions",
+   "JVM method/property mapping",
+   "Checked-exception interoperability considerations",
+   "JVM metadata concepts"
+  ],
+  "boss": "Java/Kotlin Integration Module"
+ },
+ {
+  "order": 21,
+  "title": "Performance Lab",
+  "subtitle": "Kotlin Performance",
+  "lessonCount": 15,
+  "available": false,
+  "lessons": [
+   "Allocation & Object creation costs",
+   "Collections and allocation",
+   "Eager vs lazy processing",
+   "Sequences",
+   "Inline functions",
+   "Boxing/unboxing considerations",
+   "Value classes and representation",
+   "String-building considerations",
+   "Coroutine performance",
+   "Dispatchers and scheduling overhead",
+   "Measuring performance",
+   "Benchmarking concepts",
+   "Avoiding premature optimization",
+   "Performance-oriented API design"
+  ],
+  "boss": "Performance Optimization Challenge"
+ },
+ {
+  "order": 22,
+  "title": "Production Kotlin",
+  "subtitle": "Kotlin Ecosystem & Production Engineering",
+  "lessonCount": 22,
+  "available": false,
+  "lessons": [
+   "Kotlin Standard Library & Packages",
+   "Imports",
+   "Code organization",
+   "Gradle basics",
+   "Kotlin Gradle configuration",
+   "Dependencies",
+   "Library management",
+   "Serialization",
+   "JSON/data serialization concepts",
+   "File I/O",
+   "Data/time APIs",
+   "Testing fundamentals",
+   "Unit testing",
+   "Test organization",
+   "KDoc",
+   "Dokka",
+   "Build tools",
+   "CI/CD concepts",
+   "Production code quality",
+   "Kotlin best practices",
+   "Maintainability and API design"
+  ],
+  "boss": "Production Kotlin Project / Kotlin Grandmaster"
+ }
+];

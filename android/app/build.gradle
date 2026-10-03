@@ -78,6 +78,13 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.codedorn"
+    sourceSets {
+        main {
+            // Generated from the sibling CodeDo web build before assets merge.
+            // This prevents its duplicate RN font files being packaged twice.
+            assets.srcDirs += [layout.buildDirectory.dir('generated/webStageAssets').get().asFile]
+        }
+    }
     defaultConfig {
         applicationId "com.codedorn"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -107,9 +114,28 @@ android {
     }
 }
 
+// Stage 4/5 continue to use the tested web editor while their native React
+// Native equivalents are migrated. Only its web bundle and Capacitor config
+// are embedded; the RN app keeps ownership of the shared fonts.
+tasks.register('syncWebStageAssets', Sync) {
+    from('../../../CodeDo/android/app/src/main/assets') {
+        include 'public/**'
+        include 'capacitor.config.json'
+        include 'capacitor.plugins.json'
+    }
+    into(layout.buildDirectory.dir('generated/webStageAssets'))
+}
+
+tasks.named('preBuild').configure {
+    dependsOn(tasks.named('syncWebStageAssets'))
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-app')
+    implementation project(':capacitor-status-bar')
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

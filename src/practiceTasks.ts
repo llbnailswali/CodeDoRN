@@ -1,0 +1,2337 @@
+// GENERATED from src/data/practiceBank (Worlds 1-8): the titles, summaries, goals, starting values and expected outputs the web task list shows.
+// Regenerate with the script in the Claude session notes if the practice bank changes. UI only: statuses are made up in TaskListScreen.tsx.
+export interface PracticeTask {
+  title: string;
+  summary: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  goal?: string;
+  bug?: string;
+  given: string[];
+  expected: string;
+}
+
+export const PRACTICE_TASKS: Record<number, { writeRun: PracticeTask[]; debug: PracticeTask[] }> = {
+ "1": {
+  "writeRun": [
+   {
+    "title": "Warehouse Pallets",
+    "summary": "Split boxes into full pallets and leftovers, then prove the split adds back up.",
+    "difficulty": "medium",
+    "goal": "A warehouse has 487 boxes to ship. Each pallet can hold 24 boxes. Find how many full pallets are needed and how many boxes are left. Print a report that also checks that the total is 487.",
+    "given": [
+     "val totalBoxes = 487",
+     "val boxesPerPallet = 24"
+    ],
+    "expected": "Pallets: 20 | Leftover: 7 | Check: 487"
+   },
+   {
+    "title": "Flight Log Timer",
+    "summary": "Break a Long number of seconds into hours, minutes and seconds, then verify it.",
+    "difficulty": "hard",
+    "goal": "Change 100,000 seconds into hours, minutes and seconds. Print the time. Then use these three parts to get the total seconds again and check that it is correct.",
+    "given": [
+     "val totalSeconds = 100_000L"
+    ],
+    "expected": "Duration: 27h 46m 40s\nCheck: 100000"
+   },
+   {
+    "title": "Road Trip Fuel",
+    "summary": "Mix Int and Double values to report fuel efficiency and cost for a trip.",
+    "difficulty": "medium",
+    "goal": "A trip covered 210 km using 12.5 liters of fuel at 1.5 per liter. Find the km per liter, the whole km per liter and the fuel cost. Print all three on one line.",
+    "given": [
+     "val distanceKm = 210",
+     "val litersUsed = 12.5",
+     "val pricePerLiter = 1.5"
+    ],
+    "expected": "Efficiency: 16.8 km/L (16 whole) | Cost: 18.75"
+   },
+   {
+    "title": "Quiz Average",
+    "summary": "Average four Int scores without losing the fraction, then split it into parts.",
+    "difficulty": "hard",
+    "goal": "Find the exact average of four quiz scores and keep the decimal part. Split the average into a whole part and a fraction. Print all three.",
+    "given": [
+     "val quiz1 = 90",
+     "val quiz2 = 85",
+     "val quiz3 = 78",
+     "val quiz4 = 81"
+    ],
+    "expected": "Average: 83.5\nWhole: 83\nFraction: 0.5"
+   },
+   {
+    "title": "Badge Builder",
+    "summary": "Join two names with a space, wrap them in brackets and report the character count.",
+    "difficulty": "medium",
+    "goal": "Make a name badge. Join the first and last name and count the characters. Print the name inside square brackets, followed by its length.",
+    "given": [
+     "val first = \"Ada\"",
+     "val last = \"Lovelace\""
+    ],
+    "expected": "[Ada Lovelace] has 12 characters"
+   },
+   {
+    "title": "Shipping Label",
+    "summary": "Measure two strings (one possibly empty) and print a multi-line raw-string label.",
+    "difficulty": "hard",
+    "goal": "A shipping label needs the item, the length of the customer note and the total number of characters. This order has no note. Find the length of both texts, add them up and print a three-line label.",
+    "given": [
+     "val item = \"Notebook\"",
+     "val note = \"\""
+    ],
+    "expected": "Item: Notebook\nNote length: 0\nTotal: 8"
+   },
+   {
+    "title": "Tea Receipt",
+    "summary": "Print receipt lines with a literal dollar sign and an expression inside a template.",
+    "difficulty": "medium",
+    "goal": "A customer buys 6 cups of tea at 4 each and gets a discount of 3. Find the total price. Print a two-line receipt with the price and the price after the discount. Both must show a dollar sign.",
+    "given": [
+     "val product = \"Tea\"",
+     "val unitPrice = 4",
+     "val quantity = 6",
+     "val discount = 3"
+    ],
+    "expected": "Tea x6 = $24\nDiscounted: $21"
+   },
+   {
+    "title": "Invoice Block",
+    "summary": "Build a three-line invoice with a truncated tax, a property call in a template and literal dollar signs.",
+    "difficulty": "hard",
+    "goal": "Mina buys 4 items at 17 each. Find the subtotal and a tax of one tenth of it using whole numbers. Print a three-line invoice with the customer, subtotal and tax, and total.",
+    "given": [
+     "val customer = \"Mina\"",
+     "val items = 4",
+     "val price = 17"
+    ],
+    "expected": "Customer: Mina (4 letters)\nSubtotal: $68 | Tax: $6\nTotal: $74 for 4 items"
+   },
+   {
+    "title": "Launch Countdown",
+    "summary": "Mix print() and println() with a computed value and a blank line, leaving a debug line commented out.",
+    "difficulty": "medium",
+    "goal": "Print a rocket launch countdown. Some parts must be on the same line and some on separate lines. Print two lines with two parts each, then a blank line, then the final message.",
+    "given": [
+     "val start = 7"
+    ],
+    "expected": "T-minus 7\nNext: 6\n\nLiftoff!"
+   },
+   {
+    "title": "Arcade Session",
+    "summary": "Update a score and lives in order, printing a snapshot before and after a later change.",
+    "difficulty": "medium",
+    "goal": "A player has 40 points and 3 lives. They get a 15-point bonus and lose one life. Update the score and lives and print them. Then double the score and print the new score.",
+    "given": [
+     "var score = 40",
+     "val bonus = 15",
+     "var lives = 3"
+    ],
+    "expected": "Score: 55 | Lives: 2\nScore after double: 110"
+   },
+   {
+    "title": "Bank Ledger",
+    "summary": "Snapshot a starting balance in a val, apply three changes to a var, then report the net change.",
+    "difficulty": "hard",
+    "goal": "An account starts with 500. It then gets a deposit, a withdrawal and a service fee. Apply these three changes in order. Print the starting balance, final balance and total change.",
+    "given": [
+     "var balance = 500"
+    ],
+    "expected": "Opening: 500\nClosing: 615\nNet change: 115"
+   },
+   {
+    "title": "Sensor Panel",
+    "summary": "Mix explicit and inferred types across Int, String, Double, Boolean and Char in one report.",
+    "difficulty": "medium",
+    "goal": "A weather station stores a sensor id, name, reading, status and zone. Find the doubled reading, the next id and a tag name. Let Kotlin infer the types except for one type that you write. Print a one-line status report.",
+    "given": [
+     "val id: Int = 7",
+     "val label: String = \"North\"",
+     "val reading: Double = 21.5",
+     "val online: Boolean = true",
+     "val zone: Char = 'B'"
+    ],
+    "expected": "Sensor North-8 (zone B) reads 43.0, online: true"
+   },
+   {
+    "title": "Access Gate",
+    "summary": "Derive three Booleans from comparisons and a negation, then report all of them.",
+    "difficulty": "medium",
+    "goal": "A visitor is 17 years old and the minimum age is 18. Find if they are old enough, too young or exactly the minimum age. Print the three results and the ticket status on one line.",
+    "given": [
+     "val age = 17",
+     "val minAge = 18",
+     "val hasTicket = true"
+    ],
+    "expected": "oldEnough=false | tooYoung=true | exactlyMin=false | ticket=true"
+   },
+   {
+    "title": "Log Entry",
+    "summary": "Join a String with Char values, including a backslash and a newline escape, into a two-line log entry.",
+    "difficulty": "medium",
+    "goal": "Make a log entry using a file path and a header line. Print the header and the path on two separate lines using one println().",
+    "given": [
+     "val code = 'E'",
+     "val backslash = '\\\\'",
+     "val newline = '\\n'",
+     "val folder = \"logs\""
+    ],
+    "expected": "Code E\nlogs\\app.log"
+   },
+   {
+    "title": "Ticket Desk",
+    "summary": "Parse two text counts into Ints, then total the visitors and the ticket revenue.",
+    "difficulty": "medium",
+    "goal": "A ticket desk has visitor counts stored as text. Change them to numbers. Find the total visitors and the money from adult and child tickets. Print a one-line summary.",
+    "given": [
+     "val rawAdults = \"28\"",
+     "val rawChildren = \"14\"",
+     "val adultPrice = 12",
+     "val childPrice = 8"
+    ],
+    "expected": "Visitors: 42 | Revenue: 448"
+   },
+   {
+    "title": "Parcel Weight",
+    "summary": "Add Float weights, convert an Int item count to a Float, and report all three values.",
+    "difficulty": "medium",
+    "goal": "A parcel weighs 68.5 with 1.25 of wrapping. It has 3 items that count as 1 each. Find the packed weight and the total weight with the items. Print a report.",
+    "given": [
+     "val parcel = 68.5f",
+     "val wrap = 1.25f",
+     "val items = 3"
+    ],
+    "expected": "Parcel: 69.75 | Items: 3.0 | Total: 72.75"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Quiz Percent",
+    "summary": "A quiz score shows 0% even though most answers were right.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Score: 70%\" for 17 correct answers out of 24, but it prints \"Score: 0%\".",
+    "given": [],
+    "expected": "Score: 70%"
+   },
+   {
+    "title": "Fix the Pass Rate",
+    "summary": "A pass rate and its percentage both print as 0.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Pass rate: 0.625\" and \"Percent: 62.5\" for 5 passed checks out of 8, but both lines print 0.",
+    "given": [],
+    "expected": "Pass rate: 0.625\nPercent: 62.5"
+   },
+   {
+    "title": "Fix the Basket Total",
+    "summary": "A basket subtotal and total are both too low.",
+    "difficulty": "hard",
+    "bug": "The program should print \"Subtotal: 59.25\" and \"Total: 63.75\", but both numbers are too low.",
+    "given": [],
+    "expected": "Subtotal: 59.25\nTotal: 63.75"
+   },
+   {
+    "title": "Fix the Tag Width",
+    "summary": "A tag width prints as two digits glued together instead of a sum.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Tag width: 8\" (the name length plus 2), but it prints \"Tag width: 62\".",
+    "given": [],
+    "expected": "Tag width: 8"
+   },
+   {
+    "title": "Fix the Order Slip",
+    "summary": "A raw-string order slip prints with extra blank lines and indentation.",
+    "difficulty": "hard",
+    "bug": "The program should print \"Item: Notebook\" and \"Qty: 3\" on two lines, but the slip has a blank line above it and indented text.",
+    "given": [],
+    "expected": "Item: Notebook\nQty: 3"
+   },
+   {
+    "title": "Fix the City Sentence",
+    "summary": "A template prints the text \".length\" instead of a number.",
+    "difficulty": "medium",
+    "bug": "The program should print \"City: Osaka has 5 letters\", but it prints \"City: Osaka has Osaka.length letters\".",
+    "given": [],
+    "expected": "City: Osaka has 5 letters"
+   },
+   {
+    "title": "Fix the Welcome Banner",
+    "summary": "A two-line banner prints as one glued line.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Welcome, Rin\" and then \"Ready.\" on the next line, but it prints \"Welcome, RinReady.\".",
+    "given": [],
+    "expected": "Welcome, Rin\nReady."
+   },
+   {
+    "title": "Fix the Level Up",
+    "summary": "A level counter never goes up even though the code adds 1 to it.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Rex reached level 2\", but it prints \"Rex reached level 1\".",
+    "given": [],
+    "expected": "Rex reached level 2"
+   },
+   {
+    "title": "Fix the Price Tag",
+    "summary": "A price declared with the wrong type fails to compile.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Tea costs 4.5\", but it does not compile.",
+    "given": [],
+    "expected": "Tea costs 4.5"
+   },
+   {
+    "title": "Fix the Free Shipping Rule",
+    "summary": "An order exactly at the free-shipping threshold is not given free shipping.",
+    "difficulty": "medium",
+    "bug": "An order of exactly 50 should get free shipping, so the program should print \"Free shipping: true\", but it prints \"Free shipping: false\".",
+    "given": [],
+    "expected": "Free shipping: true"
+   },
+   {
+    "title": "Fix the Line Break",
+    "summary": "A line-break Char written with the wrong slash does not compile.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Total\" and \"Done\" on two lines, but it does not compile.",
+    "given": [],
+    "expected": "Total\nDone"
+   },
+   {
+    "title": "Fix the Class Trip Count",
+    "summary": "Two student counts stored as text are glued together instead of added.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Students: 32\" for groups of 17 and 15, but it prints \"Students: 1715\".",
+    "given": [],
+    "expected": "Students: 32"
+   }
+  ]
+ },
+ "2": {
+  "writeRun": [
+   {
+    "title": "Digit Splitter",
+    "summary": "Split a four-digit number into its digits with / and %, then add the digits.",
+    "difficulty": "medium",
+    "goal": "Separate 4872 into its four digits. Add the four digits together. Print the digits and their sum.",
+    "given": [
+     "val number = 4872"
+    ],
+    "expected": "Digits: 4 8 7 2\nSum: 21"
+   },
+   {
+    "title": "Recipe Scaler",
+    "summary": "Scale a recipe with an Int-to-Double division, so the fraction is kept.",
+    "difficulty": "medium",
+    "goal": "A recipe for 4 people needs 250 g of flour. You are cooking for 6 people. Find how much to increase the recipe by and keep the decimal part. Find the flour needed and the number of extra servings. Print all three on one line.",
+    "given": [
+     "val baseServings = 4",
+     "val flourGrams = 250",
+     "val targetServings = 6"
+    ],
+    "expected": "Scale: 1.5 | Flour: 375.0 g | Extra servings: 2"
+   },
+   {
+    "title": "Salary Slip",
+    "summary": "Mix Int and Double arithmetic to price regular hours and time-and-a-half overtime.",
+    "difficulty": "hard",
+    "goal": "An employee worked 39 hours at 17.5 per hour. Hours above 35 are overtime and pay one and a half times the normal rate. Find the regular and overtime hours and their pay. Add the pay and print a four-line slip.",
+    "given": [
+     "val hoursWorked = 39",
+     "val hourlyRate = 17.5",
+     "val regularHours = 35"
+    ],
+    "expected": "Overtime hours: 4\nBase: 612.5\nOvertime: 105.0\nTotal: 717.5"
+   },
+   {
+    "title": "Cart Compare",
+    "summary": "Compare two calculated cart totals with <, ==, <= and != and report each Boolean.",
+    "difficulty": "medium",
+    "goal": "You are comparing two shopping carts: 3 items at 15 each and 5 items at 9 each. Find each cart total. Check if cart A is cheaper, if both totals are equal, if cart A is within the 50 budget and if the totals are different. Print all four answers on one line.",
+    "given": [
+     "val itemsA = 3",
+     "val priceA = 15",
+     "val itemsB = 5",
+     "val priceB = 9",
+     "val budget = 50"
+    ],
+    "expected": "aCheaper=false | same=true | withinBudget=true | different=false"
+   },
+   {
+    "title": "Name Sorter",
+    "summary": "Order and compare two Strings, including the uppercase-before-lowercase trap, and their lengths.",
+    "difficulty": "hard",
+    "goal": "Compare the names banana and Cherry. Find which comes first in dictionary order. Check if they have the same length, find the difference between their lengths and check if they are equal. Print a five-line report.",
+    "given": [
+     "val first = \"banana\"",
+     "val second = \"Cherry\""
+    ],
+    "expected": "banana before Cherry: false\nSame length: true\nLength gap: 0\nSame word: false\nbanana after Cherry: true"
+   },
+   {
+    "title": "Club Entry",
+    "summary": "Build entry rules from comparisons with && and ||, then negate the result with !.",
+    "difficulty": "medium",
+    "goal": "A club allows entry if someone is an adult and a member, or has an invitation. A 19-year-old has 2 years of membership and no invite. Find if they are an adult, a member, allowed in and blocked. Print all four answers on one line.",
+    "given": [
+     "val age = 19",
+     "val memberYears = 2",
+     "val hasInvite = false"
+    ],
+    "expected": "adult=true | member=true | enter=true | blocked=false"
+   },
+   {
+    "title": "Discount Rules",
+    "summary": "Write four store rules that mix &&, ||, ! and grouping, and report each one.",
+    "difficulty": "hard",
+    "goal": "A shop checks several rules for a 120 order from a member with no coupon on a holiday. Find if free shipping applies, if a big discount applies, if discounts can be combined and if the customer gets no perks. Print the four answers on separate lines.",
+    "given": [
+     "val total = 120",
+     "val isMember = true",
+     "val hasCoupon = false",
+     "val isHoliday = true"
+    ],
+    "expected": "Free shipping: true\nBig discount: true\nStackable: false\nNo perks: false"
+   },
+   {
+    "title": "Inventory Update",
+    "summary": "Update stock with +=, -=, *=, /= and %=, printing checkpoints along the way.",
+    "difficulty": "medium",
+    "goal": "A warehouse has 120 items. A delivery of 45 arrives and 8 items are damaged. The damaged count doubles after a recount. Update the numbers step by step with compound assignment and print a checkpoint. Then halve the stock and keep the amount left after packing groups of 25.",
+    "given": [
+     "var stock = 120",
+     "val delivery = 45",
+     "var damaged = 8"
+    ],
+    "expected": "Stock: 157 | Damaged: 16\nHalf stock: 78\nLeft over: 3"
+   },
+   {
+    "title": "Savings Plan",
+    "summary": "Update a Double with several compound operators and build a report String with +=.",
+    "difficulty": "hard",
+    "goal": "A saver starts with 800 and adds 200 each week. Over two weeks, a 1.5x bonus is added, a 300 fee is charged and the balance is then halved. Keep the balance and week count updated. Build a summary sentence piece by piece and print it.",
+    "given": [
+     "var savings = 800.0",
+     "val deposit = 200.0",
+     "var weeks = 0"
+    ],
+    "expected": "Weeks: 2 | Savings: 600.0"
+   },
+   {
+    "title": "Ticket Queue",
+    "summary": "Use postfix and prefix ++ as expression values, then --, to issue queue numbers.",
+    "difficulty": "medium",
+    "goal": "A ticket machine starts giving ticket numbers from 100. It gives two tickets, skips one number and then goes back one number. Use the increment and decrement operators to give and update the numbers. The result depends on whether the operator is before or after the variable. Print the report.",
+    "given": [
+     "var next = 100"
+    ],
+    "expected": "Issued: 100, 101 | Skipped to: 103 | Back to: 102"
+   },
+   {
+    "title": "Lap Counter",
+    "summary": "Choose prefix or postfix ++ and -- for four values, using only the wording to decide which.",
+    "difficulty": "hard",
+    "goal": "A race tracker starts counting laps at 1. A seat counter starts at 10 and goes down as seats are taken. Read each value just before or just after it changes using increment and decrement in the same statement. Print the saved values and the final lap and seat counts.",
+    "given": [
+     "var lap = 1",
+     "var seats = 10"
+    ],
+    "expected": "Laps: 1, 3 | Seats: 10, 8 | Lap now: 3 | Seats left: 8"
+   },
+   {
+    "title": "Checkout Totals",
+    "summary": "Write three arithmetic expressions where precedence and parentheses decide the answer.",
+    "difficulty": "medium",
+    "goal": "A shop has 3 items at 40 each and takes off a discount of 15 twice. Find the checkout total, a split amount and a ratio using Kotlin's operator order. Add parentheses only where needed. Print the three results.",
+    "given": [
+     "val price = 40",
+     "val quantity = 3",
+     "val discount = 15"
+    ],
+    "expected": "Total: 90 | Split: 33 | Ratio: 24"
+   },
+   {
+    "title": "Shipping Rules",
+    "summary": "Build shipping rules where arithmetic sits inside comparisons that sit inside && and ||.",
+    "difficulty": "hard",
+    "goal": "A courier needs to price a 12 kg parcel traveling 250 km. The parcel is fragile but not priority. Find the base fee from the weight and distance. Then find if it needs insurance, if express shipping is allowed and if shipping is free. Print all four results.",
+    "given": [
+     "val weightKg = 12",
+     "val distanceKm = 250",
+     "val isFragile = true",
+     "val isPriority = false"
+    ],
+    "expected": "Base fee: 41\nInsurance: true\nExpress: true\nFree shipping: false"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Two-Test Average",
+    "summary": "The average of two test scores loses its .5.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Average: 87.5\" for the scores 85 and 90, but it prints \"Average: 87\".",
+    "given": [],
+    "expected": "Average: 87.5"
+   },
+   {
+    "title": "Fix the Version Check",
+    "summary": "Version numbers stored as text compare in the wrong order.",
+    "difficulty": "medium",
+    "bug": "Version 10 is newer than version 9, so the program should print \"Update available: true\", but it prints \"Update available: false\".",
+    "given": [],
+    "expected": "Update available: true"
+   },
+   {
+    "title": "Fix the Museum Door",
+    "summary": "A door rule negates only half of its condition.",
+    "difficulty": "medium",
+    "bug": "A visitor with a pass should be let in, so the program should print \"Denied: false\", but it prints \"Denied: true\".",
+    "given": [],
+    "expected": "Denied: false"
+   },
+   {
+    "title": "Fix the Loan Approval",
+    "summary": "A loan rule is approved because && binds tighter than the intended grouping.",
+    "difficulty": "medium",
+    "bug": "A loan needs credit approval, so the program should print \"Approved: false\". But a high income alone gets it approved, and it prints \"Approved: true\".",
+    "given": [],
+    "expected": "Approved: false"
+   },
+   {
+    "title": "Fix the Bill Split",
+    "summary": "Splitting a bill with /= drops the cents.",
+    "difficulty": "medium",
+    "bug": "A 45 bill split four ways should print \"Each pays 11.25\", but the program prints \"Each pays 11\".",
+    "given": [],
+    "expected": "Each pays 11.25"
+   },
+   {
+    "title": "Fix the Order Number",
+    "summary": "A freshly assigned order number is one behind because ++ was written after the variable.",
+    "difficulty": "medium",
+    "bug": "The next order should print \"Assigned #42\", but the receipt shows the previous number, \"Assigned #41\".",
+    "given": [],
+    "expected": "Assigned #42"
+   },
+   {
+    "title": "Fix the Three-Score Average",
+    "summary": "An average divides only the last score because the sum is not in parentheses.",
+    "difficulty": "medium",
+    "bug": "The scores 60, 70 and 80 should print \"Average: 70\", but the program prints \"Average: 156\".",
+    "given": [],
+    "expected": "Average: 70"
+   },
+   {
+    "title": "Fix the Refund Rule",
+    "summary": "A refund rule approves an order that misses the minimum spend because of operator grouping.",
+    "difficulty": "hard",
+    "bug": "A refund needs the minimum spend, and either an unopened or a damaged item. The order spent 50, below the minimum of 60, so the program should print \"Refund: false\", but it prints \"Refund: true\".",
+    "given": [],
+    "expected": "Refund: false"
+   }
+  ]
+ },
+ "3": {
+  "writeRun": [
+   {
+    "title": "Fitness Check",
+    "summary": "Run several independent if checks, one of them driven by a calculated value.",
+    "difficulty": "medium",
+    "goal": "A fitness app has daily targets: 10,000 steps, at least 7 hours of sleep and at least 2 liters of water. Today you walked 8,200 steps, slept 6 hours and drank 1.5 liters. Show a message for each target that was not reached. Always print a completion line at the end.",
+    "given": [
+     "val steps = 8200",
+     "val sleepHours = 6",
+     "val waterLiters = 1.5",
+     "val goal = 10000"
+    ],
+    "expected": "Steps to go: 1800\nSleep more\nDrink water\nCheck complete"
+   },
+   {
+    "title": "Risk Score",
+    "summary": "Build a risk score from independent if rules, then decide on an alert.",
+    "difficulty": "hard",
+    "goal": "A monitoring tool gives a server a risk score. It adds points for a busy CPU, high memory with swap use and a nearly full disk. Find the score from the readings. Show an alert only if the score reaches 60. Print the final score.",
+    "given": [
+     "val cpuPercent = 85",
+     "val memoryPercent = 72",
+     "val swapMb = 0",
+     "val diskPercent = 96",
+     "var risk = 0"
+    ],
+    "expected": "ALERT\nRisk: 70"
+   },
+   {
+    "title": "Parking Fee",
+    "summary": "Set a fee inside an if/else statement, then cap it with an if/else expression.",
+    "difficulty": "medium",
+    "goal": "A car park charges 5 for the first 2 hours and 3 for each extra hour. The total charge cannot be more than 12. Find the fee for a 5-hour stay and the amount actually charged. Print both.",
+    "given": [
+     "val hours = 5",
+     "var fee = 0"
+    ],
+    "expected": "Fee: 14 | Charged: 12"
+   },
+   {
+    "title": "Leap Year",
+    "summary": "Combine remainder checks with &&, || and ! to decide whether a year is a leap year.",
+    "difficulty": "hard",
+    "goal": "Find if 2024 is a leap year. A year divisible by 4 is a leap year, except a century year must also be divisible by 400. Check each rule, combine the results into one answer and print which case applies.",
+    "given": [
+     "val year = 2024"
+    ],
+    "expected": "2024 is a leap year"
+   },
+   {
+    "title": "Grade Report",
+    "summary": "Add a bonus to a score, then pick a letter grade with an else-if chain.",
+    "difficulty": "medium",
+    "goal": "A student scored 78 and gets a 5-point bonus. Add the bonus. Give the new score a grade: A from 90, B from 80, C from 70, D from 60 and F below that. Print the new score and the grade.",
+    "given": [
+     "val score = 78",
+     "val bonus = 5",
+     "var grade = \"F\""
+    ],
+    "expected": "Adjusted: 83 | Grade: B"
+   },
+   {
+    "title": "Tax Bracket",
+    "summary": "Pick a tax rate with an ordered else-if chain, then work out the tax and the net income.",
+    "difficulty": "hard",
+    "goal": "A tax office uses different rates based on income: 0 percent below 10,000, 10 percent below 40,000, 20 percent below 90,000 and 30 percent for anything higher. For an income of 62,000, find the rate, tax and take-home amount. Print all three.",
+    "given": [
+     "val income = 62000",
+     "var rate = 0"
+    ],
+    "expected": "Rate: 20%\nTax: 12400\nNet: 49600"
+   },
+   {
+    "title": "Arcade Menu",
+    "summary": "Use three when statements: an Int subject with a comma list, a String subject, and a calculated subject.",
+    "difficulty": "medium",
+    "goal": "An arcade machine shows different messages based on the level and game mode. For level 3 in duo mode, find the level name, the number of players and if a bonus is unlocked. Print one line for each.",
+    "given": [
+     "val level = 3",
+     "val mode = \"duo\""
+    ],
+    "expected": "Standard\nPlayers: 2\nBonus unlocked"
+   },
+   {
+    "title": "Month Info",
+    "summary": "Turn a month number into its day count and season with two when expressions that use comma lists.",
+    "difficulty": "hard",
+    "goal": "A calendar app needs information about a month. For month 2, find the number of days and the season. Then find how many full weeks are in the month. Print the month summary and the week count.",
+    "given": [
+     "val month = 2"
+    ],
+    "expected": "Month 2: 28 days, Winter\nFull weeks: 4"
+   },
+   {
+    "title": "Age Category",
+    "summary": "Sort an age into a group with a when over ranges, then work out a decade and the years to 65.",
+    "difficulty": "medium",
+    "goal": "A registration form puts people into age groups: child, teen, adult and senior. For someone aged 34, find their group, their decade (30s, 40s and so on) and the number of years until 65. Print one summary line.",
+    "given": [
+     "val age = 34"
+    ],
+    "expected": "Age 34: Adult | Decade: 30s | Years to 65: 31"
+   },
+   {
+    "title": "Pace Classifier",
+    "summary": "Turn seconds into minutes and seconds, and label a pace, rejecting invalid readings first with !in.",
+    "difficulty": "hard",
+    "goal": "A running app gets a pace of 350 seconds per km. Change it into minutes and seconds and give it a label from Elite to Easy. Impossible readings must show a Check sensor message. Find the values and print one line.",
+    "given": [
+     "val secondsPerKm = 350"
+    ],
+    "expected": "Pace 5:50 per km: Steady"
+   },
+   {
+    "title": "Temperature Label",
+    "summary": "Label a temperature with a when expression and convert it to Fahrenheit.",
+    "difficulty": "medium",
+    "goal": "A weather display shows a temperature of 27 C. Give it a label from Freezing to Extreme and change it to Fahrenheit. Print the label and Fahrenheit temperature on one line.",
+    "given": [
+     "val temp = 27"
+    ],
+    "expected": "27C (80F): Warm"
+   },
+   {
+    "title": "Shipping Cost",
+    "summary": "Chain three when expressions, so each result feeds the next one.",
+    "difficulty": "hard",
+    "goal": "A parcel shop finds the shipping price from the weight and destination. A 7 kg parcel is going to the EU. Find the base cost from its weight band and multiply it by the factor for the zone. Label the total as cheap, standard or premium. Print two lines.",
+    "given": [
+     "val weightKg = 7",
+     "val zone = \"EU\""
+    ],
+    "expected": "Base: 12 x2 = 24\nShipping: standard"
+   },
+   {
+    "title": "Entry Check",
+    "summary": "Gate entry with a combined condition, run a nested check inside it, then add a one-line note.",
+    "difficulty": "medium",
+    "goal": "A venue checks age, ticket, ban status and VIP status before allowing entry. A 20-year-old has a ticket and is not banned or VIP. Find if they can enter and which area they can use. Then print an alcohol notice based on their age.",
+    "given": [
+     "val age = 20",
+     "val hasTicket = true",
+     "val isBanned = false",
+     "val isVip = false"
+    ],
+    "expected": "Entry allowed\nStandard area\nNo alcohol"
+   },
+   {
+    "title": "Scholarship Decision",
+    "summary": "Decide an award with nested ifs inside an else-if chain, then adjust and cap it.",
+    "difficulty": "hard",
+    "goal": "A college gives a scholarship as a percentage of tuition. The amount depends on GPA and family income. Extra volunteering can add a bonus, but the award cannot be more than 100. Find this student's final award and its tier (full, partial or none). Print both.",
+    "given": [
+     "val gpa = 3.6",
+     "val income = 42000",
+     "val volunteerHours = 120",
+     "var award = 0"
+    ],
+    "expected": "Award: 100% | Tier: full"
+   },
+   {
+    "title": "Input Classifier",
+    "summary": "Test values of type Any with is and !is, and report each result as a Boolean.",
+    "difficulty": "medium",
+    "goal": "A data tool gets values of unknown type: a number, some text and a Boolean. Find the real type of each value. Also check once for a type that a value is not. Print all four answers on one line.",
+    "given": [
+     "val a: Any = 42",
+     "val b: Any = \"hello\"",
+     "val c: Any = true"
+    ],
+    "expected": "aIsInt=true | bIsInt=false | cIsBoolean=true | bIsNotString=false"
+   },
+   {
+    "title": "Data Validator",
+    "summary": "Count the types in three Any values with an is / else-if chain, using a smart cast on a String.",
+    "difficulty": "hard",
+    "goal": "A form gets three values of unknown type. Count how many are whole numbers, texts and other values. Also count the texts longer than one character. Check each value, update the correct count and print all four counts on one line.",
+    "given": [
+     "val first: Any = 15",
+     "val second: Any = \"20\"",
+     "val third: Any = 3.5",
+     "var ints = 0",
+     "var texts = 0",
+     "var others = 0",
+     "var longTexts = 0"
+    ],
+    "expected": "Ints: 1 | Texts: 1 | Others: 1 | Long texts: 1"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Hot Day Notice",
+    "summary": "An indented line under a brace-less if runs every time.",
+    "difficulty": "medium",
+    "bug": "On a 20 degree day the program should print only \"Forecast done\", but it also prints \"Drink water\".",
+    "given": [],
+    "expected": "Forecast done"
+   },
+   {
+    "title": "Fix the Member Price",
+    "summary": "A member is charged the full price because the two branches are swapped.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Price: 40\" for a member, but it prints \"Price: 50\".",
+    "given": [],
+    "expected": "Price: 40"
+   },
+   {
+    "title": "Fix the Alert Levels",
+    "summary": "Separate ifs print every matching alert instead of only the most severe one.",
+    "difficulty": "medium",
+    "bug": "The program should print only \"Critical\" for a load of 95, but it prints all three alerts.",
+    "given": [],
+    "expected": "Critical"
+   },
+   {
+    "title": "Fix the Day Planner",
+    "summary": "A when on a String never matches because of letter case.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Sat is a Weekend\", but it prints \"Sat is a Weekday\".",
+    "given": [],
+    "expected": "Sat is a Weekend"
+   },
+   {
+    "title": "Fix the Age Band",
+    "summary": "A range gap leaves age 18 in the else branch.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Age 18: Adult\", but it prints \"Age 18: Senior\".",
+    "given": [],
+    "expected": "Age 18: Adult"
+   },
+   {
+    "title": "Fix the Signal Strength",
+    "summary": "A broad range placed first swallows the narrower branch after it.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Signal 85: Strong\", but it prints \"Signal 85: Weak\".",
+    "given": [],
+    "expected": "Signal 85: Strong"
+   },
+   {
+    "title": "Fix the Weekend Pass",
+    "summary": "A pass that should apply on either day needs both to be true.",
+    "difficulty": "medium",
+    "bug": "The discount should apply on Saturdays or on holidays. Today is a holiday, but the program prints \"Full price\" instead of \"Discount\".",
+    "given": [],
+    "expected": "Discount"
+   },
+   {
+    "title": "Fix the Dangling Else",
+    "summary": "An else attaches to the inner if instead of the outer one, so a logged-out user sees nothing.",
+    "difficulty": "hard",
+    "bug": "A visitor who is not logged in should see \"Please log in\", but nothing is printed before \"Done\".",
+    "given": [],
+    "expected": "Please log in\nDone"
+   },
+   {
+    "title": "Fix the Number Check",
+    "summary": "A value is checked as both an Int and a Double at once, which can never be true.",
+    "difficulty": "medium",
+    "bug": "The value 3.5 is a number, but the program prints \"Number: false\".",
+    "given": [],
+    "expected": "Number: true"
+   }
+  ]
+ },
+ "4": {
+  "writeRun": [
+   {
+    "title": "Savings Ladder",
+    "summary": "Add a weekly deposit in a for loop, print the balance each week, then print the total saved.",
+    "difficulty": "medium",
+    "goal": "You start with 100 and save 50 every week for 4 weeks. Show the balance after each week. At the end, show how much you saved in total.",
+    "given": [
+     "val start = 100",
+     "var balance = start",
+     "val weeks = 4",
+     "val weeklyDeposit = 50"
+    ],
+    "expected": "Week 1: 150\nWeek 2: 200\nWeek 3: 250\nWeek 4: 300\nTotal saved: 200"
+   },
+   {
+    "title": "Growth Table",
+    "summary": "Add yearly interest to a balance for five years. Each year the interest is added before the next year starts.",
+    "difficulty": "hard",
+    "goal": "You invest 1000 and earn 10 percent interest every year. The interest is added to your balance. This means you also earn interest on earlier interest. Show all 5 years. Then show the final balance and total interest.",
+    "given": [
+     "var balance = 1000",
+     "val ratePercent = 10",
+     "val years = 5",
+     "var totalInterest = 0"
+    ],
+    "expected": "Year 1: +100 = 1100\nYear 2: +110 = 1210\nYear 3: +121 = 1331\nYear 4: +133 = 1464\nYear 5: +146 = 1610\nFinal balance: 1610\nTotal interest: 610"
+   },
+   {
+    "title": "Ticket Counter",
+    "summary": "Sell tickets in bundles with a while loop, then report the sales and any tickets left.",
+    "difficulty": "medium",
+    "goal": "A box office has 11 tickets and sells them in bundles of 3. It keeps selling while there are enough tickets for a full bundle. Show how many bundles were sold and how many tickets are left.",
+    "given": [
+     "var ticketsLeft = 11",
+     "val batch = 3",
+     "var sales = 0"
+    ],
+    "expected": "Sales: 3 | Left: 2\nLeftover tickets: 2"
+   },
+   {
+    "title": "Collatz Steps",
+    "summary": "Play the Collatz game with a while loop. Count the steps and track the highest value.",
+    "difficulty": "hard",
+    "goal": "Start with 6. If the number is even, divide it by 2. If it is odd, multiply it by 3 and add 1. Repeat until you reach 1. Count the steps and keep the highest number reached. Print the result.",
+    "given": [
+     "val start = 6",
+     "var current = start",
+     "var steps = 0",
+     "var peak = start"
+    ],
+    "expected": "Start: 6 | Steps: 8 | Peak: 16"
+   },
+   {
+    "title": "Retry Timer",
+    "summary": "Retry with a doubling wait using do-while, so the first attempt always happens.",
+    "difficulty": "medium",
+    "goal": "A program retries a failed request. The wait time doubles each time: 2 seconds, then 4, 8 and so on. Stop when the wait goes above 20 seconds. The program must try at least once. Show each attempt and its wait time. Then show the number of attempts.",
+    "given": [
+     "var delay = 2",
+     "val limit = 20",
+     "var attempt = 0"
+    ],
+    "expected": "Attempt 1: wait 2s\nAttempt 2: wait 4s\nAttempt 3: wait 8s\nAttempt 4: wait 16s\nAttempts: 4"
+   },
+   {
+    "title": "Digit Reverse",
+    "summary": "Reverse the digits of a number with do-while. The trailing zero disappears.",
+    "difficulty": "hard",
+    "goal": "Reverse the digits of 4820 without changing it into text. Take the last digit from the number again and again. Use these digits to make the reversed number. Also count the digits. Print the reversed number and the digit count.",
+    "given": [
+     "val number = 4820",
+     "var remaining = number",
+     "var reversed = 0",
+     "var digits = 0"
+    ],
+    "expected": "4820 reversed is 284\nDigits: 4"
+   },
+   {
+    "title": "Range Scan",
+    "summary": "Count the numbers inside and outside a range, then count the passes of an until range.",
+    "difficulty": "medium",
+    "goal": "Check the numbers 1 to 20 against the range 6 to 12. Count how many are inside and how many are outside. Then count a second range that ends just before 12. Print both results to show the difference between the two range styles.",
+    "given": [
+     "val low = 6",
+     "val high = 12",
+     "var inside = 0",
+     "var outside = 0"
+    ],
+    "expected": "Inside: 7 | Outside: 13\nUntil count: 6"
+   },
+   {
+    "title": "Overlap Counter",
+    "summary": "Find where two ranges overlap. Count the shared values and track the first and last.",
+    "difficulty": "hard",
+    "goal": "Two ranges, 5 to 15 and 10 to 25, overlap. Check the numbers 1 to 30 and find the numbers that are in both ranges. Count them and keep the first and last shared numbers. Print the overlap.",
+    "given": [
+     "val aLow = 5",
+     "val aHigh = 15",
+     "val bLow = 10",
+     "val bHigh = 25",
+     "var count = 0",
+     "var first = -1",
+     "var last = -1"
+    ],
+    "expected": "Overlap: 6 values from 10 to 15"
+   },
+   {
+    "title": "Stair Steps",
+    "summary": "Walk a range with a step, print each stop and add the stops up.",
+    "difficulty": "medium",
+    "goal": "A staircase has landings at 3, 9, 15 and so on, up to 30. There are 6 units between each landing. Visit and print each landing. Add all the landing numbers and print the total at the end.",
+    "given": [
+     "val first = 3",
+     "val last = 30",
+     "val gap = 6",
+     "var total = 0"
+    ],
+    "expected": "Stop: 3\nStop: 9\nStop: 15\nStop: 21\nStop: 27\nTotal: 75"
+   },
+   {
+    "title": "Overshoot Detector",
+    "summary": "Compare a stepped range going up with one going down. Neither lands on its end value.",
+    "difficulty": "hard",
+    "goal": "Start at 1 and move toward 20 in steps of 6. You will not land exactly on 20. Then start at 20 and move toward 1. Count the stops and keep the last stop for each direction. Print how far each one stopped before the end.",
+    "given": [
+     "val limit = 20",
+     "val size = 6"
+    ],
+    "expected": "Up: 4 stops, last 19, short by 1\nDown: 4 stops, last 2, short by 1"
+   },
+   {
+    "title": "Rocket Countdown",
+    "summary": "Count down with downTo, show a special line for one second, then print Liftoff.",
+    "difficulty": "medium",
+    "goal": "Print a rocket countdown from 5 to 1. Show a special ignition message at one second. After the countdown, print a liftoff line.",
+    "given": [
+     "val start = 5"
+    ],
+    "expected": "T-5\nT-4\nT-3 Ignition\nT-2\nT-1\nLiftoff!"
+   },
+   {
+    "title": "Elevator Descent",
+    "summary": "Go down floors with downTo and step. Track the stops, even floors, a running sum and the last floor.",
+    "difficulty": "hard",
+    "goal": "An elevator starts on floor 20 and goes down. It stops every 3 floors until floor 2. Count all stops and the stops on even floors. Add the floor numbers it visits. Print the last floor where it stops.",
+    "given": [
+     "val top = 20",
+     "val bottom = 2",
+     "val hop = 3",
+     "var stops = 0",
+     "var evenStops = 0",
+     "var visited = 0",
+     "var lastFloor = 0"
+    ],
+    "expected": "Stops: 7 | Even floors: 4 | Sum: 77\nLast floor: 2"
+   },
+   {
+    "title": "Checkpoints",
+    "summary": "Place checkpoints along a route with until and step, then find the distance left.",
+    "difficulty": "medium",
+    "goal": "A 50 km route has a checkpoint every 15 km, starting at 0. The finish line is not a checkpoint. Count the checkpoints and keep the last checkpoint. Then find the distance from the last checkpoint to the finish.",
+    "given": [
+     "val distance = 50",
+     "val size = 15",
+     "var checkpoints = 0",
+     "var lastMark = 0"
+    ],
+    "expected": "Checkpoints: 4 | Last: 45 | To finish: 5"
+   },
+   {
+    "title": "Budget Cutoff",
+    "summary": "Buy items until the next one would go over budget. Use break, then report what is left.",
+    "difficulty": "medium",
+    "goal": "You buy items that cost 15, 30, 45 and so on. Your budget is 100. Keep buying until the next item would cost more than your remaining budget. Print how many items you bought, how much you spent and how much money is left.",
+    "given": [
+     "val budget = 100",
+     "var spent = 0",
+     "var bought = 0"
+    ],
+    "expected": "Bought 3 items, spent 90, left 10"
+   },
+   {
+    "title": "Prime Check",
+    "summary": "Find the first divisor of a number with break. Report a prime, or the two factors, with the number of checks.",
+    "difficulty": "hard",
+    "goal": "Find if 29 is prime. Check smaller numbers from 2 upward to see if any divide 29 exactly. Stop when you find one. Count how many checks you make. Print that 29 is prime, or print the two factors you find.",
+    "given": [
+     "val n = 29",
+     "var divisor = 0",
+     "var checks = 0"
+    ],
+    "expected": "29 is prime (27 checks)"
+   },
+   {
+    "title": "Skip Multiples",
+    "summary": "Add the numbers up to a limit and skip multiples of 3 with continue. Count the skipped numbers.",
+    "difficulty": "medium",
+    "goal": "Add the numbers from 1 to 15, but do not add multiples of 3. Count how many numbers you skip. Print the sum and the number skipped.",
+    "given": [
+     "val last = 15",
+     "var total = 0",
+     "var skipped = 0"
+    ],
+    "expected": "Sum: 75 | Skipped: 5"
+   },
+   {
+    "title": "First Big Odd Sum",
+    "summary": "Add odd numbers. Skip evens with continue and stop with break once the total passes a limit.",
+    "difficulty": "hard",
+    "goal": "Add odd numbers until the total goes above 60, then stop. Do not add even numbers. Print the number that made the total go above 60, how many odd numbers you used and the total.",
+    "given": [
+     "val limit = 60",
+     "var total = 0",
+     "var count = 0",
+     "var stoppedAt = 0"
+    ],
+    "expected": "Stopped at 15 after 8 odd numbers, total 64"
+   },
+   {
+    "title": "Seating Chart",
+    "summary": "Print a seating grid with nested loops, end each row with a line break, and count the seats.",
+    "difficulty": "medium",
+    "goal": "Print a seating chart with 3 rows and 4 seats in each row. Label each seat with its row and seat number. Show each row on one line. Then print the total number of seats.",
+    "given": [
+     "val rows = 3",
+     "val cols = 4",
+     "var seats = 0"
+    ],
+    "expected": "[1-1][1-2][1-3][1-4]\n[2-1][2-2][2-3][2-4]\n[3-1][3-2][3-3][3-4]\nSeats: 12"
+   },
+   {
+    "title": "Pair Counter",
+    "summary": "Count pairs with nested loops. break leaves only the inner loop, and continue skips one pair.",
+    "difficulty": "hard",
+    "goal": "Check all pairs (a, b) where a and b each go from 1 to 6. Ignore pairs where a and b are equal. Stop a row when a times b goes above 12. Count the pairs and the total number of inner steps. Print both numbers.",
+    "given": [
+     "val limit = 12",
+     "var pairs = 0",
+     "var iterations = 0"
+    ],
+    "expected": "Pairs: 20 | Iterations: 27"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Ticket Sum",
+    "summary": "A sum of the numbers 1 to 10 comes out as 45 because the range stops one number early.",
+    "difficulty": "medium",
+    "bug": "The program should add the ticket numbers 1 to 10 and print 55, but it prints 45.",
+    "given": [],
+    "expected": "Sum: 55"
+   },
+   {
+    "title": "Fix the Ticket Loop",
+    "summary": "A while loop that should print five tickets stops after four.",
+    "difficulty": "medium",
+    "bug": "The program should print five tickets, but it stops after Ticket 4.",
+    "given": [],
+    "expected": "Ticket 1\nTicket 2\nTicket 3\nTicket 4\nTicket 5"
+   },
+   {
+    "title": "Fix the Digit Counter",
+    "summary": "A digit counter reports 0 digits for the number 0, because a while loop can skip its body.",
+    "difficulty": "medium",
+    "bug": "The program reports 0 digits for the number 0, but 0 has one digit. It should print Digits: 1.",
+    "given": [],
+    "expected": "Digits: 1"
+   },
+   {
+    "title": "Fix the Pass Range",
+    "summary": "A pass count misses the top score because the range uses until.",
+    "difficulty": "medium",
+    "bug": "The program checks the scores 55 to 100, and scores 60 to 100 pass. That is 41 passing scores, but the program counts only 40.",
+    "given": [],
+    "expected": "Passed: 41"
+   },
+   {
+    "title": "Fix the Negative Step",
+    "summary": "A countdown with a negative step crashes instead of counting down.",
+    "difficulty": "medium",
+    "bug": "The program should count down by twos from 10 and print Total: 30. Instead, it stops with an error before it prints anything.",
+    "given": [],
+    "expected": "Total: 30"
+   },
+   {
+    "title": "Fix the Last Floor",
+    "summary": "A floor countdown never reaches the ground floor.",
+    "difficulty": "medium",
+    "bug": "The program should print floors 3, 2, 1 and 0, but it stops at Floor 1.",
+    "given": [],
+    "expected": "Floor 3\nFloor 2\nFloor 1\nFloor 0"
+   },
+   {
+    "title": "Fix the Even Sum",
+    "summary": "A sum of even numbers actually adds the odd ones, because the range starts at 1.",
+    "difficulty": "medium",
+    "bug": "The program should add the even numbers from 1 to 10 and print 30, but it prints 25.",
+    "given": [],
+    "expected": "Sum of evens: 30"
+   },
+   {
+    "title": "Fix the Square Search",
+    "summary": "A search leaves the loop before it saves the value it found.",
+    "difficulty": "medium",
+    "bug": "The program should find the first number whose square is above 50 (it is 8), but it prints -1.",
+    "given": [],
+    "expected": "First number whose square exceeds 50: 8"
+   },
+   {
+    "title": "Fix the Stuck Loop",
+    "summary": "A while loop with continue never finishes, because the counter is updated after the skipped line.",
+    "difficulty": "hard",
+    "bug": "The program should add the numbers 1 to 10 except the multiples of 3, but it never finishes.",
+    "given": [],
+    "expected": "Sum: 37"
+   },
+   {
+    "title": "Fix the Row Break",
+    "summary": "A grid prints one cell per line, because the line break is inside the inner loop.",
+    "difficulty": "medium",
+    "bug": "The program should print two rows of three cells, but every cell is on its own line.",
+    "given": [],
+    "expected": "[1-1][1-2][1-3]\n[2-1][2-2][2-3]"
+   },
+   {
+    "title": "Fix the Pair Search",
+    "summary": "A search for the first pair keeps printing pairs, because break only leaves the inner loop.",
+    "difficulty": "hard",
+    "bug": "The program should print only the first pair that adds up to 10, but it prints nine pairs.",
+    "given": [],
+    "expected": "Pair: 1 + 9"
+   }
+  ]
+ },
+ "5": {
+  "writeRun": [
+   {
+    "title": "Morning Routine",
+    "summary": "Write three functions, where one calls the other two, then call them from main.",
+    "difficulty": "medium",
+    "goal": "Show a morning routine using small functions. One wakes up, one has breakfast and one gets ready using both. Run the routine once. Then run the breakfast step again by itself. Print a line for each action.",
+    "given": [],
+    "expected": "Ana wakes up\nAna eats breakfast\nAna is ready\nAna eats breakfast"
+   },
+   {
+    "title": "Round Tracker",
+    "summary": "Change a shared top-level score from several small functions and follow it across repeated calls.",
+    "difficulty": "hard",
+    "goal": "A game score is shared by several functions. One adds a bonus, one takes a penalty and one plays a full round using both. Play three rounds and print the score after each round.",
+    "given": [],
+    "expected": "After round 1: 17\nAfter round 2: 24\nAfter round 3: 31"
+   },
+   {
+    "title": "Trip Planner",
+    "summary": "Write one function with three parameters and call it twice, using computed values as arguments.",
+    "difficulty": "medium",
+    "goal": "A travel agency prices trips using the traveler's name, number of days and daily rate. Write one function that prints a trip and its total cost. Use it for two travelers with different plans.",
+    "given": [
+     "val days = 3",
+     "val rate = 40"
+    ],
+    "expected": "Ana: 3 days at 40 = 120\nBen: 5 days at 50 = 250"
+   },
+   {
+    "title": "Fence Planner",
+    "summary": "Pass calculated values, including Int division and remainder, as function arguments.",
+    "difficulty": "hard",
+    "goal": "A landscaper shows garden measurements in the same format: a label, a colon and a number. Write one function to show them. Use it for the width, perimeter, posts needed (one every 4 metres) and leftover length. Find each value when you call the function.",
+    "given": [
+     "val width = 14",
+     "val height = 9",
+     "val postGap = 4"
+    ],
+    "expected": "Width: 14\nPerimeter: 46\nPosts: 11\nLeft over: 2"
+   },
+   {
+    "title": "Shipping Quote",
+    "summary": "Write two functions that return values, one with an early return, and feed one result into the other.",
+    "difficulty": "medium",
+    "goal": "A shop needs the total price for a 6 kg parcel. Use two small functions. One finds the shipping cost from the weight. The other adds tax to an amount. Combine them with the price of the goods. Print the shipping cost and final total.",
+    "given": [
+     "val weight = 6"
+    ],
+    "expected": "Shipping: 17 | Total: 40"
+   },
+   {
+    "title": "Grade Book",
+    "summary": "Combine three functions that return an Int, a String and a Boolean inside one printing function.",
+    "difficulty": "hard",
+    "goal": "A teacher needs a report line for each student score. It shows the letter grade, bonus and whether the student passes. Write a small function for each decision. Then write a report function that uses them. Print one line for each of three scores.",
+    "given": [
+     "val first = 92",
+     "val second = 68",
+     "val third = 55"
+    ],
+    "expected": "92 -> A | bonus 5 | pass true\n68 -> C | bonus 0 | pass true\n55 -> F | bonus 0 | pass false"
+   },
+   {
+    "title": "Shipping Label",
+    "summary": "Give a label function two default parameters and call it with none, one and both of them supplied.",
+    "difficulty": "medium",
+    "goal": "A shipping label has a recipient, city and zip code. Most parcels use the same city and zip. Write a function with default values for the city and zip. Call it three ways: use both defaults, use only the zip default and provide all values.",
+    "given": [
+     "val first = \"Ana\"",
+     "val city = \"Delhi\""
+    ],
+    "expected": "Ana | Pune | 411001\nBen | Delhi | 411001\nCy | Goa | 403001"
+   },
+   {
+    "title": "Order Total",
+    "summary": "Write a price function with three default values and call it in five ways, one of them setting only the shipping by name.",
+    "difficulty": "hard",
+    "goal": "An order price depends on quantity, discount and shipping. Usually only some values change. Write one function with default values for all three. Call it in five ways to show how the defaults work, including setting only the shipping by name.",
+    "given": [
+     "val price = 40"
+    ],
+    "expected": "Plain: 45\nThree: 125\nDiscounted: 113\nFree shipping: 108\nSingle, no fee: 40"
+   },
+   {
+    "title": "Booking",
+    "summary": "Call a function with four parameters using named arguments in a different order from the parameters.",
+    "difficulty": "medium",
+    "goal": "A hotel booking has four details: guest, nights, breakfast and room type. Write a booking function. Call it twice with every argument passed by name, using a different order each time. This shows that names make the call clear and safe.",
+    "given": [
+     "val guest = \"Ana\""
+    ],
+    "expected": "Ana: 2 nights, Sea room, breakfast=true\nBen: 5 nights, Garden room, breakfast=false"
+   },
+   {
+    "title": "Order Options",
+    "summary": "Aim at later default values by name while skipping earlier ones, with a fee that depends on two options.",
+    "difficulty": "hard",
+    "goal": "A shop order has an item and three optional extras: quantity, gift wrap and a note. Each has a default value, and the cost depends on them. Write the function. Call it four ways using skipped defaults, named arguments and positional arguments. Print each order line.",
+    "given": [],
+    "expected": "Pen x1 gift=false note=none cost=10\nPen x1 gift=true note=none cost=13\nInk x4 gift=false note=rush cost=41\nCap x2 gift=false note=blue cost=21"
+   },
+   {
+    "title": "Unit Converters",
+    "summary": "Write three one-line functions that return an Int, a Double and a Boolean, and print all three.",
+    "difficulty": "medium",
+    "goal": "Create quick helpers for Celsius to Fahrenheit, centimeters to meters and a freezing check. Each one is a single expression, so write them as short single-expression functions. Use all three with sample values and print the results.",
+    "given": [
+     "val temp = 25",
+     "val length = 50"
+    ],
+    "expected": "F: 77\nMeters: 0.5\nFreezing: false"
+   },
+   {
+    "title": "Grade Rules",
+    "summary": "Chain four one-line functions, using if expressions and calls to each other, to summarise scores.",
+    "difficulty": "hard",
+    "goal": "A grading tool has small rules for a letter grade, a pass check and a score curve. Write each one as a single-expression function. Then create a summary function that uses them. Print a summary line for three scores.",
+    "given": [
+     "val first = 88",
+     "val second = 72",
+     "val third = 44"
+    ],
+    "expected": "88 -> A (curved 93, pass true)\n72 -> B (curved 77, pass true)\n44 -> F (curved 49, pass false)"
+   },
+   {
+    "title": "Receipt Helpers",
+    "summary": "Write two local functions inside main, one using an outer val and one calling the other.",
+    "difficulty": "medium",
+    "goal": "A cafe receipt uses two helpers that are needed only inside this program. One adds tax to a price. The other uses it to make a receipt line. Define both inside main so they stay private to it. Then print a line for three items.",
+    "given": [
+     "val taxPercent = 10"
+    ],
+    "expected": "Coffee: 33\nCake: 49\nTea: 27"
+   },
+   {
+    "title": "Scoreboard",
+    "summary": "Let local functions update captured variables and call each other, then report an average.",
+    "difficulty": "hard",
+    "goal": "A scoreboard keeps a total score and a round count. Use small helper functions inside main to record points, play a bonus round and find the average. Play a few rounds. Then print the rounds, total and average on one line.",
+    "given": [
+     "var total = 0",
+     "var rounds = 0",
+     "val firstScore = 5"
+    ],
+    "expected": "Rounds: 4 | Total: 42 | Average: 10"
+   },
+   {
+    "title": "Score Summary",
+    "summary": "Summarise any number of scores with a vararg function, including one score and none at all.",
+    "difficulty": "medium",
+    "goal": "A scoring tool must work with any number of scores: three, one or none. Write a function that accepts a variable number of scores and returns the count, total and best score. Call it with three different amounts.",
+    "given": [
+     "val a = 3"
+    ],
+    "expected": "n=3 total=16 best=9\nn=1 total=7 best=7\nn=0 total=0 best=0"
+   },
+   {
+    "title": "Report Builder",
+    "summary": "Combine a fixed parameter, a threshold and a vararg, handle the empty case and format a Double average.",
+    "difficulty": "hard",
+    "goal": "A weather report has a label, a threshold and any number of readings. Show the number of readings, their sum, how many are above the threshold and the average as a decimal. If there are no readings, say there is no data.",
+    "given": [
+     "val limit = 20",
+     "val first = 18"
+    ],
+    "expected": "Temps: n=4 sum=84 above=2 avg=21.0\nEmpty: no data"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Call Order",
+    "summary": "Three correct functions are called in the wrong order, so the steps print out of sequence.",
+    "difficulty": "medium",
+    "bug": "The program should print Setup, then Run, then Cleanup, but the lines come out in a different order.",
+    "given": [],
+    "expected": "Setup\nRun\nCleanup"
+   },
+   {
+    "title": "Fix the Argument Order",
+    "summary": "The arguments are passed in the opposite order to the parameters, so the types do not match.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Rex is 3 years old\", but it does not compile. The call to `describe` has a type error.",
+    "given": [],
+    "expected": "Rex is 3 years old"
+   },
+   {
+    "title": "Fix the Missing Return",
+    "summary": "A function with a return type prints its result instead of returning it.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Double: 14\", but it does not compile. `double` says it returns an Int, but it never returns a value.",
+    "given": [],
+    "expected": "Double: 14"
+   },
+   {
+    "title": "Fix the Positional Override",
+    "summary": "A positional argument lands in the first default parameter instead of the intended later one.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Hi (size 12, bold true)\", but it does not compile. The `true` goes to the wrong parameter.",
+    "given": [],
+    "expected": "Hi (size 12, bold true)"
+   },
+   {
+    "title": "Fix the Swapped Arguments",
+    "summary": "Two Int arguments are passed in the wrong order, and nothing warns about it.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Ratio: 5\" (20 divided by 4), but it prints \"Ratio: 0\".",
+    "given": [],
+    "expected": "Ratio: 5"
+   },
+   {
+    "title": "Fix the Discount",
+    "summary": "A discount function subtracts the percent number instead of the percent of the price.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Discounted: 45\" (10 percent off 50), but it prints \"Discounted: 40\".",
+    "given": [],
+    "expected": "Discounted: 45"
+   },
+   {
+    "title": "Fix the Local Order",
+    "summary": "A local function is called before the line that declares it.",
+    "difficulty": "hard",
+    "bug": "The program should print \"Doubled: 8\", but it does not compile. `twice` is used on a line above its own declaration.",
+    "given": [],
+    "expected": "Doubled: 8"
+   },
+   {
+    "title": "Fix the Vararg Total",
+    "summary": "A vararg total returns only the last value because it assigns instead of adding.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Total: 15\", but it prints \"Total: 6\".",
+    "given": [],
+    "expected": "Total: 15"
+   }
+  ]
+ },
+ "6": {
+  "writeRun": [
+   {
+    "title": "Lap Times",
+    "summary": "Correct one element of an array by index, then scan it for the total and the fastest lap.",
+    "difficulty": "medium",
+    "goal": "A runner recorded five lap times. The first lap was timed 3 seconds too slow. Fix that lap. Then find the fastest lap and the total time. Print a summary with the lap count and the last lap.",
+    "given": [
+     "val laps = arrayOf(62, 58, 61, 55, 60)"
+    ],
+    "expected": "Laps: 5 | Fastest: 55 | Total: 293 | Last: 60"
+   },
+   {
+    "title": "Array Reversal",
+    "summary": "Reverse an array in place by swapping elements from both ends with index arithmetic.",
+    "difficulty": "hard",
+    "goal": "Reverse an array of six numbers without using a second array. Print the reversed array and its middle element.",
+    "given": [
+     "val data = arrayOf(3, 8, 1, 9, 4, 7)"
+    ],
+    "expected": "Reversed: 7, 4, 9, 1, 8, 3\nMiddle: 1"
+   },
+   {
+    "title": "Playlist Desk",
+    "summary": "Read a read-only list by position and by value: first, last, an index, a search, and a sorted copy.",
+    "difficulty": "medium",
+    "goal": "A playlist has five songs. Print the number of songs, the first and last songs, the third song, the position of Moon and whether it contains Rain. Then make and print an alphabetical copy without changing the original order.",
+    "given": [
+     "val songs = listOf(\"Sky\", \"River\", \"Sun\", \"Moon\", \"Star\")"
+    ],
+    "expected": "Songs: 5 | First: Sky | Last: Star\nThird: Sun | Moon is at 3 | Has Rain: false\nAlphabetical: [Moon, River, Sky, Star, Sun]"
+   },
+   {
+    "title": "Median Board",
+    "summary": "Find the median of a list, whether it has an odd or an even number of items, plus the range and runner-up.",
+    "difficulty": "hard",
+    "goal": "Find the median of six sensor readings. It must also work when the number of readings is odd or even. Find the range and the second-highest reading too. Print four lines.",
+    "given": [
+     "val readings = listOf(72, 65, 90, 58, 81, 77)"
+    ],
+    "expected": "Sorted: [58, 65, 72, 77, 81, 90]\nMedian: 74.5\nRange: 32\nSecond highest: 81"
+   },
+   {
+    "title": "Unique Visitors",
+    "summary": "Collect visitors into a mutable set and use add's true/false result to count the repeat visits.",
+    "difficulty": "medium",
+    "goal": "A website log has visitor names, and some visitors appear more than once. Put them in a set to count the different visitors. Also count the repeat visits. Print a summary line.",
+    "given": [
+     "val visits = listOf(\"ana\", \"bo\", \"ana\", \"cy\", \"bo\", \"ana\")"
+    ],
+    "expected": "Visits: 6 | Unique: 3 | Repeat visits: 3 | Has cy: true"
+   },
+   {
+    "title": "Tag Merger",
+    "summary": "Compare two tag lists with sets: merge them, find the shared tags, and count what is exclusive to each.",
+    "difficulty": "hard",
+    "goal": "Two tag lists for one project contain duplicates. Turn each list into a set. Then find all tags together, the tags in both sets and how many tags are in only one set. Print all three results.",
+    "given": [
+     "val first = listOf(\"kotlin\", \"android\", \"java\", \"kotlin\")",
+     "val second = listOf(\"java\", \"swift\", \"kotlin\", \"swift\")"
+    ],
+    "expected": "Merged: [android, java, kotlin, swift]\nCommon: kotlin java\nOnly in first: 1 | Only in second: 1"
+   },
+   {
+    "title": "Stock Lookup",
+    "summary": "Update and add map entries by key, look one up, test a key, and total the values.",
+    "difficulty": "medium",
+    "goal": "A shop stores item stock in a map from item to units. Update an item after restocking, add a new item, look up some items and add all the units. Print the results.",
+    "given": [
+     "val stock = mutableMapOf(\"apple\" to 12, \"pear\" to 4, \"plum\" to 0)"
+    ],
+    "expected": "apple: 12 | kiwi listed: false | items: 4\nTotal units: 27"
+   },
+   {
+    "title": "Word Counter",
+    "summary": "Count how often each word appears in a map, then find the most frequent word while iterating.",
+    "difficulty": "hard",
+    "goal": "Count how many times each word appears in a list using a map from word to count. Print each word and its count. Then print the most common word.",
+    "given": [
+     "val words = listOf(\"red\", \"blue\", \"red\", \"green\", \"blue\", \"red\")"
+    ],
+    "expected": "red: 3\nblue: 2\ngreen: 1\nMost common: red (3)"
+   },
+   {
+    "title": "Read-Only Copy",
+    "summary": "Make an editable copy of a read-only list, change the copy, and show the original is untouched.",
+    "difficulty": "medium",
+    "goal": "A list of numbers must not change, so work on an editable copy. Add a value to the copy, remove one and sort it. Print both lists to show that the original did not change.",
+    "given": [
+     "val original = listOf(5, 3, 8)"
+    ],
+    "expected": "Original: [5, 3, 8]\nWorking: [1, 5, 8]"
+   },
+   {
+    "title": "Snapshot Guard",
+    "summary": "Compare a read-only view of a list (which follows changes) with a copy (which does not).",
+    "difficulty": "hard",
+    "goal": "A shopping list can be shared as a read-only view of the same list or as a copy made at one moment. Make both and change the original. Print what each one shows to see which one changes with the original.",
+    "given": [
+     "val cart = mutableListOf(\"pen\", \"ink\")"
+    ],
+    "expected": "cart=3 view=3 snapshot=2\ncart=[ink, cap] view=[ink, cap] snapshot=[pen, ink]"
+   },
+   {
+    "title": "Class Roster",
+    "summary": "Read from a list, an array and a map, including a map key that does not exist.",
+    "difficulty": "medium",
+    "goal": "A class stores students in a list, seat numbers in an array and grades in a map. Read one value from each. Look up a student who is not in the map. Print the size of each collection.",
+    "given": [
+     "val students = listOf(\"Ana\", \"Ben\", \"Cy\")",
+     "val seats = arrayOf(12, 7, 30)",
+     "val grades = mapOf(\"Ana\" to 90, \"Ben\" to 72, \"Cy\" to 85)"
+    ],
+    "expected": "Second student: Ben | Seat 0: 12\nBen's grade: 72 | Zed's grade: null\nStudents: 3 | Seats: 3 | Graded: 3"
+   },
+   {
+    "title": "Lookup Chain",
+    "summary": "Use values from one collection as the index into a second one and the key into a third.",
+    "difficulty": "hard",
+    "goal": "A seating order stores positions in a list of names, and each name has a score in a map. Use each position to find a name, then find its score. Print a ranked list with the scores and the average score as a decimal. The numbers in order are positions in names.",
+    "given": [
+     "val order = listOf(2, 0, 3, 1)",
+     "val names = arrayOf(\"Ana\", \"Ben\", \"Cy\", \"Dee\")",
+     "val scores = mapOf(\"Ana\" to 90, \"Ben\" to 72, \"Cy\" to 85, \"Dee\" to 81)",
+     "var total = 0"
+    ],
+    "expected": "1. Cy (85)\n2. Ana (90)\n3. Dee (81)\n4. Ben (72)\nAverage: 82.0"
+   },
+   {
+    "title": "Shopping Cart",
+    "summary": "Edit a mutable list four ways: append, remove by value, replace by position, and insert at a position.",
+    "difficulty": "medium",
+    "goal": "A shopping cart starts with three items. Add one item at the end, remove one by name, replace the first item and insert one at a chosen position. Print the final cart and its size.",
+    "given": [
+     "val cart = mutableListOf(\"milk\", \"eggs\", \"bread\")"
+    ],
+    "expected": "Cart: [oat milk, tea, bread, jam]\nItems: 4"
+   },
+   {
+    "title": "Ticket Numbers",
+    "summary": "Keep remove-by-value and remove-by-position apart while a queue is edited and served.",
+    "difficulty": "hard",
+    "goal": "A support ticket queue changes. One ticket is cancelled by number, one is removed from the front, a new one arrives and one is replaced. Then serve tickets from the front until only two remain. Print how many were served and the queue.",
+    "given": [
+     "val cancelled = 103",
+     "val keep = 2",
+     "val tickets = mutableListOf(101, 102, 103, 104, 105)"
+    ],
+    "expected": "Served: 2 | Waiting: [105, 106] | Next ticket: 105"
+   },
+   {
+    "title": "Grade Totals",
+    "summary": "Walk a list by index, numbering each line, while summing and tracking the highest score and its position.",
+    "difficulty": "medium",
+    "goal": "A teacher has four scores. Print each score with a rank number. Find the total and the highest score with its rank number.",
+    "given": [
+     "val scores = listOf(80, 65, 92, 71)"
+    ],
+    "expected": "#1: 80\n#2: 65\n#3: 92\n#4: 71\nTotal: 308 | Highest: 92 at #3"
+   },
+   {
+    "title": "Pair Walker",
+    "summary": "Pair up two parallel lists into a map by index, then iterate the map to total, compare and average.",
+    "difficulty": "hard",
+    "goal": "Two lists store item names and prices at matching positions. Combine them into a map from name to price. Find the total, the most expensive item and the average price. Print one summary line.",
+    "given": [
+     "val names = listOf(\"pen\", \"ink\", \"pad\", \"cap\")",
+     "val prices = listOf(3, 12, 7, 5)"
+    ],
+    "expected": "Items: 4 | Total: 27 | Priciest: ink (12) | Average: 6.75"
+   },
+   {
+    "title": "Stats Panel",
+    "summary": "Read basic facts from a list: count, sum, average, minimum, maximum, membership and emptiness.",
+    "difficulty": "medium",
+    "goal": "Show details for five temperatures: count, sum, average as a decimal, smallest, largest, whether 30 is in the list and whether the list is empty. Use built-in collection operations instead of loops.",
+    "given": [
+     "val temps = listOf(21, 25, 19, 30, 24)"
+    ],
+    "expected": "Count: 5 | Sum: 119 | Average: 23.8\nMin: 19 | Max: 30 | Has 30: true | Empty: false"
+   },
+   {
+    "title": "Top Three",
+    "summary": "Rank scores with a descending sort, take the top three, drop duplicates, and locate one score's rank.",
+    "difficulty": "hard",
+    "goal": "A leaderboard has six scores, including a repeated top score. Sort them from highest to lowest. Find the top three, the top three different scores, the rank of a given score and the lowest score. Print all four results.",
+    "given": [
+     "val scores = listOf(55, 91, 78, 62, 91, 84)",
+     "val query = 78"
+    ],
+    "expected": "Top three: [91, 91, 84] (sum 266)\nDistinct best: [91, 84, 78]\nRank of 78: 4\nLowest: 55"
+   },
+   {
+    "title": "Contact Book",
+    "summary": "Turn two parallel lists into a map for lookup by name, then query and edit it.",
+    "difficulty": "medium",
+    "goal": "Two lists store names and phone numbers at matching positions. Turn them into a map from name to phone. Look up one contact that exists and one that does not. Check a name, remove a contact and print the results after each step.",
+    "given": [
+     "val names = listOf(\"ana\", \"bo\", \"cy\")",
+     "val phones = listOf(\"555-1\", \"555-2\", \"555-3\")"
+    ],
+    "expected": "bo: 555-2 | dee: null\nHas cy: true | Size: 3\nAfter removing cy: 2 | Has cy: false"
+   },
+   {
+    "title": "Sensor Log",
+    "summary": "Use a list for order, a set for distinct values and a map for counts, all built from one log.",
+    "difficulty": "hard",
+    "goal": "A sensor has a list of readings. The list keeps every reading in order, a set shows the different values and a map counts each value. Build the set and map. Print the log, the different values and the most common reading.",
+    "given": [
+     "val readings = listOf(3, 5, 3, 8, 5, 3)"
+    ],
+    "expected": "Log: [3, 5, 3, 8, 5, 3]\nDistinct: [3, 5, 8] (3 of 6)\nMost frequent: 3 x3"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Last Index",
+    "summary": "Reading an array at index size crashes, because the last element is at size minus one.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Last lap: 60\", but it crashes with an index error.",
+    "given": [],
+    "expected": "Last lap: 60"
+   },
+   {
+    "title": "Fix the Sorted Copy",
+    "summary": "sorted() returns a new list; ignoring its result leaves the original order unchanged.",
+    "difficulty": "medium",
+    "bug": "The program should print \"[1, 2, 3]\", but it prints \"[3, 1, 2]\".",
+    "given": [],
+    "expected": "[1, 2, 3]"
+   },
+   {
+    "title": "Fix the Duplicate Count",
+    "summary": "A list keeps every duplicate, so the count of unique ids is too high.",
+    "difficulty": "medium",
+    "bug": "The five ids hold only three different values, so the program should print \"Unique ids: 3\", but it prints \"Unique ids: 5\".",
+    "given": [],
+    "expected": "Unique ids: 3"
+   },
+   {
+    "title": "Fix the Missing Key",
+    "summary": "A map lookup returns null because the key differs in letter case.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Apple costs 3\", but it prints \"Apple costs null\".",
+    "given": [],
+    "expected": "Apple costs 3"
+   },
+   {
+    "title": "Fix the Read-Only List",
+    "summary": "A list created with listOf is read-only, so calling add on it does not compile.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Names: 2\" after adding a name to a list, but it does not compile.",
+    "given": [],
+    "expected": "Names: 2"
+   },
+   {
+    "title": "Fix the Shared List",
+    "summary": "A \"backup\" that is just another name for the same list changes when the original does.",
+    "difficulty": "hard",
+    "bug": "The backup of the cart should still show \"Backup: [pen, ink]\" after a third item is added, but it shows \"Backup: [pen, ink, cap]\".",
+    "given": [],
+    "expected": "Backup: [pen, ink]"
+   },
+   {
+    "title": "Fix the Removal",
+    "summary": "remove(1) looks for the value 1 instead of removing the element at position 1.",
+    "difficulty": "medium",
+    "bug": "The middle score should be removed, so the program should print \"[10, 30]\", but it prints \"[10, 20, 30]\".",
+    "given": [],
+    "expected": "[10, 30]"
+   },
+   {
+    "title": "Fix the Loop Range",
+    "summary": "A loop over 0..size runs one pass too many and reads past the end of the list.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Total: 18\", but it crashes with an index error on the last pass.",
+    "given": [],
+    "expected": "Total: 18"
+   },
+   {
+    "title": "Fix the Empty Guard",
+    "summary": "first() on an empty list crashes, so the program must check for emptiness first.",
+    "difficulty": "medium",
+    "bug": "With no readings, the program should print \"No readings\", but it crashes instead.",
+    "given": [],
+    "expected": "No readings"
+   }
+  ]
+ },
+ "7": {
+  "writeRun": [
+   {
+    "title": "Contact Card",
+    "summary": "Print fields that can be missing, then count how many are filled in.",
+    "difficulty": "medium",
+    "goal": "A contact always has a name. The phone and email can be missing. Print all three fields. Then print how many of them have a value.",
+    "given": [
+     "val name: String = \"Ravi\"",
+     "val phone: String? = null",
+     "val email: String? = \"ravi@mail.com\""
+    ],
+    "expected": "Name: Ravi\nPhone: null\nEmail: ravi@mail.com\nFilled: 2 of 3"
+   },
+   {
+    "title": "Discount Codes",
+    "summary": "Write a function that returns a number or null, then add up only the codes that have a value.",
+    "difficulty": "hard",
+    "goal": "A shop knows two discount codes. Write a function that can return \"no discount\". Print the value of each code. Then add only the discount codes the shop knows.",
+    "given": [
+     "val codes = listOf(\"SAVE10\", \"WELCOME\", \"SAVE25\")",
+     "var saved = 0"
+    ],
+    "expected": "SAVE10 -> 10\nWELCOME -> null\nSAVE25 -> 25\nTotal discount: 35"
+   },
+   {
+    "title": "Session Token",
+    "summary": "Change a nullable variable from null to a value and back, and print it safely each time.",
+    "difficulty": "medium",
+    "goal": "A login token starts empty, gets a value at login and is cleared at logout. Print the token at each stage. Count how many times it changes.",
+    "given": [
+     "var token: String? = null",
+     "var changes = 0"
+    ],
+    "expected": "Start: null\nLogged in: abc123 (6 chars)\nLogged out: null\nChanges: 2"
+   },
+   {
+    "title": "Login Events",
+    "summary": "Go through a list of login and logout events and keep track of who is signed in.",
+    "difficulty": "hard",
+    "goal": "A log has events like \"login:ana\" and \"logout\". Read them in order using one nullable variable for the signed-in user. Print the state after each event. Then print the number of sessions and who is still signed in.",
+    "given": [
+     "val events = listOf(\"login:ana\", \"logout\", \"login:ben\", \"logout\", \"login:cy\")",
+     "var current: String? = null",
+     "var sessions = 0"
+    ],
+    "expected": "login:ana -> ana\nlogout -> nobody\nlogin:ben -> ben\nlogout -> nobody\nlogin:cy -> cy\nSessions: 3\nActive: cy"
+   },
+   {
+    "title": "Lookup Lengths",
+    "summary": "Read lengths with a safe call. A missing value gives null instead of a crash.",
+    "difficulty": "medium",
+    "goal": "Three profile fields can be missing. Read each one with a safe call so a missing field gives null instead of a crash. Also check what a chain of safe calls does to padded text.",
+    "given": [
+     "val city: String? = \"Lisbon\"",
+     "val note: String? = null",
+     "val tag: String? = \"  kotlin  \""
+    ],
+    "expected": "City length: 6\nNote length: null\nTag: KOTLIN\nTag length: 6"
+   },
+   {
+    "title": "Customer Addresses",
+    "summary": "Read a city and a zip code when the address, or its city, can be missing.",
+    "difficulty": "hard",
+    "goal": "A customer may have no address, or an address with no city. Read the city and zip code of each customer with safe calls. Print what you find and count the customers with a known city.",
+    "given": [
+     "val c1 = Customer(\"Asha\", Address(\"Pune\", \"411001\"))",
+     "val c2 = Customer(\"Ben\", Address(null, \"100001\"))",
+     "val c3 = Customer(\"Cara\", null)",
+     "val customers = listOf(c1, c2, c3)",
+     "var known = 0"
+    ],
+    "expected": "Asha: city=Pune zip=411001\nBen: city=null zip=100001\nCara: city=null zip=null\nKnown cities: 1"
+   },
+   {
+    "title": "Display Name",
+    "summary": "Use ?: to give a default when a value is missing.",
+    "difficulty": "medium",
+    "goal": "A profile card must always show something. Use a default for every missing field. Show the bio length as 0 when there is no bio.",
+    "given": [
+     "val nickname: String? = null",
+     "val fullName: String = \"Mira Shah\"",
+     "val bio: String? = \"Loves Kotlin\"",
+     "val city: String? = null"
+    ],
+    "expected": "Shown: Mira Shah\nBio: Loves Kotlin\nCity: Unknown\nBio length: 12"
+   },
+   {
+    "title": "Lazy Fallback",
+    "summary": "The right side of ?: runs only when the left side is null. Count how often it runs.",
+    "difficulty": "hard",
+    "goal": "Creating the default value costs a lot, so it should happen only when a value is missing. Use ?: on four values. Then print how many times the default was created.",
+    "given": [],
+    "expected": "cached\nDEFAULT\nwarm\nDEFAULT\nComputed defaults: 2"
+   },
+   {
+    "title": "Confirmed Username",
+    "summary": "Use !! for a value that must exist, and keep a value that can be null on the safe path.",
+    "difficulty": "medium",
+    "goal": "The stored username comes from code that makes sure it exists, so !! is safe there. The user's guess can be missing, so keep it safe. Then add the two lengths.",
+    "given": [
+     "val stored: String? = \"admin_01\"",
+     "val guess: String? = null"
+    ],
+    "expected": "Stored length: 8\nStored upper: ADMIN_01\nGuess length: 0\nTotal: 8"
+   },
+   {
+    "title": "Load Config",
+    "summary": "Use !! for settings that must exist, and ?: for a setting that can be missing.",
+    "difficulty": "hard",
+    "goal": "A settings lookup can return null for any key. The host and port are required, so you may use !!. The timeout is optional, so give it a default.",
+    "given": [],
+    "expected": "Host: db.local\nNext port: 5433\nTimeout: 30"
+   },
+   {
+    "title": "Age Report",
+    "summary": "Write a function that checks for null first, then sort ages into adult, minor and unknown.",
+    "difficulty": "medium",
+    "goal": "Ages come from a form, so any age can be missing. Mark each age as adult, minor or unknown. Print the age and its label. Count the adults.",
+    "given": [
+     "val age1: Int? = 34",
+     "val age2: Int? = null",
+     "val age3: Int? = 17",
+     "var adults = 0"
+    ],
+    "expected": "34: adult\nnull: unknown\n17: minor\nAdults: 1"
+   },
+   {
+    "title": "PIN Checker",
+    "summary": "Write two functions that use && and || so a missing PIN is never read.",
+    "difficulty": "hard",
+    "goal": "A PIN is valid when it exists and has exactly 4 characters. It needs a reset when it is missing or shorter than 4. Write both rules without reading the length of a missing PIN. Print each PIN and count the valid ones.",
+    "given": [
+     "val p1: String? = \"1234\"",
+     "val p2: String? = null",
+     "val p3: String? = \"98\"",
+     "var valid = 0"
+    ],
+    "expected": "1234 -> valid=true reset=false\nnull -> valid=false reset=true\n98 -> valid=false reset=true\nValid: 1"
+   },
+   {
+    "title": "Bio Lengths",
+    "summary": "After a null check, use plain dots inside the branch, and add up only the real values.",
+    "difficulty": "medium",
+    "goal": "Two profile texts can be missing. Inside a null check, Kotlin knows the text exists, so you can use plain dots. Print a line for each text. Add the lengths of the texts that exist.",
+    "given": [
+     "val headline: String? = \"Kotlin Dev\"",
+     "val summary: String? = null",
+     "var totalChars = 0"
+    ],
+    "expected": "10 chars: KOTLIN DEV\nnone\nTotal: 10"
+   },
+   {
+    "title": "User Emails",
+    "summary": "Check a property for null, then use it directly inside the check.",
+    "difficulty": "hard",
+    "goal": "Some users have no email. Check the email property for null. Inside the check, you can use it directly because the property is a val. Print the email length or a \"no email\" message. Count the users with an email.",
+    "given": [
+     "val u1 = User(\"A\", \"a@x.com\")",
+     "val u2 = User(\"B\", null)",
+     "val u3 = User(\"C\", \"cc@y.org\")",
+     "val users = listOf(u1, u2, u3)",
+     "var withEmail = 0"
+    ],
+    "expected": "A: 7 chars\nB: no email\nC: 8 chars\nWith email: 2"
+   },
+   {
+    "title": "Mixed Inbox",
+    "summary": "Try a value as a String and as an Int with as?. A wrong type gives null, not a crash.",
+    "difficulty": "medium",
+    "goal": "Three values have type Any. Try to read each one as the type you expect using as?. A wrong cast must give null instead of a crash.",
+    "given": [
+     "val first: Any = \"hello\"",
+     "val second: Any = 42",
+     "val third: Any = \"kotlin\""
+    ],
+    "expected": "First length: 5\nSecond as text: null\nSecond as number: 42\nThird as number: -1"
+   },
+   {
+    "title": "Text Lengths",
+    "summary": "Write a function that measures only text, then add up the real text lengths.",
+    "difficulty": "hard",
+    "goal": "A list has values of different types. Write a function that returns the length only when a value is text, and -1 when it is not. Print the result for each value. Add the lengths of the text values.",
+    "given": [
+     "val a: Any = \"hello\"",
+     "val b: Any = 99",
+     "val c: Any = \"hi\"",
+     "var total = 0"
+    ],
+    "expected": "5\n-1\n2\nText total: 7"
+   },
+   {
+    "title": "Survey Answers",
+    "summary": "Go through a list that can hold null. Count the answers and the gaps, then find the average.",
+    "difficulty": "medium",
+    "goal": "A survey stores a score from 1 to 5 for each question, and null when the person skips it. Count the answered and skipped questions. Add the real scores and find the average of the answered questions.",
+    "given": [
+     "val answers: List<Int?> = listOf(4, null, 5, null, 3)",
+     "var answered = 0",
+     "var missing = 0",
+     "var total = 0"
+    ],
+    "expected": "Answered: 3\nMissing: 2\nTotal: 12\nAverage: 4"
+   },
+   {
+    "title": "Shift Lists",
+    "summary": "The whole list can be null. Read its size, first item and sum with a default for each.",
+    "difficulty": "hard",
+    "goal": "The morning shift list exists, but the evening shift list was never created, so it is null. Print the size and first entry of each list and the total hours. Give every missing part a default.",
+    "given": [
+     "val morning: List<Int>? = listOf(3, 5, 4)",
+     "val evening: List<Int>? = null"
+    ],
+    "expected": "Morning: 3 items, first 3\nEvening: 0 items, first -1\nTotal: 12"
+   },
+   {
+    "title": "Stock Map",
+    "summary": "Go through a map where a value can be null. Add up the known counts and count the unknown ones.",
+    "difficulty": "hard",
+    "goal": "A stock map shows how many of each item are on the shelf, and null when an item was not counted. Print every entry. Add the known counts and count the items with an unknown count.",
+    "given": [
+     "val stock: Map<String, Int?> = mapOf(\"pen\" to 12, \"ink\" to null, \"pad\" to 5)",
+     "var total = 0",
+     "var missing = 0"
+    ],
+    "expected": "pen: 12\nink: null\npad: 5\nIn stock: 17\nMissing: 1"
+   },
+   {
+    "title": "Reachable Emails",
+    "summary": "Chain two lookups that can fail, and use one ?: for every failure.",
+    "difficulty": "medium",
+    "goal": "Finding a user can fail, and finding that user's email can also fail. Chain both lookups and get the email length. Use one -1 for every way the chain can fail.",
+    "given": [],
+    "expected": "1 -> 10\n2 -> -1\n3 -> -1\nReachable: 1"
+   },
+   {
+    "title": "Nickname Lengths",
+    "summary": "Measure a trimmed nickname in one chain, but count missing and blank names separately.",
+    "difficulty": "hard",
+    "goal": "Nicknames come from a form. They can be missing, have extra spaces or be empty. Find the length of each trimmed nickname with one safe chain. Count how many are missing (null) and how many are blank after trimming.",
+    "given": [
+     "val names: List<String?> = listOf(\"Asha\", null, \"  Bo  \", \"\")",
+     "var sum = 0",
+     "var missing = 0",
+     "var blank = 0"
+    ],
+    "expected": "4\n0\n2\n0\nSum: 6\nMissing: 1\nBlank: 1"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Missing Price",
+    "summary": "A function that should say \"no price\" returns 0, which looks like a real price of zero.",
+    "difficulty": "medium",
+    "bug": "The program should print \"coffee: null\" for an item with no price, but it prints \"coffee: 0\".",
+    "given": [],
+    "expected": "tea: 30\ncoffee: null"
+   },
+   {
+    "title": "Fix the Logout",
+    "summary": "Logging out assigns an empty string instead of null, so the fallback never applies.",
+    "difficulty": "medium",
+    "bug": "After logout the program should print \"After logout: none\", but it prints \"After logout: \" with nothing after it.",
+    "given": [],
+    "expected": "Active: abc123\nAfter logout: none"
+   },
+   {
+    "title": "Fix the Unsafe Access",
+    "summary": "Calling trim() and length with plain dots on a String? does not compile.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Length: 2\", but it does not compile.",
+    "given": [],
+    "expected": "Length: 2"
+   },
+   {
+    "title": "Fix the Backwards Fallback",
+    "summary": "The Elvis operator has the fallback on the left, so the real value is never used.",
+    "difficulty": "medium",
+    "bug": "The nickname is \"Zed\", so the program should print \"Shown: Zed\", but it prints \"Shown: Guest\".",
+    "given": [],
+    "expected": "Shown: Zed"
+   },
+   {
+    "title": "Fix the Risky Assertion",
+    "summary": "!! on a lookup that returns null crashes the program; a ?: fallback keeps it running.",
+    "difficulty": "medium",
+    "bug": "The second lookup should print \"UNKNOWN\", but the program crashes with a NullPointerException.",
+    "given": [],
+    "expected": "ADMIN\nUNKNOWN"
+   },
+   {
+    "title": "Fix the Swapped Branches",
+    "summary": "The branches of a null check are swapped: a real score reports \"no score\" and null reports a score.",
+    "difficulty": "medium",
+    "bug": "`label(80)` should print \"score 80\" and `label(null)` should print \"no score\", but both lines are wrong.",
+    "given": [],
+    "expected": "score 80\nno score"
+   },
+   {
+    "title": "Fix the Missing Guard",
+    "summary": "Calling uppercase() on a String? parameter without checking for null does not compile.",
+    "difficulty": "medium",
+    "bug": "`shout(\"hi\")` should print \"HI\" and `shout(null)` should print \"(none)\", but the program does not compile.",
+    "given": [],
+    "expected": "HI\n(none)"
+   },
+   {
+    "title": "Fix the Cast Target",
+    "summary": "The value is a String but is cast to Int, so as? quietly gives null.",
+    "difficulty": "medium",
+    "bug": "The value holds the text \"42\", so the program should print \"Text: 42\", but it prints \"Text: not text\".",
+    "given": [],
+    "expected": "Text: 42"
+   },
+   {
+    "title": "Fix the Missing List",
+    "summary": "Reading .size on a List<Int>? with a plain dot does not compile.",
+    "difficulty": "medium",
+    "bug": "With a missing list, the program should print \"Count: 0\", but it does not compile.",
+    "given": [],
+    "expected": "Count: 0"
+   },
+   {
+    "title": "Fix the Score Total",
+    "summary": "Adding every element of a List<Int?> to a total without a null check does not compile.",
+    "difficulty": "hard",
+    "bug": "The program should print \"Total: 10\" and skip the missing score, but it does not compile.",
+    "given": [],
+    "expected": "Total: 10"
+   },
+   {
+    "title": "Fix the Broken Chain",
+    "summary": "A chain starts with ?. but continues with a plain dot, which Kotlin rejects.",
+    "difficulty": "medium",
+    "bug": "The program should print \"City: Pune\", but it does not compile.",
+    "given": [],
+    "expected": "City: Pune"
+   }
+  ]
+ },
+ "8": {
+  "writeRun": [
+   {
+    "title": "Two Players",
+    "summary": "Write a class, make two objects, change one of them, and print both.",
+    "difficulty": "medium",
+    "goal": "Make a class for players. Create two players and give one of them a bonus. Print each player and the total score.",
+    "given": [
+     "val bonus = 10"
+    ],
+    "expected": "Ana: 10\nBo: 5\nTotal: 15"
+   },
+   {
+    "title": "Roster Scan",
+    "summary": "Go through a list of objects to find the best mark, the average and the passes.",
+    "difficulty": "hard",
+    "goal": "A class has four students with marks. Find the best student, the average mark and how many students passed. Print three lines.",
+    "given": [
+     "val passMark = 50",
+     "val students = listOf(Student(\"Ana\", 72), Student(\"Bo\", 45), Student(\"Cy\", 88), Student(\"Di\", 50))"
+    ],
+    "expected": "Best: Cy (88)\nAverage: 63\nPassed: 3 of 4"
+   },
+   {
+    "title": "Visit Counter",
+    "summary": "Write an object that keeps one shared count, and use it from main.",
+    "difficulty": "medium",
+    "goal": "A website counts its visits in one place. Write an object that stores the count. Add some visits and print the result.",
+    "given": [
+     "val hits = 3"
+    ],
+    "expected": "Visits: 3\n4"
+   },
+   {
+    "title": "Shop Tax",
+    "summary": "Use a shared object inside a class method to work out a price with tax.",
+    "difficulty": "hard",
+    "goal": "A shop adds tax to every order. The tax rate and the order count are kept in one shared object. Price two orders and print the results and the order count.",
+    "given": [
+     "val price = 255"
+    ],
+    "expected": "Lamp: 280\nDesk: 1320\nOrders priced: 2"
+   },
+   {
+    "title": "Wallet",
+    "summary": "Change a var property of an object and print it.",
+    "difficulty": "medium",
+    "goal": "Mira has a wallet. Add her salary, take away some spending, and print how much is left and how much is spare.",
+    "given": [
+     "val salary = 1200",
+     "val wallet = Wallet(\"Mira\", 300)"
+    ],
+    "expected": "Mira has 1050\nSpare: 550"
+   },
+   {
+    "title": "Temperature Sensor",
+    "summary": "Add two computed properties with getters, and see them change with the value.",
+    "difficulty": "hard",
+    "goal": "A sensor stores a temperature in Celsius. Add two properties that are worked out from it: the Fahrenheit value and a \"hot\" flag. Print them, change the temperature, and print them again.",
+    "given": [
+     "val reading = 25"
+    ],
+    "expected": "Roof 77 false\nRoof 95 true"
+   },
+   {
+    "title": "Rectangle Tools",
+    "summary": "Write three methods that return values, and call them on two objects.",
+    "difficulty": "medium",
+    "goal": "Give a rectangle class three methods: area, perimeter and a check for a square. Use them on two rectangles and print the results.",
+    "given": [
+     "val side = 6"
+    ],
+    "expected": "A: 24 20 false\nB: 36 24 true"
+   },
+   {
+    "title": "Account Operations",
+    "summary": "Write a method that can say no, and count how often it does.",
+    "difficulty": "hard",
+    "goal": "A bank account can take money in and pay money out. A payment must fail when there is not enough money. Make some payments, count the failures, and print the balance.",
+    "given": [],
+    "expected": "Balance: 0\nFailed: 1"
+   },
+   {
+    "title": "Price Tag",
+    "summary": "Use constructor parameters and an init block to work out a property.",
+    "difficulty": "medium",
+    "goal": "A price tag is made from a base price and a tax percent. Work out the total price when the object is created. Make two tags and print their totals.",
+    "given": [
+     "val base = 85"
+    ],
+    "expected": "Shirt: 93\nShoes: 150"
+   },
+   {
+    "title": "Member Card",
+    "summary": "Write a class with default values and create objects in three different ways.",
+    "difficulty": "medium",
+    "goal": "A shop has member cards. Most members only need a name. Make a class where the level and the points have default values. Create three members in different ways and print them.",
+    "given": [
+     "val welcome = 20"
+    ],
+    "expected": "Ana Basic 20\nBo Gold 150\nCy Basic 40"
+   },
+   {
+    "title": "Creation Log",
+    "summary": "Use an init block to print a message and count every object that is created.",
+    "difficulty": "hard",
+    "goal": "Every time a ticket is created, print a message and count it in a shared place. Create two tickets, then print the count and the ticket labels.",
+    "given": [
+     "val first = 12"
+    ],
+    "expected": "Creating Seat 12\nCreating Seat 13\nCreated: 2\nSeat 12, Seat 13"
+   },
+   {
+    "title": "Safe Box",
+    "summary": "Keep a code private and let other code use it only through a method.",
+    "difficulty": "medium",
+    "goal": "A safe box hides its secret code. Other code may only guess the code by calling a method. Count the guesses. Make two guesses and print the results.",
+    "given": [
+     "val secret = 4821"
+    ],
+    "expected": "Vault opened: false\nVault opened: true\nAttempts: 2"
+   },
+   {
+    "title": "Private Ledger",
+    "summary": "Use a private property and a private setter, and read them through methods.",
+    "difficulty": "hard",
+    "goal": "A ledger keeps a hidden total. Other code can read the number of entries but cannot change it. Record three amounts, then print a summary and the number of entries.",
+    "given": [
+     "val bonus = 40"
+    ],
+    "expected": "Entries: 3, total: 390\n3"
+   },
+   {
+    "title": "Product Compare",
+    "summary": "Write a data class, then compare objects by value and make a changed copy.",
+    "difficulty": "medium",
+    "goal": "A shop has products with a name and a price. Compare two equal products, make a cheaper copy, and print the results.",
+    "given": [
+     "val discount = 5"
+    ],
+    "expected": "Product(name=Pen, price=20)\ntrue\nfalse\nProduct(name=Pen, price=15)"
+   },
+   {
+    "title": "Order Lines",
+    "summary": "Go through data class objects, take them apart, and make a changed copy.",
+    "difficulty": "hard",
+    "goal": "An order has three lines. Print each line total, then the subtotal with tax, the most expensive item and a copy of that item with double the amount.",
+    "given": [
+     "val taxPercent = 10",
+     "val lines = listOf(Line(\"Pen\", 3, 4), Line(\"Book\", 2, 15), Line(\"Bag\", 1, 40))"
+    ],
+    "expected": "Pen x3 = 12\nBook x2 = 30\nBag x1 = 40\nSubtotal: 82, tax: 8\nPriciest: Bag\nLine(item=Bag, qty=2, unit=40)"
+   },
+   {
+    "title": "Traffic Cycle",
+    "summary": "Write an enum with a property, loop over its constants and add up a value.",
+    "difficulty": "medium",
+    "goal": "A traffic light has three colors, and each one lasts some seconds. Print each color with its number, add up the cycle time, and find the time for several rounds.",
+    "given": [
+     "val rounds = 3",
+     "var cycle = 0"
+    ],
+    "expected": "1. RED 30s\n2. GREEN 25s\n3. YELLOW 5s\nCycle: 60s\nAfter 3 rounds: 180s"
+   },
+   {
+    "title": "Size Menu",
+    "summary": "Use an enum in a list, with a function that picks a letter for each size.",
+    "difficulty": "hard",
+    "goal": "A coffee shop sells three sizes. For an order of four cups, find the size letters, the total cost with an extra shot, the total volume and the number of small cups.",
+    "given": [
+     "val extraShot = 1",
+     "val order = listOf(Size.SMALL, Size.LARGE, Size.SMALL, Size.MEDIUM)",
+     "var cost = 0",
+     "var volume = 0",
+     "var smalls = 0",
+     "var codes = \"\""
+    ],
+    "expected": "Order: SLSM\nCost: 20, volume: 1350ml\nSmalls: 2"
+   },
+   {
+    "title": "Vehicle Fleet",
+    "summary": "Write two subclasses of an open class, and call a method from the parent.",
+    "difficulty": "medium",
+    "goal": "A fleet has vehicles. A bike and a truck both extend a general vehicle class. The truck also carries a load. Print a description of each and the total number of wheels.",
+    "given": [
+     "val capacity = 800"
+    ],
+    "expected": "Swift has 2 wheels\nHauler has 6 wheels and carries 800kg\nWheels: 8"
+   },
+   {
+    "title": "Payroll",
+    "summary": "Override a method in two subclasses and add up the pay of a mixed list.",
+    "difficulty": "hard",
+    "goal": "A company has employees, managers and interns. A manager gets a bonus and an intern gets half pay. Print the pay of each person and the total payroll.",
+    "given": [
+     "val bonus = 800"
+    ],
+    "expected": "Ana: 2000\nBo: 3800\nCy: 252\nPayroll: 6052"
+   },
+   {
+    "title": "Shape Areas",
+    "summary": "Write two classes that implement one interface, and use them in a list.",
+    "difficulty": "medium",
+    "goal": "Two kinds of shapes both know their area and their label. Make a list with one of each, print each shape, and print the total area.",
+    "given": [],
+    "expected": "Square 5 = 25\nRect 4x3 = 12\nTotal area: 37"
+   },
+   {
+    "title": "Notifier Channels",
+    "summary": "Write two classes for one interface and send one message through both.",
+    "difficulty": "hard",
+    "goal": "An app can send a message by email or by SMS. An SMS keeps only the first ten characters. Send one message through both channels and print how many characters were sent in total.",
+    "given": [],
+    "expected": "EMAIL to ops@x.org: Server restarts at noon\nSMS to 555-0101: Server res\nCharacters sent: 70"
+   },
+   {
+    "title": "Animal Sounds",
+    "summary": "Override a property and a method, and keep the parent values where you do not.",
+    "difficulty": "medium",
+    "goal": "Animals have four legs and a sound. A bird has its own number of legs and sound. A cat has its own sound. Print each animal and the total number of legs.",
+    "given": [
+     "val birdLegs = 2"
+    ],
+    "expected": "... 4\nTweet 2\nMeow 4\nTotal legs: 10"
+   },
+   {
+    "title": "Discount Policy",
+    "summary": "Override a method with a parameter in two subclasses and compare the prices.",
+    "difficulty": "hard",
+    "goal": "A shop has three offers: no discount, a percent off and a flat amount off. Work out the price for each offer and print the cheapest one.",
+    "given": [
+     "val basePrice = 250"
+    ],
+    "expected": "None: 250\nSpring: 213\nCoupon: 210\nCheapest: 210"
+   }
+  ],
+  "debug": [
+   {
+    "title": "Fix the Shared Counter",
+    "summary": "Two names for one object make both counters change.",
+    "difficulty": "medium",
+    "bug": "Only `second` should change, so the program should print \"First: 0\" and \"Second: 5\", but it prints \"First: 5\" and \"Second: 5\".",
+    "given": [],
+    "expected": "First: 0\nSecond: 5"
+   },
+   {
+    "title": "Fix the Lost Total",
+    "summary": "A new object is made on every call, so the total is lost.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Total: 30\", but it prints \"Total: 0\".",
+    "given": [],
+    "expected": "Total: 30"
+   },
+   {
+    "title": "Fix the Frozen Balance",
+    "summary": "A val property cannot be changed, so the program does not compile.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Mia: 150\", but it does not compile.",
+    "given": [],
+    "expected": "Mia: 150"
+   },
+   {
+    "title": "Fix the Fence Length",
+    "summary": "A method adds two sides and forgets the other two.",
+    "difficulty": "medium",
+    "bug": "The fence of a 12 by 8 garden should be 40, so the program should print \"Fence: 40\", but it prints \"Fence: 20\".",
+    "given": [],
+    "expected": "Fence: 40"
+   },
+   {
+    "title": "Fix the Pack Weight",
+    "summary": "The init block adds the numbers where it should multiply them.",
+    "difficulty": "medium",
+    "bug": "Six items of 4 kg each should weigh 24, so the program should print \"Weight: 24\", but it prints \"Weight: 10\".",
+    "given": [],
+    "expected": "Weight: 24"
+   },
+   {
+    "title": "Fix the Hidden Title",
+    "summary": "A constructor parameter without val is not a property.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Horizon: 3\", but it does not compile.",
+    "given": [],
+    "expected": "Horizon: 3"
+   },
+   {
+    "title": "Fix the Visitor Count",
+    "summary": "The counter is inside each object, so it always shows 1.",
+    "difficulty": "hard",
+    "bug": "The visitors should be numbered 1, 2 and 3, so the program should print \"Visitor #1: Ana\", \"Visitor #2: Bo\" and \"Visitor #3: Cy\", but every line says \"#1\".",
+    "given": [],
+    "expected": "Visitor #1: Ana\nVisitor #2: Bo\nVisitor #3: Cy"
+   },
+   {
+    "title": "Fix the Locker Peek",
+    "summary": "A private property cannot be read from outside the class.",
+    "difficulty": "medium",
+    "bug": "The program should print \"Open\" and then \"Locked\", but it does not compile.",
+    "given": [],
+    "expected": "Open\nLocked"
+   },
+   {
+    "title": "Fix the Point Comparison",
+    "summary": "A plain class does not compare objects by value.",
+    "difficulty": "medium",
+    "bug": "The two points are the same, so the program should print \"true\" and \"Point(x=2, y=3)\", but it prints \"false\" and something unreadable.",
+    "given": [],
+    "expected": "true\nPoint(x=2, y=3)"
+   },
+   {
+    "title": "Fix the Plan Seats",
+    "summary": "The ordinal is the position, not the seat count.",
+    "difficulty": "medium",
+    "bug": "The team plan should show its seats, so the program should print \"TEAM seats: 5\", but it prints \"TEAM seats: 1\".",
+    "given": [],
+    "expected": "TEAM seats: 5"
+   },
+   {
+    "title": "Fix the Pet Constructor",
+    "summary": "The parent class constructor is called without its argument.",
+    "difficulty": "hard",
+    "bug": "The program should print \"I am Rex\", but it does not compile.",
+    "given": [],
+    "expected": "I am Rex"
+   },
+   {
+    "title": "Fix the Invoice",
+    "summary": "The class does not implement every member of its interface.",
+    "difficulty": "hard",
+    "bug": "The invoice should print \"90 EUR\", but the program does not compile.",
+    "given": [],
+    "expected": "90 EUR"
+   },
+   {
+    "title": "Fix the Quack",
+    "summary": "A member that is not open cannot be overridden.",
+    "difficulty": "medium",
+    "bug": "A duck should say \"Quack\", so the program should print \"Quack\", but it does not compile.",
+    "given": [],
+    "expected": "Quack"
+   }
+  ]
+ }
+};
