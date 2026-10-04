@@ -1,6 +1,19 @@
 {
   "extends": "@react-native/typescript-config",
-  "compilerOptions": { "types": ["jest"] },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "compilerOptions": {
+    "types": [
+      "jest"
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "web-editor",
+    "web-editor-source",
+    "android",
+    "ios"
+  ]
 }

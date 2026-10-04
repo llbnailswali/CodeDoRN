@@ -1,0 +1,826 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Outfit', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+    --font-code: 'JetBrains Mono', monospace;
+    --font-tutorial: 'Plus Jakarta Sans', sans-serif;
+
+    --font-outfit: var(--font-display);
+    --font-jakarta: var(--font-body);
+    --font-mono: var(--font-code);
+  }
+
+  .font-outfit,
+  [class*="font-['Outfit'"],
+  [class*='font-["Outfit"'] {
+    font-family: var(--font-display) !important;
+  }
+
+  .font-jakarta,
+  .font-sans,
+  [class*="font-['Plus_Jakarta_Sans'"],
+  [class*='font-["Plus_Jakarta_Sans"'] {
+    font-family: var(--font-body) !important;
+  }
+
+  .font-mono,
+  [class*="font-['JetBrains_Mono'"],
+  [class*='font-["JetBrains_Mono"'] {
+    font-family: var(--font-code) !important;
+    /* Show != and == as typed, not as JetBrains Mono's ≠ / merged ligatures */
+    font-variant-ligatures: none;
+  }
+
+  .font-tutorial,
+  .font-serif {
+    font-family: var(--font-tutorial) !important;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    position: fixed;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
+    -webkit-overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  #root {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
+    -webkit-overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  body {
+    font-family: var(--font-body);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+}
+
+/* Safe-area insets (status bar / notch / gesture nav / home indicator).
+   `pb-safe` is referenced by Navigation.tsx; keep these two in sync with
+   any other component that needs to sit clear of the system bars. */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Material Symbols configuration */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* CodeDo IDE Theme & Syntax Tokens */
+:root {
+  --ide-bg: #0a0d14;
+  --ide-surface: #0f141f;
+  --ide-editor: #0d111a;
+  --ide-active-line: rgba(99, 102, 241, 0.08);
+  --ide-gutter: #1e2433;
+  --ide-line-num: #475569;
+  --ide-border: #1b2234;
+  --ide-accent: #6366f1;
+  --syntax-keyword: #c084fc;
+  --syntax-func: #38bdf8;
+  --syntax-param: #f8fafc;
+  --syntax-type: #fbbf24;
+  --syntax-op: #f43f5e;
+  --syntax-punct: #94a3b8;
+  --syntax-comment: #64748b;
+}
+
+.border-ide-border {
+  border-color: #1b2234;
+}
+.bg-ide-editor {
+  background-color: #0d111a;
+}
+.bg-ide-bg {
+  background-color: #0a0d14;
+}
+.bg-ide-surface {
+  background-color: #0f141f;
+}
+.text-syntax-keyword {
+  color: #c084fc;
+}
+.text-syntax-func {
+  color: #38bdf8;
+}
+.text-syntax-param {
+  color: #f8fafc;
+}
+.text-syntax-type {
+  color: #fbbf24;
+}
+.text-syntax-op {
+  color: #f43f5e;
+}
+.text-syntax-punct {
+  color: #94a3b8;
+}
+.text-syntax-comment {
+  color: #64748b;
+}
+
+@keyframes cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.blinking-cursor {
+  animation: cursor-blink 1s infinite;
+}
+
+@keyframes tutorial-hint-dot-pulse {
+  0%, 100% {
+    transform: scale(0.85);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+    box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.4);
+  }
+}
+
+@keyframes tutorial-hint-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tutorial-hint-float {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: 4px; }
+}
+
+.tutorial-hint {
+  position: absolute;
+  transform-origin: calc(100% - 18px) 0;
+  animation:
+    tutorial-hint-enter 350ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    tutorial-hint-float 2.5s 350ms ease-in-out infinite;
+}
+
+.tutorial-hint-light {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow:
+    0 16px 36px -6px rgba(15, 23, 42, 0.12),
+    0 6px 14px -4px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(226, 232, 240, 0.7);
+}
+
+.tutorial-hint-dark {
+  background: #151b28;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 20px 40px -8px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.tutorial-hint-arrow {
+  position: absolute;
+  right: 12px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+}
+
+.tutorial-arrow-light {
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tutorial-arrow-dark {
+  background: #151b28;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tutorial-hint-dot {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  animation: tutorial-hint-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-hint,
+  .tutorial-hint-dot {
+    animation: none;
+  }
+}
+
+@keyframes snake-path-shimmer {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -396; }
+}
+
+.snake-path-shimmer {
+  animation: snake-path-shimmer 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snake-path-shimmer {
+    animation: none;
+  }
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.icon-filled,
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* Silk Neumorphic / Soft UI Tokens (Design Match) */
+.silk-surface {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.12), 0 2px 6px -1px rgba(148, 163, 184, 0.08);
+}
+
+.silk-inset {
+  background: #f8fafc;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: inset 0 2px 4px 0 rgba(148, 163, 184, 0.06);
+}
+
+.silk-button-icon {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 2px 8px rgba(148, 163, 184, 0.15);
+}
+
+.dark .silk-surface {
+  background: #171b26;
+  border: 1px solid #262c3d;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+}
+
+.dark .silk-inset {
+  background: #0f131d;
+  border: 1px solid #262c3d;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.dark .silk-button-icon {
+  background: #171b26;
+  border: 1px solid #262c3d;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.cta-glow {
+  box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.45), 4px 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.pulsing-dot {
+  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+  animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+/* ==========================================================================
+   Hero Dialog Transition (Scale Large / Scale Down into Top Task Button)
+   ========================================================================== */
+
+@keyframes hero-scale-down {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    opacity: 1;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+  }
+  30% {
+    opacity: 0.98;
+    border-radius: 0.9rem;
+    box-shadow: 0 15px 30px -10px rgba(99, 102, 241, 0.35);
+  }
+  70% {
+    opacity: 0.65;
+    border-radius: 0.7rem;
+  }
+  100% {
+    transform: translate3d(var(--hero-dx, -120px), var(--hero-dy, -250px), 0) scale(var(--hero-scale-x, 0.19), var(--hero-scale-y, 0.06));
+    opacity: 0;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.7);
+  }
+}
+
+@keyframes hero-scale-up {
+  0% {
+    transform: translate3d(var(--hero-dx, -120px), var(--hero-dy, -250px), 0) scale(var(--hero-scale-x, 0.19), var(--hero-scale-y, 0.06));
+    opacity: 0;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.8);
+  }
+  30% {
+    opacity: 0.85;
+    border-radius: 0.7rem;
+  }
+  75% {
+    opacity: 0.98;
+    border-radius: 0.95rem;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    opacity: 1;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+  }
+}
+
+@keyframes hero-backdrop-fadeout {
+  0% {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+  100% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes hero-backdrop-fadein {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes task-button-catch {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(99, 102, 241, 0);
+  }
+  28% {
+    transform: scale(1.24);
+    box-shadow: 0 0 24px rgba(99, 102, 241, 0.95), 0 0 10px rgba(168, 85, 247, 0.75);
+    border-color: rgba(129, 140, 248, 0.95);
+  }
+  55% {
+    transform: scale(0.92);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.5);
+  }
+  78% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-hero-down {
+  animation: hero-scale-down 0.38s cubic-bezier(0.2, 0.85, 0.3, 1) forwards;
+  transform-origin: center center;
+  will-change: transform, opacity, border-radius;
+  pointer-events: none;
+}
+
+.animate-hero-up {
+  animation: hero-scale-up 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center center;
+  will-change: transform, opacity, border-radius;
+}
+
+.animate-hero-backdrop-out {
+  animation: hero-backdrop-fadeout 0.38s cubic-bezier(0.2, 0.85, 0.3, 1) forwards;
+  will-change: opacity;
+  pointer-events: none;
+}
+
+.animate-hero-backdrop-in {
+  animation: hero-backdrop-fadein 0.32s ease-out forwards;
+  will-change: opacity;
+}
+
+.animate-task-catch {
+  animation: task-button-catch 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+
+.animate-bounce-gentle {
+  animation: bounce-gentle 2.2s ease-in-out infinite;
+}
+
+@keyframes modal-scale-up {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modal-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-scaleUp {
+  animation: modal-scale-up 0.2s ease-out forwards;
+}
+
+.animate-fadeIn {
+  animation: modal-fade-in 0.2s ease-out forwards;
+}
+
+/* Bottom sheet slide-in -- used by the Write & Run / Debug run-result dialog
+   (both share this presentation regardless of how the lesson was opened:
+   the guided 5-stage flow, TaskListScreen, or Surprise Me). */
+@keyframes sheet-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-sheetUp {
+  animation: sheet-slide-up 0.22s ease-out forwards;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+/* Glowing animated border stroke -- for the Surprise Me card's "magical"
+   pick-me treatment (PracticeTab.tsx). A pseudo-element ring sitting just
+   outside the card's own border, cycling color + glow strength so it reads
+   as an animated stroke rather than a static shadow. */
+@keyframes surprise-glow-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 1.5px rgba(232, 121, 249, 0.55), 0 0 18px 2px rgba(168, 85, 247, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 1.5px rgba(129, 140, 248, 0.65), 0 0 26px 5px rgba(99, 102, 241, 0.5);
+  }
+}
+
+.animate-surprise-glow {
+  animation: surprise-glow-ring 2.6s ease-in-out infinite;
+}
+
+/* Slow-flowing gradient background for the same Surprise Me card -- paired
+   with Tailwind's own `bg-gradient-to-br from-... via-... to-...` utilities,
+   which already set `background-image`; this only adds a larger canvas
+   (`background-size`) and animates `background-position` across it, so the
+   color stops appear to drift rather than sit static. */
+@keyframes surprise-gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-surprise-gradient {
+  background-size: 250% 250%;
+  animation: surprise-gradient-flow 6s ease-in-out infinite;
+}
+
+/* Neumorphic tactile styling (Light theme) */
+.neu-raised {
+  box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.06), -6px -6px 14px rgba(255, 255, 255, 0.75);
+}
+
+.neu-raised-sm {
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.05), -3px -3px 8px rgba(255, 255, 255, 0.7);
+}
+
+.neu-pressed {
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.06), inset -3px -3px 6px rgba(255, 255, 255, 0.65);
+}
+
+.neu-nav {
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.04), 0 -2px 8px rgba(255, 255, 255, 0.85);
+}
+
+.dark .neu-raised {
+  box-shadow: 6px 6px 16px rgba(0, 0, 0, 0.65), -2px -2px 10px rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dark .neu-raised-sm {
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6), -1px -1px 6px rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dark .neu-pressed {
+  box-shadow: inset 3px 3px 7px rgba(0, 0, 0, 0.7), inset -2px -2px 6px rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.dark .neu-nav {
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.7);
+}
+
+.neumorph-raised {
+  box-shadow: -4px -4px 10px #ffffff, 4px 4px 12px rgba(163, 177, 198, 0.45);
+}
+
+.neumorph-raised-soft {
+  box-shadow: -2px -2px 6px #ffffff, 2px 2px 8px rgba(163, 177, 198, 0.35);
+}
+
+.neumorph-active-pill {
+  box-shadow: inset 2px 2px 5px rgba(163, 177, 198, 0.4), inset -2px -2px 5px #ffffff;
+}
+
+.neumorph-inset {
+  box-shadow: inset 3px 3px 6px rgba(163, 177, 198, 0.45), inset -3px -3px 6px #ffffff;
+}
+
+/* Obsidian Cyber styling (Dark theme) */
+.dark-glass-card {
+  background: linear-gradient(180deg, rgba(26, 34, 54, 0.85) 0%, rgba(18, 25, 42, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dark-neon-glow {
+  box-shadow: 0 0 20px -3px rgba(128, 131, 255, 0.35);
+}
+
+.dark-card-shadow {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.06);
+}
+
+.glow-primary {
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.node-orb-locked {
+  background: radial-gradient(circle at 35% 30%, #202c48 0%, #12192b 85%);
+  border: 1.5px solid #2a374f;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.node-orb-inner {
+  background: linear-gradient(145deg, #151d30, #0d1322);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.boss-orb-glow {
+  background: radial-gradient(circle at 35% 30%, #3a2b10 0%, #1c150a 85%);
+  border: 1.5px solid rgba(249, 189, 34, 0.4);
+  box-shadow: 0 0 24px rgba(249, 189, 34, 0.2), inset 0 1px 1px rgba(255, 223, 159, 0.3);
+}
+
+.dark-node-completed {
+  background: radial-gradient(130% 130% at 30% 20%, #13322b 0%, #0c1f1b 100%);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.dark-node-locked {
+  background: radial-gradient(130% 130% at 30% 20%, #1c263c 0%, #101625 100%);
+  border: 1px solid rgba(70, 85, 115, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Hide scrollbar */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+
+/* ==========================================================================
+   SCREEN-CONTENT-ONLY FONT SIZE SCALING (Small, Medium, Large)
+   Scoped to the `.font-size-*` class placed on <main> only, so the bottom
+   tab bar (Navigation) and top toolbar (Header), which sit outside <main>,
+   are never affected. Absolute sizes: small = 18px, medium = 20px, large =
+   22px, scaled off the unscaled 16px baseline (1.125x / 1.25x / 1.375x).
+   ========================================================================== */
+
+/* Small: standard Tailwind rem-based text utilities (1.125x) */
+main.font-size-small .text-xs { font-size: 13.5px !important; }
+main.font-size-small .text-sm { font-size: 15.75px !important; }
+main.font-size-small .text-base { font-size: 18px !important; }
+main.font-size-small .text-lg { font-size: 20.25px !important; }
+main.font-size-small .text-xl { font-size: 22.5px !important; }
+main.font-size-small .text-2xl { font-size: 27px !important; }
+main.font-size-small .text-3xl { font-size: 33.75px !important; }
+
+/* Medium: standard Tailwind rem-based text utilities (1.25x) */
+main.font-size-medium .text-xs { font-size: 15px !important; }
+main.font-size-medium .text-sm { font-size: 17.5px !important; }
+main.font-size-medium .text-base { font-size: 20px !important; }
+main.font-size-medium .text-lg { font-size: 22.5px !important; }
+main.font-size-medium .text-xl { font-size: 25px !important; }
+main.font-size-medium .text-2xl { font-size: 30px !important; }
+main.font-size-medium .text-3xl { font-size: 37.5px !important; }
+
+/* Large: standard Tailwind rem-based text utilities (1.375x) */
+main.font-size-large .text-xs { font-size: 16.5px !important; }
+main.font-size-large .text-sm { font-size: 19.25px !important; }
+main.font-size-large .text-base { font-size: 22px !important; }
+main.font-size-large .text-lg { font-size: 24.75px !important; }
+main.font-size-large .text-xl { font-size: 27.5px !important; }
+main.font-size-large .text-2xl { font-size: 33px !important; }
+main.font-size-large .text-3xl { font-size: 41.25px !important; }
+
+/* Small Font Scale Overrides for Arbitrary Text Classes (1.125x) */
+main.font-size-small [class*="text-\[8px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[8px\]:not(.material-symbols-outlined) { font-size: 9px !important; }
+main.font-size-small [class*="text-\[9px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[9px\]:not(.material-symbols-outlined) { font-size: 10.12px !important; }
+main.font-size-small [class*="text-\[10px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[10px\]:not(.material-symbols-outlined) { font-size: 11.25px !important; }
+main.font-size-small [class*="text-\[11px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[11px\]:not(.material-symbols-outlined) { font-size: 12.38px !important; }
+main.font-size-small [class*="text-\[12px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[12px\]:not(.material-symbols-outlined) { font-size: 13.5px !important; }
+main.font-size-small [class*="text-\[13px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[13px\]:not(.material-symbols-outlined) { font-size: 14.62px !important; }
+main.font-size-small [class*="text-\[14px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[14px\]:not(.material-symbols-outlined) { font-size: 15.75px !important; }
+main.font-size-small [class*="text-\[15px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[15px\]:not(.material-symbols-outlined) { font-size: 16.88px !important; }
+main.font-size-small [class*="text-\[16px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[16px\]:not(.material-symbols-outlined) { font-size: 18px !important; }
+main.font-size-small [class*="text-\[17px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[17px\]:not(.material-symbols-outlined) { font-size: 19.12px !important; }
+main.font-size-small [class*="text-\[18px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[18px\]:not(.material-symbols-outlined) { font-size: 20.25px !important; }
+main.font-size-small [class*="text-\[20px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[20px\]:not(.material-symbols-outlined) { font-size: 22.5px !important; }
+main.font-size-small [class*="text-\[22px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[22px\]:not(.material-symbols-outlined) { font-size: 24.75px !important; }
+main.font-size-small [class*="text-\[24px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[24px\]:not(.material-symbols-outlined) { font-size: 27px !important; }
+main.font-size-small [class*="text-\[26px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[26px\]:not(.material-symbols-outlined) { font-size: 29.25px !important; }
+main.font-size-small [class*="text-\[28px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[28px\]:not(.material-symbols-outlined) { font-size: 31.5px !important; }
+main.font-size-small [class*="text-\[32px\]"]:not(.material-symbols-outlined),
+main.font-size-small .text-\[32px\]:not(.material-symbols-outlined) { font-size: 36px !important; }
+
+/* Medium Font Scale Overrides for Arbitrary Text Classes (1.25x) */
+main.font-size-medium [class*="text-\[8px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[8px\]:not(.material-symbols-outlined) { font-size: 10px !important; }
+main.font-size-medium [class*="text-\[9px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[9px\]:not(.material-symbols-outlined) { font-size: 11.25px !important; }
+main.font-size-medium [class*="text-\[10px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[10px\]:not(.material-symbols-outlined) { font-size: 12.5px !important; }
+main.font-size-medium [class*="text-\[11px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[11px\]:not(.material-symbols-outlined) { font-size: 13.75px !important; }
+main.font-size-medium [class*="text-\[12px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[12px\]:not(.material-symbols-outlined) { font-size: 15px !important; }
+main.font-size-medium [class*="text-\[13px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[13px\]:not(.material-symbols-outlined) { font-size: 16.25px !important; }
+main.font-size-medium [class*="text-\[14px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[14px\]:not(.material-symbols-outlined) { font-size: 17.5px !important; }
+main.font-size-medium [class*="text-\[15px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[15px\]:not(.material-symbols-outlined) { font-size: 18.75px !important; }
+main.font-size-medium [class*="text-\[16px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[16px\]:not(.material-symbols-outlined) { font-size: 20px !important; }
+main.font-size-medium [class*="text-\[17px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[17px\]:not(.material-symbols-outlined) { font-size: 21.25px !important; }
+main.font-size-medium [class*="text-\[18px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[18px\]:not(.material-symbols-outlined) { font-size: 22.5px !important; }
+main.font-size-medium [class*="text-\[20px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[20px\]:not(.material-symbols-outlined) { font-size: 25px !important; }
+main.font-size-medium [class*="text-\[22px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[22px\]:not(.material-symbols-outlined) { font-size: 27.5px !important; }
+main.font-size-medium [class*="text-\[24px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[24px\]:not(.material-symbols-outlined) { font-size: 30px !important; }
+main.font-size-medium [class*="text-\[26px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[26px\]:not(.material-symbols-outlined) { font-size: 32.5px !important; }
+main.font-size-medium [class*="text-\[28px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[28px\]:not(.material-symbols-outlined) { font-size: 35px !important; }
+main.font-size-medium [class*="text-\[32px\]"]:not(.material-symbols-outlined),
+main.font-size-medium .text-\[32px\]:not(.material-symbols-outlined) { font-size: 40px !important; }
+
+/* Large Font Scale Overrides for Arbitrary Text Classes (1.375x) */
+main.font-size-large [class*="text-\[8px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[8px\]:not(.material-symbols-outlined) { font-size: 11px !important; }
+main.font-size-large [class*="text-\[9px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[9px\]:not(.material-symbols-outlined) { font-size: 12.38px !important; }
+main.font-size-large [class*="text-\[10px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[10px\]:not(.material-symbols-outlined) { font-size: 13.75px !important; }
+main.font-size-large [class*="text-\[11px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[11px\]:not(.material-symbols-outlined) { font-size: 15.12px !important; }
+main.font-size-large [class*="text-\[12px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[12px\]:not(.material-symbols-outlined) { font-size: 16.5px !important; }
+main.font-size-large [class*="text-\[13px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[13px\]:not(.material-symbols-outlined) { font-size: 17.88px !important; }
+main.font-size-large [class*="text-\[14px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[14px\]:not(.material-symbols-outlined) { font-size: 19.25px !important; }
+main.font-size-large [class*="text-\[15px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[15px\]:not(.material-symbols-outlined) { font-size: 20.62px !important; }
+main.font-size-large [class*="text-\[16px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[16px\]:not(.material-symbols-outlined) { font-size: 22px !important; }
+main.font-size-large [class*="text-\[17px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[17px\]:not(.material-symbols-outlined) { font-size: 23.38px !important; }
+main.font-size-large [class*="text-\[18px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[18px\]:not(.material-symbols-outlined) { font-size: 24.75px !important; }
+main.font-size-large [class*="text-\[20px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[20px\]:not(.material-symbols-outlined) { font-size: 27.5px !important; }
+main.font-size-large [class*="text-\[22px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[22px\]:not(.material-symbols-outlined) { font-size: 30.25px !important; }
+main.font-size-large [class*="text-\[24px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[24px\]:not(.material-symbols-outlined) { font-size: 33px !important; }
+main.font-size-large [class*="text-\[26px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[26px\]:not(.material-symbols-outlined) { font-size: 35.75px !important; }
+main.font-size-large [class*="text-\[28px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[28px\]:not(.material-symbols-outlined) { font-size: 38.5px !important; }
+main.font-size-large [class*="text-\[32px\]"]:not(.material-symbols-outlined),
+main.font-size-large .text-\[32px\]:not(.material-symbols-outlined) { font-size: 44px !important; }

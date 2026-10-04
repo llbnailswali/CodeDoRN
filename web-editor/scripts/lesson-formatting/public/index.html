@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>CodeDo — Lesson Formatting Tool</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f4f5f7; color: #1a1a1a; }
+  header { background: #1e2530; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header input { padding: 8px 10px; border-radius: 6px; border: 1px solid #444; font-size: 14px; width: 140px; text-transform: uppercase; }
+  header button { padding: 8px 16px; border-radius: 6px; border: none; background: #3b82f6; color: #fff; font-size: 14px; cursor: pointer; }
+  header button:disabled { background: #6b7280; cursor: not-allowed; }
+  header .status { font-size: 13px; color: #cbd5e1; }
+  main { padding: 20px 24px 100px; max-width: 1200px; margin: 0 auto; }
+  .error { background: #fee2e2; color: #991b1b; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; white-space: pre-wrap; }
+  .field { background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+  .field h3 { margin: 0 0 4px; font-size: 15px; }
+  .field .key { color: #6b7280; font-size: 12px; margin-bottom: 12px; }
+  .mode-col { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+  .mode-col .mode-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .badge.ok { background: #dcfce7; color: #166534; }
+  .badge.no-change { background: #e5e7eb; color: #4b5563; }
+  .badge.mismatch { background: #fee2e2; color: #991b1b; }
+  .badge.skipped { background: #fef3c7; color: #92400e; }
+  .diff { display: grid; grid-template-columns: 1fr 1fr; font-family: ui-monospace, "SF Mono", monospace; font-size: 12.5px; }
+  .diff pre { margin: 0; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; overflow-x: auto; max-height: 340px; }
+  .diff .before { background: #fff7f7; border-right: 1px solid #e5e7eb; }
+  .diff .after { background: #f7fff9; }
+  .diff .same { background: #fafafa; grid-column: 1 / -1; color: #6b7280; font-style: italic; padding: 10px 12px; }
+  .diff-labels { display: grid; grid-template-columns: 1fr 1fr; font-size: 11px; color: #6b7280; padding: 6px 12px 0; }
+  .choice { display: flex; gap: 16px; padding: 10px 12px; font-size: 13px; }
+  .choice label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .choice input:disabled + span { color: #9ca3af; }
+  .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #1e2530; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 -2px 8px rgba(0,0,0,0.15); }
+  .save-bar button { padding: 10px 22px; border-radius: 6px; border: none; background: #16a34a; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .save-bar button:disabled { background: #6b7280; cursor: not-allowed; }
+  .save-bar .summary { color: #cbd5e1; font-size: 13px; }
+  .empty { color: #6b7280; text-align: center; padding: 60px 0; }
+  header button.secondary { background: #374151; }
+  #statsPanel { background: #fff; margin: 20px 24px 0; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); padding: 18px 22px; max-width: 1200px; margin-left: auto; margin-right: auto; }
+  #statsPanel h2 { margin: 0 0 14px; font-size: 16px; }
+  .stats-totals { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 18px; }
+  .stat-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
+  .stat-card .num { font-size: 22px; font-weight: 700; color: #1e2530; }
+  .stat-card .label { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .stats-table th, .stats-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid #f0f0f0; }
+  .stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+  .stats-table th { color: #6b7280; font-weight: 600; }
+  .stats-table tr.not-found td { color: #d1d5db; font-style: italic; }
+  /* Fixed to the viewport (below the header) rather than sitting in normal
+     document flow -- so its columns can genuinely fill "the rest of the
+     screen" instead of a fraction of it with dead page space below, while
+     never touching body/main's own layout (used by the unrelated Preview/
+     Stats views). Top offset is set from JS (real, measured header height)
+     rather than a guessed CSS constant. */
+  #tasksPanel { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; padding: 14px 22px; display: flex; flex-direction: column; overflow: hidden; }
+  #tasksPanel h2 { margin: 0; font-size: 16px; }
+  .tasks-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; flex: 0 0 auto; }
+  .tasks-header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .view-toggle { display: flex; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+  .view-toggle-btn { padding: 6px 12px; border: none; background: #fff; font-size: 12.5px; cursor: pointer; color: #4b5563; }
+  .view-toggle-btn + .view-toggle-btn { border-left: 1px solid #e5e7eb; }
+  .view-toggle-btn.active { background: #4f46e5; color: #fff; font-weight: 600; }
+  .tasks-layout { display: grid; grid-template-columns: 240px 1fr 1fr; gap: 16px; align-items: start; flex: 1 1 auto; min-height: 0; }
+  .world-list-col, .task-col { border: 1px solid #e5e7eb; border-radius: 8px; height: 100%; overflow-y: auto; }
+  .world-item { padding: 10px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; gap: 8px; }
+  .world-item:hover { background: #f9fafb; }
+  .world-item.active { background: #eef2ff; color: #3730a3; font-weight: 600; }
+  .world-item .count { color: #9ca3af; font-size: 11px; white-space: nowrap; }
+  .task-col-head { position: sticky; top: 0; background: #f9fafb; padding: 10px 14px; font-weight: 600; font-size: 13px; border-bottom: 1px solid #e5e7eb; z-index: 1; }
+  .task-card { padding: 14px; border-bottom: 1px solid #f0f0f0; }
+  .task-card:last-child { border-bottom: none; }
+  .task-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .task-head h4 { margin: 0; font-size: 13.5px; flex: 1; min-width: 120px; }
+  .mode-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  .mode-tag.writeRun { background: #e0e7ff; color: #3730a3; }
+  .mode-tag.debug { background: #fee2e2; color: #991b1b; }
+  .source-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #f3f4f6; color: #4b5563; }
+  .diff-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #fef3c7; color: #92400e; text-transform: uppercase; }
+  /* Height is set from JS to match scrollHeight (auto-grows to fit the whole
+     snippet) -- no resize handle needed since there's nothing to resize. */
+  .task-code { width: 100%; font-family: ui-monospace, "SF Mono", monospace; font-size: 12px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; box-sizing: border-box; resize: none; overflow: hidden; display: block; }
+  .task-actions { display: flex; gap: 6px; margin: 8px 0; }
+  .task-actions button { padding: 5px 10px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; }
+  .task-actions .apply { background: #4f46e5; color: #fff; }
+  .task-actions .reset { background: #e5e7eb; color: #374151; }
+  .task-actions .run { background: #16a34a; color: #fff; }
+  .task-result { font-family: ui-monospace, "SF Mono", monospace; font-size: 12px; padding: 8px 10px; border-radius: 6px; margin-top: 6px; }
+  .task-result.pass { background: #dcfce7; color: #166534; }
+  .task-result.fail { background: #fee2e2; color: #991b1b; }
+  .task-result .result-label { font-size: 10px; text-transform: uppercase; opacity: 0.7; margin-top: 6px; }
+  .task-result .result-label:first-child { margin-top: 0; }
+  .task-result .output-line { white-space: nowrap; overflow-x: auto; display: block; }
+  .task-result .ws-dot { opacity: 0.4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CodeDo Lesson Formatting Tool</h1>
+  <input id="lessonCode" placeholder="W16L01" maxlength="6" />
+  <button id="previewBtn">Preview</button>
+  <button id="statsBtn" class="secondary">Stats</button>
+  <button id="tasksBtn" class="secondary">Tasks</button>
+  <span class="status" id="status"></span>
+</header>
+<section id="statsPanel" style="display:none"></section>
+<section id="tasksPanel" style="display:none"></section>
+<main id="main">
+  <div class="empty">Enter a lesson code (e.g. <strong>W16L01</strong>) and click Preview.</div>
+</main>
+<div class="save-bar" style="display:none" id="saveBar">
+  <span class="summary" id="saveSummary">0 fields selected</span>
+  <button id="saveBtn" disabled>Save Selected</button>
+</div>
+<script>
+let currentRef = null;
+let currentFields = [];
+
+const main = document.getElementById('main');
+const status = document.getElementById('status');
+const saveBar = document.getElementById('saveBar');
+const saveBtn = document.getElementById('saveBtn');
+const saveSummary = document.getElementById('saveSummary');
+
+function badge(cls, text) { return `<span class="badge ${cls}">${text}</span>`; }
+
+function verifyBadge(verify) {
+  if (verify.skipped) return badge('skipped', 'not standalone-runnable — verification skipped');
+  return verify.matches ? badge('ok', 'output verified identical') : badge('mismatch', 'OUTPUT MISMATCH — do not save');
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+
+function canUse(result) {
+  return result.changed && (!result.verify || result.verify.matches);
+}
+
+function renderField(f) {
+  const r = f.result;
+  const changeBadge = r.changed ? badge('ok', 'reformatted') : badge('no-change', 'no change');
+  const vBadge = r.changed ? verifyBadge(r.verify) : '';
+  const body = r.changed
+    ? `<div class="diff-labels"><span>Before</span><span>After</span></div>
+       <div class="diff">
+         <div class="before"><pre>${escapeHtml(r.before)}</pre></div>
+         <div class="after"><pre>${escapeHtml(r.after)}</pre></div>
+       </div>`
+    : `<div class="diff"><div class="same">Already properly formatted — nothing to change.</div></div>`;
+  const usable = canUse(r);
+  return `<div class="field" data-key="${f.key}">
+    <h3>${f.screenName}</h3>
+    <div class="key">${f.key}</div>
+    <div class="mode-col">
+      <div class="mode-head"><span>Formatting</span><span>${changeBadge} ${vBadge}</span></div>
+      ${body}
+    </div>
+    <div class="choice">
+      <label><input type="radio" name="choice-${f.key}" value="keep" checked> <span>Keep original</span></label>
+      <label><input type="radio" name="choice-${f.key}" value="use" ${usable ? '' : 'disabled'}> <span>Use formatted</span></label>
+    </div>
+  </div>`;
+}
+
+function render() {
+  if (!currentFields.length) {
+    main.innerHTML = '<div class="empty">No formattable code fields found on this lesson.</div>';
+    return;
+  }
+  main.innerHTML = currentFields.map(renderField).join('');
+  main.querySelectorAll('input[type=radio]').forEach(el => el.addEventListener('change', updateSaveBar));
+  updateSaveBar();
+}
+
+function currentSelections() {
+  return currentFields
+    .map(f => {
+      const checked = document.querySelector(`input[name="choice-${f.key}"]:checked`);
+      return checked && checked.value === 'use' ? f.key : null;
+    })
+    .filter(Boolean);
+}
+
+function updateSaveBar() {
+  const selections = currentSelections();
+  saveBar.style.display = currentFields.length ? 'flex' : 'none';
+  saveSummary.textContent = `${selections.length} field(s) selected for save`;
+  saveBtn.disabled = selections.length === 0;
+}
+
+document.getElementById('previewBtn').addEventListener('click', async () => {
+  const code = document.getElementById('lessonCode').value.trim().toUpperCase();
+  if (!code) return;
+  status.textContent = 'Running formatter + verifying against the real engine…';
+  main.innerHTML = '';
+  saveBar.style.display = 'none';
+  try {
+    const res = await fetch(`/api/preview?lesson=${encodeURIComponent(code)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Preview failed');
+    currentRef = data.ref;
+    currentFields = data.fields;
+    status.textContent = `Loaded ${currentRef.code} (${currentRef.id}) — ${currentFields.length} field(s)`;
+    render();
+  } catch (err) {
+    main.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
+    status.textContent = '';
+  }
+});
+
+saveBtn.addEventListener('click', async () => {
+  const keys = currentSelections();
+  if (!keys.length || !currentRef) return;
+  saveBtn.disabled = true;
+  status.textContent = 'Saving…';
+  try {
+    const res = await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lesson: currentRef.code, keys }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    status.textContent = `Saved ${data.savedFields} field(s) to ${currentRef.id}. Reloading…`;
+    document.getElementById('previewBtn').click();
+  } catch (err) {
+    main.insertAdjacentHTML('afterbegin', `<div class="error">${escapeHtml(err.message)}</div>`);
+    status.textContent = '';
+    saveBtn.disabled = false;
+  }
+});
+
+document.getElementById('lessonCode').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('previewBtn').click();
+});
+
+const statsBtn = document.getElementById('statsBtn');
+const statsPanel = document.getElementById('statsPanel');
+let statsLoaded = false;
+
+function statCard(num, label) {
+  return `<div class="stat-card"><div class="num">${num}</div><div class="label">${label}</div></div>`;
+}
+
+function renderStats(data) {
+  const t = data.totals;
+  const rows = data.perWorld.map(w => w.found
+    ? `<tr><td>World ${w.world}</td><td>${w.lessons}</td><td>${w.exploreCards}</td><td>${w.predictQuestions}</td><td>${w.writeRunExercises}</td><td>${w.debugExercises}</td></tr>`
+    : `<tr class="not-found"><td>World ${w.world}</td><td colspan="5">not found</td></tr>`
+  ).join('');
+  statsPanel.innerHTML = `
+    <h2>Curriculum stats (computed just now)</h2>
+    <div class="stats-totals">
+      ${statCard(t.worlds, 'Worlds')}
+      ${statCard(t.lessons, 'Lessons')}
+      ${statCard(t.exploreCards, 'Explore examples')}
+      ${statCard(t.predictQuestions, 'Predictions')}
+      ${statCard(t.writeRunExercises, 'Write & Run exercises')}
+      ${statCard(t.debugExercises, 'Debug exercises')}
+    </div>
+    <table class="stats-table">
+      <thead><tr><th>World</th><th>Lessons</th><th>Explore</th><th>Predict</th><th>Write&amp;Run</th><th>Debug</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+statsBtn.addEventListener('click', async () => {
+  if (statsPanel.style.display !== 'none' && statsLoaded) {
+    statsPanel.style.display = 'none';
+    return;
+  }
+  statsPanel.style.display = 'block';
+  statsPanel.innerHTML = '<div class="empty">Calculating stats across all worlds…</div>';
+  try {
+    const res = await fetch('/api/stats');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Stats failed');
+    renderStats(data);
+    statsLoaded = true;
+  } catch (err) {
+    statsPanel.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
+  }
+});
+
+const tasksBtn = document.getElementById('tasksBtn');
+const tasksPanel = document.getElementById('tasksPanel');
+let tasksLoaded = false;
+let allWorlds = [];
+let taskById = new Map();
+let selectedWorldId = null;
+// 'all' shows every runnable task (lesson + practiceBank) for broad QA; 'app'
+// shows only practiceBank tasks -- exactly what the app's own Practice tab
+// lists (lesson-derived tasks were deliberately removed from there, since
+// re-solving a lesson's own already-solved task isn't genuine practice).
+let viewMode = 'all';
+// 'all' | 'easy' | 'medium' | 'hard'. A lesson-derived writeRun task has no
+// difficulty at all (only Debug tasks and practiceBank tasks carry one), so
+// it's simply excluded whenever a specific difficulty is selected -- there's
+// no positional/fake difficulty to fall back on here (see PITFALLS.md on why
+// a fabricated difficulty rating is worse than none).
+let difficultyFilter = 'all';
+
+function tasksForWorld(world) {
+  let tasks = viewMode === 'app' ? world.tasks.filter(t => t.source === 'bank') : world.tasks;
+  if (difficultyFilter !== 'all') tasks = tasks.filter(t => t.difficulty === difficultyFilter);
+  return tasks;
+}
+
+function modeLabel(mode) { return mode === 'writeRun' ? 'Write & Run' : 'Debug'; }
+
+// Mirrors renderVisibleWhitespace (src/utils/outputDisplay.tsx): every real
+// line gets its own block (never CSS-wrapped, so a long line can never look
+// like an extra newline), and every space becomes a small muted middle-dot
+// instead of an invisible gap -- several exercises' correctness depends on
+// an exact space a plain-text render would hide completely.
+function renderVisibleWhitespaceHtml(text) {
+  return text
+    .split('\n')
+    .map(line => `<span class="output-line">${escapeHtml(line).split(' ').join('<span class="ws-dot">·</span>')}</span>`)
+    .join('');
+}
+
+// Dashboard-only annotation -- never written back to the real starterCode/
+// solutionCode data (that would leak an answer straight into a learner's
+// starter code, exactly what the earlier "comments must not show the exact
+// answer" rule for the real app forbids). This tool is for testing, not
+// learning, so seeing the target inline is pure convenience: no separate
+// "View Task"/expected-output panel needs opening before you know what
+// you're aiming for.
+function expectedOutputCommentBlock(expectedOutput) {
+  const lines = String(expectedOutput ?? '').split('\n');
+  return lines.length === 1
+    ? `// Expected output: "${lines[0]}"`
+    : ['// Expected output:', ...lines.map(l => `// ${l}`)].join('\n');
+}
+
+function withExpectedOutputComment(code, expectedOutput) {
+  return `${expectedOutputCommentBlock(expectedOutput)}\n${code}`;
+}
+
+function taskCardHtml(t) {
+  return `<div class="task-card" data-task-id="${t.id}">
+    <div class="task-head">
+      <h4>${escapeHtml(t.title)}</h4>
+      <span class="mode-tag ${t.mode}">${modeLabel(t.mode)}</span>
+      <span class="source-tag">${t.source === 'bank' ? 'Practice Bank' : 'Lesson'}</span>
+      ${t.difficulty ? `<span class="diff-tag">${escapeHtml(t.difficulty)}</span>` : ''}
+    </div>
+    <textarea class="task-code" id="code-${t.id}" spellcheck="false">${escapeHtml(withExpectedOutputComment(t.starterCode, t.expectedOutput))}</textarea>
+    <div class="task-actions">
+      <button class="apply" data-action="apply" data-task-id="${t.id}">Apply Solution</button>
+      <button class="reset" data-action="reset" data-task-id="${t.id}">Reset to Starter</button>
+      <button class="run" data-action="run" data-task-id="${t.id}">Run</button>
+    </div>
+    <div class="task-result" id="result-${t.id}" style="display:none"></div>
+  </div>`;
+}
+
+function renderWorldList() {
+  const html = allWorlds.map(w => `
+    <div class="world-item${w.worldId === selectedWorldId ? ' active' : ''}" data-world-id="${w.worldId}">
+      <span>World ${w.worldOrder} — ${escapeHtml(w.worldTitle)}</span>
+      <span class="count">${tasksForWorld(w).length}</span>
+    </div>
+  `).join('');
+  document.getElementById('worldListCol').innerHTML = html;
+}
+
+// Grows a code textarea to fit its full content -- called after any render
+// or programmatic value change (Apply Solution/Reset), since those never
+// fire a native 'input' event on their own.
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function autoResizeAllTaskCode(container) {
+  container.querySelectorAll('.task-code').forEach(autoResizeTextarea);
+}
+
+function renderTaskColumns() {
+  const world = allWorlds.find(w => w.worldId === selectedWorldId);
+  const tasks = world ? tasksForWorld(world) : [];
+  const writeRunTasks = tasks.filter(t => t.mode === 'writeRun');
+  const debugTasks = tasks.filter(t => t.mode === 'debug');
+
+  const writeRunCol = document.getElementById('writeRunCol');
+  const debugCol = document.getElementById('debugCol');
+
+  writeRunCol.innerHTML =
+    `<div class="task-col-head">Write &amp; Run${world ? ` (${writeRunTasks.length})` : ''}</div>` +
+    (world ? writeRunTasks.map(taskCardHtml).join('') || '<div class="empty">None for this World.</div>' : '<div class="empty">Select a World.</div>');
+
+  debugCol.innerHTML =
+    `<div class="task-col-head">Debug${world ? ` (${debugTasks.length})` : ''}</div>` +
+    (world ? debugTasks.map(taskCardHtml).join('') || '<div class="empty">None for this World.</div>' : '<div class="empty">Select a World.</div>');
+
+  autoResizeAllTaskCode(writeRunCol);
+  autoResizeAllTaskCode(debugCol);
+}
+
+function renderTasks(worlds) {
+  allWorlds = worlds;
+  taskById = new Map();
+  worlds.forEach(w => w.tasks.forEach(t => taskById.set(t.id, t)));
+  if (!selectedWorldId && worlds.length > 0) selectedWorldId = worlds[0].worldId;
+
+  const diffBtn = (value, label) =>
+    `<button class="view-toggle-btn${difficultyFilter === value ? ' active' : ''}" data-difficulty="${value}">${label}</button>`;
+
+  tasksPanel.innerHTML = `<div class="tasks-header">
+      <h2>Tasks by World</h2>
+      <div class="tasks-header-controls">
+        <div class="view-toggle">
+          <button class="view-toggle-btn${viewMode === 'all' ? ' active' : ''}" data-view="all">All Tasks</button>
+          <button class="view-toggle-btn${viewMode === 'app' ? ' active' : ''}" data-view="app">App View (Practice Bank only)</button>
+        </div>
+        <div class="view-toggle">
+          ${diffBtn('all', 'All Difficulties')}
+          ${diffBtn('easy', 'Easy')}
+          ${diffBtn('medium', 'Medium')}
+          ${diffBtn('hard', 'Hard')}
+        </div>
+      </div>
+    </div>
+    <div class="tasks-layout">
+      <div class="world-list-col" id="worldListCol"></div>
+      <div class="task-col" id="writeRunCol"></div>
+      <div class="task-col" id="debugCol"></div>
+    </div>`;
+  renderWorldList();
+  renderTaskColumns();
+}
+
+tasksPanel.addEventListener('input', (e) => {
+  if (e.target.classList.contains('task-code')) autoResizeTextarea(e.target);
+});
+
+tasksPanel.addEventListener('click', async (e) => {
+  const toggleBtn = e.target.closest('.view-toggle-btn');
+  if (toggleBtn) {
+    if (toggleBtn.dataset.view) viewMode = toggleBtn.dataset.view;
+    if (toggleBtn.dataset.difficulty) difficultyFilter = toggleBtn.dataset.difficulty;
+    renderTasks(allWorlds);
+    return;
+  }
+
+  const worldItem = e.target.closest('.world-item');
+  if (worldItem) {
+    selectedWorldId = worldItem.dataset.worldId;
+    renderWorldList();
+    renderTaskColumns();
+    return;
+  }
+
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.taskId;
+  const task = taskById.get(id);
+  if (!task) return;
+  const textarea = document.getElementById(`code-${id}`);
+  const resultEl = document.getElementById(`result-${id}`);
+
+  if (btn.dataset.action === 'apply') {
+    // Exactly what the app's own "Apply Solution"/"Apply Fix" does --
+    // solutionWithComments is computed server-side via the SAME
+    // applySolutionPreservingComments the app's WriteRun.tsx/DebugIde.tsx/
+    // Debug.tsx call, so this can never quietly drift from real behavior.
+    textarea.value = withExpectedOutputComment(task.solutionWithComments, task.expectedOutput);
+    autoResizeTextarea(textarea);
+    resultEl.style.display = 'none';
+  } else if (btn.dataset.action === 'reset') {
+    textarea.value = withExpectedOutputComment(task.starterCode, task.expectedOutput);
+    autoResizeTextarea(textarea);
+    resultEl.style.display = 'none';
+  } else if (btn.dataset.action === 'run') {
+    resultEl.style.display = 'block';
+    resultEl.className = 'task-result';
+    resultEl.innerHTML = 'Running…';
+    try {
+      const res = await fetch('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: textarea.value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Run failed');
+      const matches = data.success && data.output === task.expectedOutput;
+      resultEl.className = `task-result ${matches ? 'pass' : 'fail'}`;
+      resultEl.innerHTML =
+        `<div class="result-label">${matches ? 'Test Passed' : data.success ? 'Output Mismatch' : 'Runtime Error'}</div>` +
+        `<div>${renderVisibleWhitespaceHtml(data.success ? data.output : (data.error ? data.error.message : 'No output'))}</div>` +
+        `<div class="result-label">Expected</div>` +
+        `<div>${renderVisibleWhitespaceHtml(task.expectedOutput)}</div>`;
+    } catch (err) {
+      resultEl.style.display = 'block';
+      resultEl.className = 'task-result fail';
+      resultEl.textContent = err.message;
+    }
+  }
+});
+
+tasksBtn.addEventListener('click', async () => {
+  if (tasksPanel.style.display !== 'none' && tasksLoaded) {
+    tasksPanel.style.display = 'none';
+    return;
+  }
+  // Real, measured header height rather than a guessed CSS constant --
+  // #tasksPanel is `position: fixed` so its columns can fill exactly "the
+  // rest of the screen" below the header.
+  tasksPanel.style.top = `${document.querySelector('header').offsetHeight}px`;
+  tasksPanel.style.display = 'flex';
+  tasksPanel.innerHTML = '<div class="empty">Loading tasks across all worlds…</div>';
+  try {
+    const res = await fetch('/api/tasks');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load tasks');
+    renderTasks(data.worlds);
+    tasksLoaded = true;
+  } catch (err) {
+    tasksPanel.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
+  }
+});
+</script>
+</body>
+</html>

@@ -80,7 +80,7 @@ android {
     namespace "com.codedorn"
     sourceSets {
         main {
-            // Generated from the sibling CodeDo web build before assets merge.
+            // Generated from web-editor/ (the editor's web build) before assets merge.
             // This prevents its duplicate RN font files being packaged twice.
             assets.srcDirs += [layout.buildDirectory.dir('generated/webStageAssets').get().asFile]
         }
@@ -117,12 +117,19 @@ android {
     }
 }
 
-// Stage 4/5 continue to use the tested web editor while their native React
-// Native equivalents are migrated. Only its web bundle and Capacitor config
-// are embedded; the RN app keeps ownership of the shared fonts.
+// Stage 4/5 use the web editor in web-editor/ (Capacitor WebView). Build it with
+// `npm run build` inside web-editor/ first; only its bundle and Capacitor config
+// are embedded, the RN app keeps ownership of the shared fonts.
 tasks.register('syncWebStageAssets', Sync) {
-    from('../../../CodeDo/android/app/src/main/assets') {
-        include 'public/**'
+    doFirst {
+        if (!file('../../web-editor/dist/index.html').exists()) {
+            throw new GradleException('web-editor/dist is missing. Run `npm install && npm run build` in web-editor/ first.')
+        }
+    }
+    from('../../web-editor/dist') {
+        into 'public'
+    }
+    from('../../web-editor') {
         include 'capacitor.config.json'
         include 'capacitor.plugins.json'
     }
