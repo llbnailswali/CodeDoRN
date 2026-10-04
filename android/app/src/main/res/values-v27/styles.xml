@@ -1,28 +1,16 @@
 <resources>
-
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
-        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
-    </style>
-
-
-    <!--
-      Themes for the web editor stage (WebStageDarkActivity / WebStageLightActivity). The system shows a placeholder window built from the
-      activity's THEME until the activity draws its first frame, and the WebView takes a while to start. The bar and window colors therefore
-      have to be in the theme: setting them in onCreate only takes effect at the first frame, which showed a black status bar before it.
-    -->
     <style name="WebStageTheme.Dark" parent="AppTheme">
         <item name="android:windowBackground">@color/web_stage_bar_dark</item>
         <item name="android:statusBarColor">@color/web_stage_bar_dark</item>
         <item name="android:navigationBarColor">@color/web_stage_bar_dark</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
     <style name="WebStageTheme.Light" parent="AppTheme">
         <item name="android:windowBackground">@color/web_stage_bar_light</item>
         <item name="android:statusBarColor">@color/web_stage_bar_light</item>
         <item name="android:navigationBarColor">@color/web_stage_bar_light</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
-
 </resources>

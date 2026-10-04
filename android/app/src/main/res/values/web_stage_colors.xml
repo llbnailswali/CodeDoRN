@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The editor's top-bar color per theme: the web stage's status bar, navigation bar and window all use it (see WebStageActivity.barColor). -->
+    <color name="web_stage_bar_dark">#0D121D</color>
+    <color name="web_stage_bar_light">#E8EAF0</color>
+</resources>

@@ -23,8 +23,16 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+      <!-- The web editor stage. One activity per theme so its status bar / window colors are right before the WebView has started. -->
       <activity
-        android:name=".WebStageActivity"
+        android:name=".WebStageDarkActivity"
+        android:theme="@style/WebStageTheme.Dark"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:windowSoftInputMode="adjustResize"
+        android:exported="false" />
+      <activity
+        android:name=".WebStageLightActivity"
+        android:theme="@style/WebStageTheme.Light"
         android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
         android:windowSoftInputMode="adjustResize"
         android:exported="false" />

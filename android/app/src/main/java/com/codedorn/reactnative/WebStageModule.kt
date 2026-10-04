@@ -2,7 +2,11 @@ package com.codedorn.reactnative
 
 import android.app.Activity
 import android.content.Intent
-import com.codedorn.WebStageActivity
+import android.os.Handler
+import android.os.Looper
+import android.webkit.WebView
+import com.codedorn.WebStageDarkActivity
+import com.codedorn.WebStageLightActivity
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.BaseActivityEventListener
@@ -32,6 +36,35 @@ class WebStageModule(private val reactContext: ReactApplicationContext) : ReactC
 
     override fun getName() = "WebStage"
 
+    // A throwaway WebView, created ahead of the stage. Every WebView in the app shares one browser (renderer) process, so having one
+    // alive means the real stage's WebView does not pay for starting the browser engine when it opens.
+    private val main = Handler(Looper.getMainLooper())
+    private var warm: WebView? = null
+    private val releaseWarm = Runnable { discardWarm() }
+
+    private fun discardWarm() {
+        main.removeCallbacks(releaseWarm)
+        warm?.destroy()
+        warm = null
+    }
+
+    /** Starts the browser engine early. Called when a lesson screen opens; safe to call repeatedly. */
+    @ReactMethod
+    fun warmUp() {
+        main.post {
+            main.removeCallbacks(releaseWarm)
+            if (warm == null) {
+                try {
+                    warm = WebView(reactContext.applicationContext).also { it.loadUrl("about:blank") }
+                } catch (_: Throwable) {
+                    // No WebView available (or it failed to start): opening the stage just starts the engine itself.
+                }
+            }
+            // Do not hold the engine forever if the learner never opens an editor stage.
+            main.postDelayed(releaseWarm, WARM_KEEP_MS)
+        }
+    }
+
     @ReactMethod
     fun open(lessonKey: String, stage: String, dark: Boolean, practice: Boolean, promise: Promise) {
         val activity = reactContext.currentActivity
@@ -43,17 +76,21 @@ class WebStageModule(private val reactContext: ReactApplicationContext) : ReactC
         pending?.resolve("back")
         pending = promise
         activity.startActivityForResult(
-            Intent(activity, WebStageActivity::class.java)
+            // One activity per theme: its manifest theme colors the status bar and window before the web view has started.
+            Intent(activity, if (dark) WebStageDarkActivity::class.java else WebStageLightActivity::class.java)
                 .putExtra("stageLessonKey", lessonKey)
                 .putExtra("stage", stage)
                 .putExtra("dark", dark)
                 .putExtra("practice", practice),
             REQUEST,
         )
+        // The stage's own WebView now keeps the engine alive; release the warm-up one shortly after it has started.
+        main.postDelayed(releaseWarm, 3000)
     }
 
     private companion object {
         const val REQUEST = 4721
+        const val WARM_KEEP_MS = 120_000L
     }
 }
 
