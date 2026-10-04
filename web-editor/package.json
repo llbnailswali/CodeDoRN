@@ -54,7 +54,8 @@
     "check:native-data": "tsx scripts/generate-native-data.ts --check",
     "test:stage-source": "tsx scripts/test-stage-source.ts",
     "generate:stage-keys": "tsx scripts/generate-stage-lesson-keys.ts",
-    "check:stage-keys": "tsx scripts/generate-stage-lesson-keys.ts --check"
+    "check:stage-keys": "tsx scripts/generate-stage-lesson-keys.ts --check",
+    "audit:quiz-bank": "tsx scripts/audit-quiz-bank.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",

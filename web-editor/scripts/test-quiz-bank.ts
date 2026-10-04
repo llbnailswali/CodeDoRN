@@ -7,6 +7,7 @@
 import { compileAndRunKotlin } from '../src/utils/kotlinRunner';
 import { QuizQuestion } from '../src/utils/quizQuestions';
 import { WORLD_1_QUIZ } from '../src/data/quizBank/world1Quiz';
+import { WORLD_1_QUIZ_SETS, WORLD_1_QUIZ_BOSS } from '../src/data/quizBank/quizSets';
 import { CODEDO_MASTER_WORLDS } from '../src/data/curriculum/masterCurriculumCatalog';
 import { conceptAccuracy } from '../src/utils/quizProgress';
 
@@ -34,6 +35,12 @@ async function main() {
       topics[q.topic] = (topics[q.topic] ?? 0) + 1;
       if (q.worldId !== worldId) fail(q, `worldId ${q.worldId} does not match the bank ${worldId}`);
       if (!catalogLessons.has(q.lessonId) || !q.lessonId.startsWith(worldId + '-')) fail(q, `lessonId ${q.lessonId} is not a lesson of ${worldId}`);
+      if (q.setId) {
+        const set = WORLD_1_QUIZ_SETS.find((x) => x.id === q.setId);
+        if (!set) fail(q, `setId ${q.setId} is not a quiz set`);
+        else if (q.lessonId !== set.lessonIds[set.lessonIds.length - 1]) fail(q, `a set question's lessonId must be the last lesson of its set (${set.lessonIds[set.lessonIds.length - 1]})`);
+        else if (q.topic !== set.title) fail(q, `a set question's topic must be the set title (${set.title})`);
+      }
       if (!q.concept.trim()) fail(q, 'missing concept');
       if (!q.question.trim() || !q.explanation.trim() || !q.hint?.trim()) fail(q, 'missing question, explanation or hint');
       if (q.xp !== { easy: 10, medium: 15, hard: 20 }[q.difficulty]) fail(q, `xp ${q.xp} does not match difficulty ${q.difficulty}`);
@@ -94,6 +101,24 @@ async function main() {
           break;
         }
       }
+    }
+    for (const set of WORLD_1_QUIZ_SETS.filter((x) => x.worldId === worldId)) {
+      if (set.lessonIds.length < 1) failures.push(`${set.id}: a set needs at least one lesson`);
+      for (const id of set.lessonIds) if (!catalogLessons.has(id)) failures.push(`${set.id}: lesson ${id} is not in the catalog`);
+      const own = bank.filter((q) => q.setId === set.id);
+      // Sets are filled in one at a time: a set with its own questions needs a real number of them, including a hard one.
+      if (own.length > 0 && own.length < 4) failures.push(`${set.id}: only ${own.length} set questions`);
+      if (own.length > 0 && !own.some((q) => q.difficulty === 'hard')) failures.push(`${set.id}: no hard set question`);
+      if (own.length === 0 && set.lessonIds.length > 1) notes.push(`${set.id}: no cross-lesson set questions yet`);
+      console.log(`  set ${set.id}: ${own.length} own questions, ${bank.filter((q) => !q.setId && set.lessonIds.includes(q.lessonId)).length} from its lessons`);
+    }
+    // The Quiz offers sets and the full quiz only, so every lesson with questions must belong to exactly one set.
+    const sets = WORLD_1_QUIZ_SETS.filter((x) => x.worldId === worldId);
+    for (const id of new Set(bank.map((q) => q.lessonId))) {
+      const owners = sets.filter((x) => x.lessonIds.includes(id));
+      if (id === WORLD_1_QUIZ_BOSS.lessonId) {
+        if (owners.length !== 0) failures.push(`${worldId}: the boss lesson ${id} must not be in a quiz set (it has its own boss quiz)`);
+      } else if (owners.length !== 1) failures.push(`${worldId}: lesson ${id} is in ${owners.length} quiz sets (must be exactly one)`);
     }
     const lessonsUsed = new Set(bank.map((q) => q.lessonId));
     const worldLessons = CODEDO_MASTER_WORLDS.find((w) => w.id === worldId)?.lessons.map((l) => l.id) ?? [];

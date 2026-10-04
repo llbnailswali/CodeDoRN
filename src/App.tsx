@@ -9,23 +9,27 @@ import { HelpLevel, HelpSheet } from './HelpSheet';
 import { PracticeContent } from './PracticeScreen';
 import { QuizContent } from './QuizScreen';
 import { QuizSessionScreen } from './QuizSessionScreen';
-import { QuizLessonWiseScreen } from './QuizLessonWiseScreen';
+import { QuizHubScreen } from './QuizHubScreen';
 import { TaskListScreen } from './TaskListScreen';
 import { BottomNav, Header, TabId } from './shell';
 import { DARK, FONT, LIGHT } from './theme';
 import { ProfileScreen } from './ProfileScreen';
-import { QuizProgress, buildSession, getQuizWorlds } from './quizData';
+import { QuizPass, QuizProgress, buildSession, getQuizBoss, getQuizSets, getQuizWorldBank, getQuizWorlds, quizPassStatus } from './quizData';
+import { QuizQuestion } from './quizQuestions';
 
 // The React Native app: ONE shell (top bar + bottom tab bar) that every tab shares, with each tab's content inside it. Tapping a tab
 // swaps the content; the shell, the theme and the Learn tab's GAP setting stay put. UI only, with sample data.
 
 const BADGES: Record<TabId, string> = { learn: 'LEARN', quiz: 'QUIZ', practice: 'PRACTICE', profile: 'PROFILE' };
 const THEME_STORAGE_KEY = 'codedo_theme';
+const HELP_LEVEL_KEY = 'codedo_help_level';
+const QUIZ_PROGRESS_KEY = 'codedo_native_quiz_progress';
+const QUIZ_PASS_KEY = 'codedo_native_quiz_pass';
 // Experimental lesson implementation. Keep false until the persistent-stage
 // version has been validated on-device; switching back is one line.
 const USE_PERSISTENT_LESSON = true;
 // Keep the current direct quiz flow available; switch to true to test the lesson-wise variant.
-const USE_LESSON_WISE_QUIZ = true;
+const USE_QUIZ_HUB = true;
 
 /** Tabs that are not built in React Native yet (Profile). */
 function Placeholder({ label, dark }: { label: string; dark: boolean }) {
@@ -44,12 +48,45 @@ export function App({ dark = true }: { dark?: boolean }) {
   const [gap, setGap] = React.useState(12);
   const [helpLevel, setHelpLevel] = React.useState<HelpLevel>('beginner');
   const [helpOpen, setHelpOpen] = React.useState(false);
+  // The help level is the learner's default for Practice, saved on the device (set from the Practice sheet or the Profile tab).
+  React.useEffect(() => {
+    AsyncStorage.getItem(HELP_LEVEL_KEY).then((saved) => {
+      if (saved === 'beginner' || saved === 'intermediate' || saved === 'experienced') setHelpLevel(saved);
+    }).catch(() => {});
+  }, []);
+  const chooseHelpLevel = React.useCallback((level: HelpLevel) => {
+    setHelpLevel(level);
+    AsyncStorage.setItem(HELP_LEVEL_KEY, level).catch(() => {});
+  }, []);
   // The World whose task list is open (it is a full screen over the shell, like the web's separate route).
   const [taskWorld, setTaskWorld] = React.useState<number | null>(null);
   // A quiz being played (full screen over the shell). `world` is absent for the Quick quiz.
-  const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[] } | null>(null);
-  const [lessonWiseQuiz, setLessonWiseQuiz] = React.useState<{ order: number; title: string } | null>(null);
+  const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[]; label?: string; /** Counts toward the current pass (sets and the full quiz), unlike a review or a quick quiz. */ track?: boolean; /** Practice on a finished set: nothing is saved, so it stays finished. */ explore?: boolean; /** Questions already answered before this session, and the whole quiz's length, for the position shown. */ offset?: number; total?: number } | null>(null);
+  const [quizHub, setQuizHub] = React.useState<{ order: number; title: string } | null>(null);
+  // Lifetime results per question (never reset by a retake) and the questions answered in the current pass through the ordered quizzes.
+  // Both are saved on the device, each answer as it is given, so a quiz can be left at any point and continued later.
   const [quizProgress, setQuizProgress] = React.useState<QuizProgress>({});
+  const [quizPass, setQuizPass] = React.useState<QuizPass>({});
+  const [quizLoaded, setQuizLoaded] = React.useState(false);
+  React.useEffect(() => {
+    Promise.all([AsyncStorage.getItem(QUIZ_PROGRESS_KEY), AsyncStorage.getItem(QUIZ_PASS_KEY)])
+      .then(([progress, pass]) => {
+        try {
+          if (progress) setQuizProgress((current) => ({ ...JSON.parse(progress), ...current }));
+          if (pass) setQuizPass((current) => ({ ...JSON.parse(pass), ...current }));
+        } catch {
+          // unreadable saved progress: start fresh
+        }
+      })
+      .catch(() => {})
+      .finally(() => setQuizLoaded(true));
+  }, []);
+  React.useEffect(() => {
+    if (quizLoaded) AsyncStorage.setItem(QUIZ_PROGRESS_KEY, JSON.stringify(quizProgress)).catch(() => {});
+  }, [quizProgress, quizLoaded]);
+  React.useEffect(() => {
+    if (quizLoaded) AsyncStorage.setItem(QUIZ_PASS_KEY, JSON.stringify(quizPass)).catch(() => {});
+  }, [quizPass, quizLoaded]);
   // The World whose lessons are listed (the Curriculum screen).
   const [curriculumWorld, setCurriculumWorld] = React.useState<number | null>(null);
   // The lesson being played (the five-stage screen, full screen over everything).
@@ -83,12 +120,13 @@ export function App({ dark = true }: { dark?: boolean }) {
         setHelpOpen(false);
         return true;
       }
-      if (lessonWiseQuiz !== null) {
-        setLessonWiseQuiz(null);
-        return true;
-      }
+      // A playing quiz closes first and returns to the hub it was started from (if any); the hub then closes to the Quiz tab.
       if (quiz !== null) {
         setQuiz(null);
+        return true;
+      }
+      if (quizHub !== null) {
+        setQuizHub(null);
         return true;
       }
       if (curriculumWorld !== null) {
@@ -102,7 +140,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       return false;
     });
     return () => sub.remove();
-  }, [helpOpen, lessonWiseQuiz, taskWorld, quiz, curriculumWorld]);
+  }, [helpOpen, quizHub, taskWorld, quiz, curriculumWorld]);
 
   // The Learn, Quiz and Practice tabs stay mounted (hidden when not shown), so each keeps its scroll position and nothing is re-measured.
   const selectTab = React.useCallback((nextTab: TabId) => {
@@ -117,15 +155,60 @@ export function App({ dark = true }: { dark?: boolean }) {
   const openHelp = React.useCallback(() => setHelpOpen(true), []);
   const openTaskWorld = React.useCallback((order: number) => setTaskWorld(order), []);
   const openCurriculumWorld = React.useCallback((order: number) => setCurriculumWorld(order), []);
-  const resetQuizProgress = React.useCallback(() => setQuizProgress({}), []);
+  const resetQuizProgress = React.useCallback(() => { setQuizProgress({}); setQuizPass({}); }, []);
+  // Clears every answer, stat and pass mark of one World (all of its questions, including lessons the review filter hides).
+  const resetWorldQuiz = React.useCallback((order: number) => {
+    const ids = new Set(getQuizWorldBank(order).map((q) => q.id));
+    const without = <T,>(record: Record<string, T>) => Object.fromEntries(Object.entries(record).filter(([id]) => !ids.has(id))) as Record<string, T>;
+    setQuizProgress((previous) => without(previous));
+    setQuizPass((previous) => without(previous));
+  }, []);
+  // Saves one answer the moment it is committed: the lifetime record always, the current pass only for an ordered quiz.
+  const recordAnswer = React.useCallback((question: QuizQuestion, correct: boolean, track: boolean) => {
+    setQuizProgress((previous) => {
+      const old = previous[question.id] ?? { correct: 0, wrong: 0, last: 0 };
+      return { ...previous, [question.id]: { correct: old.correct + (correct ? 1 : 0), wrong: old.wrong + (correct ? 0 : 1), last: Date.now(), lastCorrect: correct } };
+    });
+    if (track) setQuizPass((previous) => (previous[question.id] ? previous : { ...previous, [question.id]: true }));
+  }, []);
+  // Starts an ordered quiz (a set or the full quiz) where the learner left off. When everything in it is answered it is a retake: its
+  // questions are cleared from the pass and it starts again from the first one. The order is fixed, never shuffled.
+  const startOrdered = React.useCallback((world: { order: number; title: string }, ordered: QuizQuestion[], label: string) => {
+    let remaining = ordered.filter((q) => !quizPass[q.id]);
+    if (remaining.length === 0) {
+      setQuizPass((previous) => {
+        const next = { ...previous };
+        ordered.forEach((q) => delete next[q.id]);
+        return next;
+      });
+      remaining = ordered;
+    }
+    if (remaining.length) setQuiz({ world, questions: remaining, label, track: true, offset: ordered.length - remaining.length, total: ordered.length });
+  }, [quizPass]);
+  // What to offer when a set ends: the next unfinished set (later ones first, then earlier ones), then the Boss quiz once every set is answered.
+  const nextAfterQuiz = React.useMemo(() => {
+    if (!quiz || !quiz.track || !quiz.world) return null;
+    const bank = getQuizWorlds().find((w) => w.order === quiz.world!.order)?.questions ?? [];
+    const sets = getQuizSets(quiz.world.order, bank);
+    const at = sets.findIndex((set) => set.title === quiz.label);
+    if (at < 0) return null;
+    // Only sets still to answer are offered next; a set waiting on review is reviewed from the hub, not restarted.
+    const unfinished = (set: (typeof sets)[number]) => ['start', 'continue'].includes(quizPassStatus(set.questions, quizPass, quizProgress).state);
+    const upcoming = [...sets.slice(at + 1), ...sets.slice(0, at)].find(unfinished);
+    if (upcoming) return { label: upcoming.title, questions: upcoming.questions };
+    const boss = getQuizBoss(quiz.world.order, bank);
+    const setsFinished = sets.every((set) => quizPassStatus(set.questions, quizPass, quizProgress).state === 'retake');
+    if (boss && setsFinished && ['start', 'continue'].includes(quizPassStatus(boss.questions, quizPass, quizProgress).state)) return { label: 'Boss quiz', questions: boss.questions };
+    return null;
+  }, [quiz, quizPass, quizProgress]);
   const openQuiz = React.useCallback((world?: { order: number; title: string }, review?: boolean) => {
     const questions = buildSession(getQuizWorlds(), world?.order, quizProgress, review);
-    if (questions.length) setQuiz({ world, questions });
+    if (questions.length) setQuiz({ world, questions, label: review ? 'Review mistakes' : world ? 'Full quiz' : 'Quick quiz' });
   }, [quizProgress]);
   const openQuizCard = React.useCallback((world?: { order: number; title: string }, review?: boolean) => {
     // A World card opens that World's quiz hub (progress, the whole bank in one tap, review, lessons). No mode-choice sheet.
-    if (world && !review && USE_LESSON_WISE_QUIZ) {
-      setLessonWiseQuiz(world);
+    if (world && !review && USE_QUIZ_HUB) {
+      setQuizHub(world);
       return;
     }
     else openQuiz(world, review);
@@ -157,7 +240,7 @@ export function App({ dark = true }: { dark?: boolean }) {
           <PracticeContent p={p} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} />
         </View>
         <View pointerEvents={tab === 'profile' ? 'auto' : 'none'} style={show('profile')}>
-          <ProfileScreen p={p} completedWorlds={0} quizAnswered={Object.keys(quizProgress).length} onToggleTheme={toggleTheme} onReset={resetQuizProgress} />
+          <ProfileScreen p={p} quizProgress={quizProgress} onToggleTheme={toggleTheme} />
         </View>
       </View>
       <BottomNav p={p} active={tab} onSelect={selectTab} />
@@ -206,32 +289,28 @@ export function App({ dark = true }: { dark?: boolean }) {
         </View>
       )}
       {quiz !== null && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
-          <QuizSessionScreen p={p} world={quiz.world} questions={quiz.questions} topInset={topInset} onExit={() => setQuiz(null)} onComplete={(questions, results) => {
-            setQuizProgress((previous) => {
-              const next = { ...previous };
-              questions.forEach((question, index) => {
-                const old = next[question.id] ?? { correct: 0, wrong: 0, last: 0 };
-                const correct = results[index] === 'correct';
-                next[question.id] = { correct: old.correct + (correct ? 1 : 0), wrong: old.wrong + (correct ? 0 : 1), last: Date.now() };
-              });
-              return next;
-            });
-          }} />
+        <View style={[StyleSheet.absoluteFill, { zIndex: 110, backgroundColor: p.page }]}>
+          <QuizSessionScreen key={`${quiz.label}-${quiz.offset ?? 0}`} p={p} world={quiz.world} label={quiz.label} questions={quiz.questions} nextLabel={nextAfterQuiz?.label} onNext={nextAfterQuiz && quiz.world ? () => startOrdered(quiz.world!, nextAfterQuiz.questions, nextAfterQuiz.label) : undefined} stepOffset={quiz.offset} totalOverride={quiz.total} topInset={topInset} onExit={() => setQuiz(null)} onAnswer={(question, correct) => { if (!quiz.explore) recordAnswer(question, correct, !!quiz.track); }} />
         </View>
       )}
-      {lessonWiseQuiz !== null && (
+      {quizHub !== null && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}> 
-          <QuizLessonWiseScreen
+          <QuizHubScreen
             p={p}
-            world={lessonWiseQuiz}
-            questions={getQuizWorlds().find((w) => w.order === lessonWiseQuiz.order)?.questions ?? []}
+            world={quizHub}
+            questions={getQuizWorlds().find((w) => w.order === quizHub.order)?.questions ?? []}
+            sets={getQuizSets(quizHub.order, getQuizWorlds().find((w) => w.order === quizHub.order)?.questions ?? [])}
+            boss={getQuizBoss(quizHub.order, getQuizWorlds().find((w) => w.order === quizHub.order)?.questions ?? [])}
             progress={quizProgress}
+            pass={quizPass}
             topInset={topInset}
-            onBack={() => setLessonWiseQuiz(null)}
-            onStart={(questions) => { setLessonWiseQuiz(null); setQuiz({ world: lessonWiseQuiz, questions }); }}
-            onStartAll={() => { const world = lessonWiseQuiz; setLessonWiseQuiz(null); openQuiz(world); }}
-            onReview={() => { const world = lessonWiseQuiz; setLessonWiseQuiz(null); openQuiz(world, true); }}
+            onBack={() => setQuizHub(null)}
+            // The hub stays mounted under the quiz, so leaving the quiz returns here (with the updated progress), not to the Quiz tab.
+            onStart={(questions, label) => startOrdered(quizHub, questions, label)}
+            onResetWorld={() => resetWorldQuiz(quizHub.order)}
+            onExplore={(questions, title) => setQuiz({ world: quizHub, questions, label: `${title} · Explore`, explore: true })}
+            onReviewSet={(questions, title) => setQuiz({ world: quizHub, questions, label: `Review · ${title}` })}
+            onReview={() => openQuiz(quizHub, true)}
           />
         </View>
       )}
@@ -240,7 +319,7 @@ export function App({ dark = true }: { dark?: boolean }) {
           p={p}
           current={helpLevel}
           onChoose={(level) => {
-            setHelpLevel(level);
+            chooseHelpLevel(level);
             setHelpOpen(false);
           }}
           onClose={() => setHelpOpen(false)}

@@ -75,6 +75,67 @@ const LINE_STYLE: Record<CodeLineState, { backgroundColor: string; borderLeftCol
   diff: { backgroundColor: 'rgba(252,211,77,0.15)', borderLeftColor: '#FCD34D' },
 };
 
+/**
+ * A question sentence in which text between backticks is code or an exact output (for example "prints `Total: 5` on ONE line"). Those parts are
+ * drawn as small rounded chips in the editor colour and the monospace code font, so the learner can tell what is quoted from what is being
+ * asked. React Native cannot round the background of text inside a sentence, so the sentence is laid out as wrapping words and chips. A
+ * collapsed row (numberOfLines) keeps the code in the code font without a box, because that layout cannot be clamped to lines.
+ */
+function RichText({ text, style, dark, numberOfLines }: { text: string; style: object; dark: boolean; numberOfLines?: number }) {
+  const parts = text.replace(/\s+/g, ' ').trim().split('`');
+  const base = StyleSheet.flatten(style) as { fontSize?: number; lineHeight?: number };
+  const codeSize = (base.fontSize ?? 15) * 0.88;
+  if (numberOfLines) {
+    return (
+      <Text style={style} numberOfLines={numberOfLines}>
+        {parts.map((part, i) =>
+          i % 2 === 1 ? (
+            <Text key={i} style={{ fontFamily: FONT.mono.sb, color: dark ? '#A5B4FC' : '#4338CA' }}>
+              {part}
+            </Text>
+          ) : (
+            part
+          ),
+        )}
+      </Text>
+    );
+  }
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+      {parts.flatMap((part, i) => {
+        if (i % 2 === 1) {
+          const spaceAfter = /^\s/.test(parts[i + 1] ?? '');
+          return [
+            <View key={`c${i}`} style={{ backgroundColor: dark ? '#0D1322' : '#EEF2FF', borderRadius: 7, borderWidth: 1, borderColor: dark ? 'rgba(129,140,248,0.35)' : '#C7D2FE', paddingHorizontal: 8, paddingVertical: 2, marginRight: spaceAfter ? 5 : 0, marginVertical: 1 }}>
+              <Text style={{ fontFamily: FONT.mono.sb, fontSize: codeSize, lineHeight: (base.lineHeight ?? codeSize * 1.4) * 0.9, color: dark ? '#E2E8F0' : '#4338CA', includeFontPadding: false }}>{part}</Text>
+            </View>,
+          ];
+        }
+        return part
+          .split(' ')
+          .filter((word) => word !== '')
+          .map((word, j, words) => (
+            <Text key={`w${i}-${j}`} style={style}>
+              {word + (j < words.length - 1 || /\s$/.test(part) ? ' ' : '')}
+            </Text>
+          ));
+      })}
+    </View>
+  );
+}
+
+/** An explanation: one short paragraph per sentence (easier to scan than a wall of text), with `code` parts drawn as chips. */
+function ExplainText({ text, style, dark }: { text: string; style: object; dark: boolean }) {
+  const sentences = text.trim().split(/(?<=[.!?])\s+(?=[A-Z`])/);
+  return (
+    <View style={{ gap: 6 }}>
+      {sentences.map((sentence, i) => (
+        <RichText key={i} text={sentence} style={style} dark={dark} />
+      ))}
+    </View>
+  );
+}
+
 function CodePanel({
   lines, fileName = 'Main.kt', compact, onLineClick, lineState, lineNote, fill,
 }: {
@@ -138,9 +199,21 @@ function CodePanel({
           const note = lineNote ? lineNote(idx) : null;
           const tappable = !!onLineClick;
           const row = (
-            <View style={[s.codeRow, { minHeight: tappable ? 48 : 28 }, LINE_STYLE[state]]}>
+            <View
+              style={[
+                s.codeRow,
+                { minHeight: tappable ? 48 : 28 },
+                // Tappable lines read as separate rows: a tint, a thin divider and a tap circle on the right.
+                tappable && state === 'idle' && { backgroundColor: 'rgba(255,255,255,0.04)' },
+                tappable && idx < lines.length - 1 && { borderBottomWidth: BW, borderBottomColor: 'rgba(148,163,184,0.22)' },
+                LINE_STYLE[state],
+              ]}
+            >
               <Text style={s.gutter}>{idx + 1}</Text>
-              <View style={{ flex: 1, paddingRight: 12 }}>{renderLine(line)}</View>
+              <View style={{ flex: 1, paddingRight: 8 }}>{renderLine(line)}</View>
+              {tappable && (
+                <View style={[s.tapCircle, state === 'selected' && { backgroundColor: '#6366F1', borderColor: '#6366F1' }]} />
+              )}
             </View>
           );
           return (
@@ -200,8 +273,9 @@ const surface = (state: ChoiceState, dark: boolean) => {
 const tagFor = (state: ChoiceState): { icon: string; text: string } | null =>
   state === 'correct' ? { icon: 'check_circle', text: 'Correct' } : state === 'wrong' ? { icon: 'cancel', text: 'Your answer' } : state === 'missed' ? { icon: 'check_circle', text: 'Correct answer' } : null;
 
-function Indicator({ state, multi }: { state: ChoiceState; multi: boolean }) {
-  const shape = { borderRadius: multi ? 6 : 12 };
+function Indicator({ state, multi, compact }: { state: ChoiceState; multi: boolean; compact?: boolean }) {
+  const size = compact ? { width: 18, height: 18 } : null;
+  const shape = { borderRadius: multi ? (compact ? 5 : 6) : compact ? 9 : 12, ...size };
   if (state === 'selected')
     return (
       <View style={[s.indicator, shape, { backgroundColor: '#6366F1' }]}>
@@ -228,17 +302,18 @@ function tagColor(state: ChoiceState, dark: boolean) {
 }
 
 function Option({
-  label, mono, multi = false, state, locked, dark, onPress,
-}: { label: string; mono?: boolean; multi?: boolean; state: ChoiceState; locked: boolean; dark: boolean; onPress: () => void }) {
-  const tag = tagFor(state);
+  label, mono, multi = false, state, locked, dark, onPress, compact = false,
+}: { label: string; mono?: boolean; multi?: boolean; state: ChoiceState; locked: boolean; dark: boolean; onPress: () => void; /** A trimmed-down row (smaller height and text), used where many options are listed, such as the review. */ compact?: boolean }) {
+  const full = tagFor(state);
+  const tag = full && compact ? { ...full, text: state === 'wrong' ? 'Your pick' : 'Correct' } : full;
   return (
-    <Pressable disabled={locked} onPress={onPress} style={[s.option, surface(state, dark)]}>
-      <Indicator state={state} multi={multi} />
-      <Text style={[mono ? s.optionMono : s.optionText, { color: dark ? '#F1F5F9' : '#222638' }]}>{label}</Text>
+    <Pressable disabled={locked} onPress={onPress} style={[s.option, compact && s.optionCompact, surface(state, dark)]}>
+      <Indicator state={state} multi={multi} compact={compact} />
+      <Text style={[mono ? s.optionMono : s.optionText, compact && s.optionTextCompact, { color: dark ? '#F1F5F9' : '#222638' }]}>{label}</Text>
       {tag && (
         <View style={s.tag}>
-          <Icon name={tag.icon} size={16} exact color={tagColor(state, dark)} />
-          <Text style={[s.tagText, { color: tagColor(state, dark) }]}>{tag.text}</Text>
+          <Icon name={tag.icon} size={compact ? 13 : 16} exact color={tagColor(state, dark)} />
+          <Text style={[s.tagText, compact && s.tagTextCompact, { color: tagColor(state, dark) }]}>{tag.text}</Text>
         </View>
       )}
     </Pressable>
@@ -252,7 +327,7 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
       return (
         <View style={{ gap: 16 }}>
           {q.code && <CodePanel lines={q.code} />}
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: 8 }}>
             {q.options.map((option, i) => (
               <Option
                 key={option + i}
@@ -262,6 +337,7 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
                 locked={checked}
                 dark={dark}
                 onPress={() => onChange(i)}
+                compact
               />
             ))}
           </View>
@@ -270,7 +346,7 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
     case 'multi_select': {
       const picked = Array.isArray(value) ? value : [];
       return (
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 8 }}>
           {q.options.map((option, i) => (
             <Option
               key={option + i}
@@ -281,6 +357,7 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
               locked={checked}
               dark={dark}
               onPress={() => onChange(picked.includes(i) ? picked.filter((x) => x !== i) : [...picked, i])}
+              compact
             />
           ))}
         </View>
@@ -326,12 +403,17 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
         return 'idle';
       };
       return (
+        <View style={{ gap: 10 }}>
+        {!checked && (
+          <Text style={[s.tapInstruction, { color: dark ? '#A5B4FC' : '#4338CA' }]}>Tap the one line with the error · {q.code.length} lines</Text>
+        )}
         <CodePanel
           lines={q.code}
           onLineClick={checked ? undefined : (i) => onChange(i)}
           lineState={lineState}
           lineNote={(i) => (checked && i === q.errorLine ? q.errorNote ?? null : null)}
         />
+        </View>
       );
     }
     case 'true_false':
@@ -393,16 +475,18 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
 // ---------------------------------------------------------------------------------------------------------------------
 
 function QuestionScreen({
-  p, q, step, total, world, topInset, onClose, onContinue,
+  p, q, step, total, world, label, topInset, onClose, onContinue,
 }: {
   p: Palette;
   q: QuizQuestion;
   step: number;
   total: number;
   world?: { order: number; title: string };
+  /** What this quiz is, shown in the toolbar instead of the World's name: a set's title, "Full quiz", "Review mistakes", "Quick quiz". */
+  label?: string;
   topInset: number;
   onClose: () => void;
-  onContinue: (correct: boolean) => void;
+  onContinue: (correct: boolean, answer: QuizAnswer) => void;
 }) {
   const dark = p.isDark;
   const [value, setValue] = React.useState<QuizAnswer>(null);
@@ -423,6 +507,18 @@ function QuestionScreen({
     if (!answered || checked) return;
     setChecked(true);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+  };
+
+  // A question answered with a single tap (choose an option, true/false, A or B, tap a line, tap a chip) is checked the moment it is tapped,
+  // which saves a separate "Check answer" tap. Multi-select keeps its Check button: the learner ticks several options and decides when done.
+  const checksOnTap = q.type !== 'multi_select';
+  const changeAnswer = (next: QuizAnswer) => {
+    if (checked) return;
+    setValue(next);
+    if (checksOnTap && hasAnswer(next)) {
+      setChecked(true);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    }
   };
 
   const requestClose = () => (step > 1 || answered ? setConfirmLeave(true) : onClose());
@@ -449,10 +545,10 @@ function QuestionScreen({
             <Icon name="close" size={20} exact color={dark ? '#E2E8F0' : '#334155'} />
           </Pressable>
           <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
-            {world && accent && (
+            {(world || label) && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={[s.worldTag, { color: dark ? accent[0] : accent[1] }]}>W{world.order}</Text>
-                <Text numberOfLines={1} style={[s.worldTitle, { color: title }]}>{world.title}</Text>
+                {world && accent && <Text style={[s.worldTag, { color: dark ? accent[0] : accent[1] }]}>W{world.order}</Text>}
+                <Text numberOfLines={1} style={[s.worldTitle, { color: title }]}>{label ?? world?.title}</Text>
               </View>
             )}
             <View style={[s.progressTrack, { backgroundColor: dark ? 'rgba(255,255,255,0.15)' : '#CBD5E1' }]}>
@@ -466,18 +562,43 @@ function QuestionScreen({
         </View>
       </View>
 
+      {/* Sticky, full width: the concept and level stay in view while the question scrolls, and read as a label apart from the question. */}
+      <View style={[s.conceptRow, { backgroundColor: dark ? '#121826' : '#EEF1F7', borderBottomColor: dark ? 'rgba(255,255,255,0.10)' : '#DDE3EE' }]}>
+        <Text numberOfLines={1} style={[s.concept, { color: muted, flexShrink: 1 }]}>Concept · {q.topic}</Text>
+        <View style={s.badgeRow}>
+        {q.type === 'multi_select' && (
+          <View style={[s.diffPill, { backgroundColor: dark ? 'rgba(99,102,241,0.25)' : '#E0E7FF' }]}>
+            <Text style={[s.diffText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>Multiple</Text>
+          </View>
+        )}
+        {(() => {
+          // The level is its own badge, coloured by difficulty, apart from the concept text.
+          const tone = q.difficulty === 'easy'
+            ? { bg: dark ? 'rgba(16,185,129,0.18)' : '#D1FAE5', fg: dark ? '#6EE7B7' : '#047857' }
+            : q.difficulty === 'hard'
+            ? { bg: dark ? 'rgba(244,63,94,0.18)' : '#FFE4E6', fg: dark ? '#FDA4AF' : '#BE123C' }
+            : { bg: dark ? 'rgba(245,158,11,0.18)' : '#FEF3C7', fg: dark ? '#FCD34D' : '#B45309' };
+          return (
+            <View style={[s.diffPill, { backgroundColor: tone.bg }]}>
+              <Text style={[s.diffText, { color: tone.fg }]}>{q.difficulty}</Text>
+            </View>
+          );
+        })()}
+        </View>
+      </View>
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 16 }}>
         <View style={{ gap: 12 }}>
-          <Text style={[s.concept, { color: muted }]}>Concept · {q.topic} · {q.difficulty}</Text>
-          <Text style={[s.question, { color: title }]}>{q.question}</Text>
-          {q.type === 'multi_select' && Array.isArray(value) && value.length > 0 && (
+          <RichText text={q.question} style={[s.question, { color: title }]} dark={dark} />
+          {q.type === 'multi_select' && (
             <View style={[s.selectedPill, { backgroundColor: dark ? 'rgba(99,102,241,0.2)' : '#E0E7FF' }]}>
-              <Text style={[s.selectedText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>{value.length} selected</Text>
+              <Text style={[s.selectedText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>
+                Select all that apply{Array.isArray(value) && value.length > 0 ? ` · ${value.length} selected` : ''}
+              </Text>
             </View>
           )}
         </View>
 
-        <AnswerBody q={q} value={value} onChange={setValue} checked={checked} dark={dark} />
+        <AnswerBody q={q} value={value} onChange={changeAnswer} checked={checked} dark={dark} />
 
         {!checked && !!q.hint && (
           <View style={{ flexDirection: 'row' }}>
@@ -515,8 +636,8 @@ function QuestionScreen({
                 : dark ? { borderColor: 'rgba(251,113,133,0.7)', backgroundColor: 'rgba(251,113,133,0.10)' } : { borderColor: '#FB7185', backgroundColor: '#FFF1F2' },
             ]}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Icon name={correct ? 'check_circle' : 'cancel'} size={26} exact filled color={correct ? '#10B981' : '#F43F5E'} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name={correct ? 'check_circle' : 'cancel'} size={18} exact filled color={correct ? '#10B981' : '#F43F5E'} />
               <Text style={[s.feedbackTitle, { color: correct ? (dark ? '#A7F3D0' : '#065F46') : dark ? '#FECDD3' : '#9F1239' }]}>{correct ? 'Correct!' : 'Not quite'}</Text>
             </View>
             {!correct && (
@@ -525,7 +646,7 @@ function QuestionScreen({
                 <Text style={{ fontFamily: FONT.mono.b }}>{correctAnswerText(q)}</Text>
               </Text>
             )}
-            <Text style={[s.explain, { color: dark ? '#E2E8F0' : '#334155' }]}>{q.explanation}</Text>
+            <ExplainText text={q.explanation} style={[s.explain, { color: dark ? '#E2E8F0' : '#334155' }]} dark={dark} />
             <Text style={[s.conceptLine, { color: muted }]}>Concept: {q.topic}</Text>
           </View>
         )}
@@ -546,10 +667,10 @@ function QuestionScreen({
           {__DEV__ && (
             <View style={s.debugRow}>
               <Text style={[s.debugLabel, { color: muted }]}>DEBUG</Text>
-              <Pressable onPress={() => onContinue(true)} style={[s.debugBtn, { borderColor: '#10B981', backgroundColor: dark ? 'rgba(16,185,129,0.12)' : '#ECFDF5' }]}>
+              <Pressable onPress={() => onContinue(true, value)} style={[s.debugBtn, { borderColor: '#10B981', backgroundColor: dark ? 'rgba(16,185,129,0.12)' : '#ECFDF5' }]}>
                 <Text style={[s.debugBtnText, { color: dark ? '#6EE7B7' : '#047857' }]}>Pass</Text>
               </Pressable>
-              <Pressable onPress={() => onContinue(false)} style={[s.debugBtn, { borderColor: '#F43F5E', backgroundColor: dark ? 'rgba(244,63,94,0.12)' : '#FFF1F2' }]}>
+              <Pressable onPress={() => onContinue(false, value)} style={[s.debugBtn, { borderColor: '#F43F5E', backgroundColor: dark ? 'rgba(244,63,94,0.12)' : '#FFF1F2' }]}>
                 <Text style={[s.debugBtnText, { color: dark ? '#FDA4AF' : '#BE123C' }]}>Fail</Text>
               </Pressable>
             </View>
@@ -557,7 +678,7 @@ function QuestionScreen({
           {answered || checked ? <ShadowStack r={16} shadows={[{ dy: 6, blur: 20, rgb: '99,102,241', alpha: 0.35 }]} /> : null}
           <Pressable
             disabled={!checked && !answered}
-            onPress={() => (checked ? onContinue(correct) : check())}
+            onPress={() => (checked ? onContinue(correct, value) : check())}
             style={[s.mainBtn, !checked && !answered ? { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#E2E8F0' } : { backgroundColor: '#6366F1' }]}
           >
             <Text style={[s.mainBtnText, { color: !checked && !answered ? (dark ? '#64748B' : '#94A3B8') : '#FFFFFF' }]}>
@@ -592,7 +713,62 @@ function QuestionScreen({
 
 const headline = (pct: number) => (pct === 100 ? 'Perfect run!' : pct >= 70 ? 'Nice work!' : pct >= 40 ? 'Good start' : 'Keep practicing');
 
-function ReviewMistakesScreen({ p, world, questions, topInset, onTryAgain, onDone }: { p: Palette; world?: { order: number; title: string }; questions: QuizQuestion[]; topInset: number; onTryAgain: () => void; onDone: () => void }) {
+/** What the learner answered, as text, for question types that are not shown as a list of options. */
+const yourAnswerText = (q: QuizQuestion, answer: QuizAnswer): string | null => {
+  if (answer === null || answer === undefined) return null;
+  if (q.type === 'fill_blank' && typeof answer === 'string') return answer;
+  if (q.type === 'find_error' && typeof answer === 'number') return `line ${answer + 1}`;
+  if (q.type === 'code_comparison' && typeof answer === 'number') return answer === 0 ? 'Code A' : 'Code B';
+  return null;
+};
+
+/** All the choices of a missed question, with the learner's pick and the correct answer marked, so the mistake is easy to remember. */
+function ReviewChoices({ q, answer, dark }: { q: QuizQuestion; answer: QuizAnswer; dark: boolean }) {
+  const noop = () => {};
+  if (q.type === 'true_false') {
+    return (
+      <View style={{ gap: 6 }}>
+        {[true, false].map((option) => (
+          <Option key={String(option)} label={option ? 'True' : 'False'} state={choiceState(true, answer === option, option === q.answer)} locked dark={dark} onPress={noop} compact />
+        ))}
+      </View>
+    );
+  }
+  if (q.type === 'multi_select') {
+    const picked = Array.isArray(answer) ? answer : [];
+    return (
+      <View style={{ gap: 6 }}>
+        {q.options.map((option, i) => (
+          <Option key={option + i} label={option} mono={q.monoOptions} multi state={choiceState(true, picked.includes(i), q.answers.includes(i))} locked dark={dark} onPress={noop} compact />
+        ))}
+      </View>
+    );
+  }
+  if (q.type === 'single_choice' || q.type === 'predict_output') {
+    return (
+      <View style={{ gap: 10 }}>
+        {q.code && <CodePanel lines={q.code} compact />}
+        <View style={{ gap: 6 }}>
+          {q.options.map((option, i) => (
+            <Option
+              key={option + i}
+              label={option}
+              mono={q.type === 'predict_output' || (q.monoOptions && q.type === 'single_choice')}
+              state={choiceState(true, answer === i, i === q.answer)}
+              locked
+              dark={dark}
+              onPress={noop}
+              compact
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+  return null;
+}
+
+function ReviewMistakesScreen({ p, world, questions, answers, topInset, onTryAgain, onDone }: { p: Palette; world?: { order: number; title: string }; questions: QuizQuestion[]; /** What the learner chose for each of these questions, in the same order. */ answers: QuizAnswer[]; topInset: number; onTryAgain: () => void; onDone: () => void }) {
   const dark = p.isDark;
   const [openId, setOpenId] = React.useState<string | null>(questions[0]?.id ?? null);
   const bg = dark ? '#0B0F19' : '#F3F4F8';
@@ -606,15 +782,29 @@ function ReviewMistakesScreen({ p, world, questions, topInset, onTryAgain, onDon
     </View>
     <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 120 }}>
       {questions.map((q, i) => { const open = openId === q.id; return <View key={q.id} style={[s.reviewCard, { backgroundColor: dark ? '#121826' : '#FFFFFF', borderColor: open ? (dark ? '#818CF8' : '#A5B4FC') : (dark ? 'rgba(255,255,255,0.10)' : '#E2E8F0') }]}>
-        <Pressable onPress={() => setOpenId(open ? null : q.id)} style={s.reviewRow}><View style={[s.reviewNumber, { backgroundColor: dark ? 'rgba(251,113,133,0.18)' : '#FFE4E6' }]}><Text style={{ color: dark ? '#FDA4AF' : '#BE123C', fontFamily: FONT.mono.b }}>{i + 1}</Text></View><Text numberOfLines={open ? undefined : 2} style={[s.reviewQuestion, { color: title }]}>{q.question.replace(/\s+/g, ' ')}</Text><Icon name={open ? 'expand_less' : 'expand_more'} size={20} color={muted} /></Pressable>
-        {open && <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 10 }}><View style={[s.answerBox, { backgroundColor: dark ? 'rgba(16,185,129,0.10)' : '#ECFDF5', borderColor: dark ? 'rgba(110,231,183,0.4)' : '#A7F3D0' }]}><Text style={{ color: dark ? '#6EE7B7' : '#047857', fontFamily: FONT.outfit.b }}>✓ Correct answer</Text><Text style={[s.answerText, { color: dark ? '#D1FAE5' : '#065F46' }]}>{correctAnswerText(q)}</Text></View><Text style={[s.body13, { color: dark ? '#CBD5E1' : '#475569' }]}>{q.explanation}</Text></View>}
+        <Pressable onPress={() => setOpenId(open ? null : q.id)} style={s.reviewRow}><View style={[s.reviewNumber, { backgroundColor: dark ? 'rgba(251,113,133,0.18)' : '#FFE4E6' }]}><Text style={{ color: dark ? '#FDA4AF' : '#BE123C', fontFamily: FONT.mono.b }}>{i + 1}</Text></View><RichText text={q.question} numberOfLines={open ? undefined : 2} style={[s.reviewQuestion, { color: title }]} dark={dark} /><Icon name={open ? 'expand_less' : 'expand_more'} size={20} color={muted} /></Pressable>
+        {open && (
+          <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 10 }}>
+            {['single_choice', 'predict_output', 'multi_select', 'true_false'].includes(q.type) ? (
+              <ReviewChoices q={q} answer={answers[i] ?? null} dark={dark} />
+            ) : (
+              <>
+                <View style={[s.answerBox, { backgroundColor: dark ? 'rgba(16,185,129,0.10)' : '#ECFDF5', borderColor: dark ? 'rgba(110,231,183,0.4)' : '#A7F3D0' }]}><Text style={{ color: dark ? '#6EE7B7' : '#047857', fontFamily: FONT.outfit.b }}>✓ Correct answer</Text><Text style={[s.answerText, { color: dark ? '#D1FAE5' : '#065F46' }]}>{correctAnswerText(q)}</Text></View>
+                {yourAnswerText(q, answers[i] ?? null) !== null && (
+                  <Text style={{ color: dark ? '#FDA4AF' : '#BE123C', fontFamily: FONT.outfit.b, fontSize: fz(13) }}>Your answer: {yourAnswerText(q, answers[i] ?? null)}</Text>
+                )}
+              </>
+            )}
+            <ExplainText text={q.explanation} style={[s.body13, s.reviewBody, { color: dark ? '#CBD5E1' : '#475569' }]} dark={dark} />
+          </View>
+        )}
       </View>; })}
     </ScrollView>
     <View style={[s.reviewFooter, { backgroundColor: bg }]}><Pressable onPress={onTryAgain} style={[s.mainBtn, { backgroundColor: '#6366F1' }]}><Icon name="replay" size={20} exact color="#FFFFFF" /><Text style={s.mainBtnText}>Try these again ({questions.length})</Text></Pressable><Pressable onPress={onDone} style={s.doneBtn}><Text style={[s.body13, { color: muted, fontFamily: FONT.outfit.b }]}>Done for now</Text></Pressable></View>
   </View>;
 }
 
-function CompleteScreen({ p, results, xp, topInset, onDone, onReview }: { p: Palette; results: Result[]; xp: number; topInset: number; onDone: () => void; onReview: () => void }) {
+function CompleteScreen({ p, results, xp, topInset, onDone, onReview, nextLabel, onNext }: { p: Palette; results: Result[]; xp: number; topInset: number; onDone: () => void; onReview: () => void; nextLabel?: string; onNext?: () => void }) {
   const dark = p.isDark;
   const total = results.length;
   const right = results.filter((r) => r === 'correct').length;
@@ -672,12 +862,27 @@ function CompleteScreen({ p, results, xp, topInset, onDone, onReview }: { p: Pal
             <Text style={[s.mainBtnText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>Review mistakes</Text>
           </Pressable>
         )}
-        <View>
-          <ShadowStack r={16} shadows={[{ dy: 6, blur: 20, rgb: '99,102,241', alpha: 0.35 }]} />
-          <Pressable onPress={onDone} style={[s.mainBtn, { backgroundColor: '#6366F1' }]}>
-            <Text style={[s.mainBtnText, { color: '#FFFFFF' }]}>Back to Quiz</Text>
+        {onNext && (
+          <View>
+            <ShadowStack r={16} shadows={[{ dy: 6, blur: 20, rgb: '99,102,241', alpha: 0.35 }]} />
+            <Pressable onPress={onNext} style={[s.mainBtn, { backgroundColor: '#6366F1' }]}>
+              <Text style={[s.mainBtnText, { color: '#FFFFFF' }]}>Next: {nextLabel}</Text>
+              <Icon name="arrow_forward" size={20} exact color="#FFFFFF" />
+            </Pressable>
+          </View>
+        )}
+        {onNext ? (
+          <Pressable onPress={onDone} style={[s.reviewBtn, { borderColor: dark ? 'rgba(255,255,255,0.18)' : '#CBD5E1' }]}>
+            <Text style={[s.mainBtnText, { color: dark ? '#E2E8F0' : '#334155' }]}>Back to Quiz</Text>
           </Pressable>
-        </View>
+        ) : (
+          <View>
+            <ShadowStack r={16} shadows={[{ dy: 6, blur: 20, rgb: '99,102,241', alpha: 0.35 }]} />
+            <Pressable onPress={onDone} style={[s.mainBtn, { backgroundColor: '#6366F1' }]}>
+              <Text style={[s.mainBtnText, { color: '#FFFFFF' }]}>Back to Quiz</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -685,31 +890,39 @@ function CompleteScreen({ p, results, xp, topInset, onDone, onReview }: { p: Pal
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function QuizSessionScreen({ p, world, questions = SAMPLE_QUIZ, topInset, onExit, onComplete }: { p: Palette; world?: { order: number; title: string }; questions?: QuizQuestion[]; topInset: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
+export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, topInset, stepOffset = 0, totalOverride, onExit, onComplete, onAnswer, nextLabel, onNext }: { p: Palette; world?: { order: number; title: string }; label?: string; /** Position of a resumed quiz: questions already answered before this session. */ stepOffset?: number; /** The whole quiz's length (the position is shown as 13 / 24 even when only the rest is played). */ totalOverride?: number; /** What to offer after the last question: the next set (label and action). */ nextLabel?: string; onNext?: () => void; /** Called as each answer is committed, so progress survives quitting midway. */ onAnswer?: (question: QuizQuestion, correct: boolean) => void; questions?: QuizQuestion[]; topInset: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
   const [index, setIndex] = React.useState(0);
   const [results, setResults] = React.useState<Result[]>([]);
+  // What the learner chose for each answered question, so the review can show it next to the correct answer.
+  const [answers, setAnswers] = React.useState<QuizAnswer[]>([]);
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [sessionQuestions, setSessionQuestions] = React.useState(questions);
+  // The offset / whole-quiz length only apply to the first run; "Try these again" replays the missed questions on their own.
+  const [position, setPosition] = React.useState<{ offset: number; total?: number }>({ offset: stepOffset, total: totalOverride });
   const missed = sessionQuestions.filter((_, i) => results[i] === 'wrong');
+  const missedAnswers = sessionQuestions.map((_, i) => answers[i] ?? null).filter((_, i) => results[i] === 'wrong');
 
-  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} topInset={topInset} onTryAgain={() => { setSessionQuestions(missed); setReviewOpen(false); setIndex(0); setResults([]); }} onDone={onExit} />;
+  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} answers={missedAnswers} topInset={topInset} onTryAgain={() => { setSessionQuestions(missed); setPosition({ offset: 0, total: undefined }); setReviewOpen(false); setIndex(0); setResults([]); setAnswers([]); }} onDone={onExit} />;
 
   if (index >= sessionQuestions.length) {
     const xp = sessionQuestions.reduce((sum, q, i) => sum + (results[i] === 'correct' ? q.xp : 0), 0);
-    return <CompleteScreen p={p} results={results} xp={xp} topInset={topInset} onReview={() => setReviewOpen(true)} onDone={() => { onComplete?.(sessionQuestions, results); onExit(); }} />;
+    return <CompleteScreen p={p} results={results} xp={xp} topInset={topInset} onReview={() => setReviewOpen(true)} nextLabel={nextLabel} onNext={onNext} onDone={() => { onComplete?.(sessionQuestions, results); onExit(); }} />;
   }
   return (
     <QuestionScreen
       key={sessionQuestions[index].id}
       p={p}
       q={sessionQuestions[index]}
-      step={index + 1}
-      total={sessionQuestions.length}
+      step={position.offset + index + 1}
+      total={position.total ?? sessionQuestions.length}
       world={world}
+      label={label}
       topInset={topInset}
       onClose={onExit}
-      onContinue={(correct) => {
+      onContinue={(correct, answer) => {
+        onAnswer?.(sessionQuestions[index], correct);
         setResults((r) => [...r, correct ? 'correct' : 'wrong']);
+        setAnswers((a) => [...a, answer]);
         setIndex((i) => i + 1);
       }}
     />
@@ -721,26 +934,33 @@ const s = StyleSheet.create({
   debugLabel: { fontFamily: FONT.mono.b, fontSize: fz(9), letterSpacing: 1 },
   debugBtn: { minWidth: 56, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 7, borderWidth: BW, alignItems: 'center' },
   debugBtnText: { fontFamily: FONT.mono.b, fontSize: fz(11), includeFontPadding: false },
-  header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  header: { paddingHorizontal: 16, paddingVertical: 10, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12 },
   reviewHeader: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: BW, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.14, shadowRadius: 3 },
   reviewTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(18 * MAIN), lineHeight: lh(18, 1.3), includeFontPadding: false },
   reviewCard: { borderRadius: 16, borderWidth: BW, overflow: 'hidden' },
-  reviewRow: { minHeight: 64, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  reviewRow: { minHeight: 52, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   reviewNumber: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  reviewQuestion: { flex: 1, fontFamily: FONT.outfit.sb, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4), includeFontPadding: false },
+  reviewQuestion: { flex: 1, fontFamily: FONT.outfit.sb, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.4), includeFontPadding: false },
+  reviewBody: { fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5) },
   answerBox: { borderRadius: 12, borderWidth: BW, paddingHorizontal: 12, paddingVertical: 10, gap: 3 },
   answerText: { fontFamily: FONT.mono.b, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.4), includeFontPadding: false },
   reviewFooter: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 24, gap: 8 },
   doneBtn: { height: 40, alignItems: 'center', justifyContent: 'center' },
   closeBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },
   worldTag: { fontFamily: FONT.mono.b, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.3333), includeFontPadding: false },
-  worldTitle: { flexShrink: 1, fontFamily: FONT.outfit.sb, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
+  worldTitle: { flexShrink: 1, fontFamily: FONT.outfit.sb, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
   progressTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
-  count: { fontFamily: FONT.mono.b, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
-  concept: { fontFamily: FONT.mono.b, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.5), letterSpacing: 0.05 * 11 * MAIN, textTransform: 'uppercase', includeFontPadding: false },
-  question: { fontFamily: FONT.outfit.sb, fontSize: fz(18 * MAIN), lineHeight: lh(18, 1.375), letterSpacing: -0.025 * 18 * MAIN, includeFontPadding: false },
+  count: { fontFamily: FONT.mono.b, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
+  conceptRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderBottomWidth: BW, paddingHorizontal: 16, paddingVertical: 8 },
+  tapCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: 'rgba(148,163,184,0.55)', marginRight: 12 },
+  tapInstruction: { fontFamily: FONT.mono.b, fontSize: fz(11), letterSpacing: 0.5, includeFontPadding: false },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  diffPill: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  diffText: { fontFamily: FONT.mono.b, fontSize: fz(10), letterSpacing: 0.6, textTransform: 'uppercase', includeFontPadding: false },
+  concept: { fontFamily: FONT.mono.b, fontSize: fz(10.5 * MAIN), lineHeight: lh(10.5, 1.5), letterSpacing: 0.05 * 10.5 * MAIN, textTransform: 'uppercase', includeFontPadding: false },
+  question: { fontFamily: FONT.outfit.sb, fontSize: fz(16 * MAIN), lineHeight: lh(16, 1.4), letterSpacing: -0.025 * 16 * MAIN, includeFontPadding: false },
   selectedPill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  selectedText: { fontFamily: FONT.outfit.b, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.3333), includeFontPadding: false },
+  selectedText: { fontFamily: FONT.outfit.b, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.3333), includeFontPadding: false },
   mono11: { fontFamily: FONT.mono.r, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.5), includeFontPadding: false },
   body13: { fontFamily: FONT.body, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
   // code panel
@@ -753,11 +973,14 @@ const s = StyleSheet.create({
   slot: { marginHorizontal: 6, minWidth: 68, height: 32, paddingHorizontal: 12, borderRadius: 8, borderWidth: TWO, alignItems: 'center', justifyContent: 'center' },
   slotText: { fontFamily: FONT.mono.b, fontSize: fz(13 * MAIN), includeFontPadding: false },
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 8, marginLeft: 36, marginRight: 8, marginBottom: 4, borderRadius: 8 },
-  noteText: { flex: 1, fontFamily: FONT.body, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.375), includeFontPadding: false },
+  noteText: { flex: 1, fontFamily: FONT.body, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.4), includeFontPadding: false },
   // options
   option: { width: '100%', minHeight: 56, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 14 },
   indicator: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   indicatorDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FFFFFF' },
+  optionCompact: { minHeight: 42, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, gap: 10 },
+  optionTextCompact: { fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.4) },
+  tagTextCompact: { fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.3) },
   optionText: { flex: 1, fontFamily: FONT.outfit.md, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4286), includeFontPadding: false },
   optionMono: { flex: 1, fontFamily: FONT.mono.sb, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4286), includeFontPadding: false },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -771,13 +994,13 @@ const s = StyleSheet.create({
   cmpTitle: { flex: 1, fontFamily: FONT.outfit.sb, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4286), includeFontPadding: false },
   // hint + feedback
   hintBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 14, borderRadius: 12, borderWidth: BW },
-  hintBtnText: { fontFamily: FONT.outfit.sb, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
+  hintBtnText: { fontFamily: FONT.outfit.sb, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
   hintBox: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 12, borderWidth: BW, paddingHorizontal: 14, paddingVertical: 12 },
-  hintText: { flex: 1, fontFamily: FONT.body, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.375), includeFontPadding: false },
-  feedback: { borderRadius: 16, borderWidth: TWO, padding: 16, gap: 10 },
-  feedbackTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(16 * MAIN), lineHeight: lh(16, 1.5), includeFontPadding: false },
-  explain: { fontFamily: FONT.body, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.625), includeFontPadding: false },
-  conceptLine: { fontFamily: FONT.mono.sb, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
+  hintText: { flex: 1, fontFamily: FONT.body, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.4), includeFontPadding: false },
+  feedback: { borderRadius: 16, borderWidth: TWO, padding: 12, gap: 6 },
+  feedbackTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4), includeFontPadding: false },
+  explain: { fontFamily: FONT.body, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
+  conceptLine: { fontFamily: FONT.mono.sb, fontSize: fz(10 * MAIN), lineHeight: lh(10, 1.5), includeFontPadding: false },
   // main button
   mainBtn: { height: 48, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   mainBtnText: { fontFamily: FONT.outfit.sb, fontSize: fz(15 * MAIN), lineHeight: lh(15, 1.5), includeFontPadding: false },

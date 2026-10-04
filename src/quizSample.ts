@@ -15,11 +15,11 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "question": "Which company created the Kotlin language?",
   "options": [
    "Google",
-   "JetBrains",
    "Oracle",
+   "JetBrains",
    "Microsoft"
   ],
-  "answer": 1,
+  "answer": 2,
   "hint": "This company also makes the IntelliJ IDEA editor.",
   "explanation": "JetBrains created Kotlin. Google later made it an officially supported language for Android apps."
  },
@@ -36,13 +36,13 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "options": [
    "fun start()",
    "println()",
-   "fun main()",
-   "val main"
+   "val main",
+   "fun main()"
   ],
   "monoOptions": true,
-  "answer": 2,
+  "answer": 3,
   "hint": "Every program has one special function that the computer calls first.",
-  "explanation": "Execution begins in fun main(). The other names are not entry points, and println() only prints text."
+  "explanation": "Execution begins in fun `main()`. The other names are not entry points, and `println()` only prints text."
  },
  {
   "id": "w1q-syntax-3",
@@ -50,7 +50,7 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "worldId": "world-1",
   "lessonId": "world-1-kotlin-syntax",
   "topic": "Kotlin Syntax & main()",
-  "concept": "Entry point main()",
+  "concept": "Writing the main function",
   "difficulty": "easy",
   "xp": 10,
   "question": "Complete the code so the program starts running when you launch it.",
@@ -94,7 +94,7 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "monoOptions": true,
   "answer": 0,
   "hint": "What does the // at the start of a line do?",
-  "explanation": "The first println is inside a // comment, so Kotlin ignores it. Only println(\"B\") runs."
+  "explanation": "The first println is inside a `//` comment, so Kotlin ignores it. Only `println(\"B\")` runs."
  },
  {
   "id": "w1q-comments-2",
@@ -105,10 +105,10 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "concept": "Block comments",
   "difficulty": "easy",
   "xp": 10,
-  "question": "A comment that starts with /* and ends with */ can cover several lines.",
+  "question": "A comment that starts with `/*` and ends with `*/` can cover several lines.",
   "answer": true,
   "hint": "Think about which comment style has both an opening and a closing mark.",
-  "explanation": "Everything between /* and */ is a comment, even across many lines. A // comment ends at the end of its line."
+  "explanation": "Everything between `/*` and `*/` is a comment, even across many lines. A `//` comment ends at the end of its line."
  },
  {
   "id": "w1q-print-1",
@@ -117,8 +117,8 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "lessonId": "world-1-print-println",
   "topic": "print() and println()",
   "concept": "print vs println",
-  "difficulty": "easy",
-  "xp": 10,
+  "difficulty": "medium",
+  "xp": 15,
   "question": "What will this code print?",
   "code": [
    "print(\"Hi\")",
@@ -126,13 +126,13 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
    "println(\" there\")"
   ],
   "options": [
-   "Hi! there",
    "Hi!there",
+   "Hi! there",
    "Hi ! there",
    "Hi!"
   ],
   "monoOptions": true,
-  "answer": 0,
+  "answer": 1,
   "hint": "print does not move to a new line. Look at the space inside \" there\".",
   "explanation": "All three calls write on the same line: Hi, then !, then \" there\" (with its leading space). println only ends the line after the last text."
  },
@@ -143,8 +143,8 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "lessonId": "world-1-val-vs-var",
   "topic": "val vs var",
   "concept": "val is read-only",
-  "difficulty": "easy",
-  "xp": 10,
+  "difficulty": "medium",
+  "xp": 15,
   "question": "Tap the line that contains an error.",
   "code": [
    "val lives = 3",
@@ -165,10 +165,10 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "concept": "Choosing val or var",
   "difficulty": "easy",
   "xp": 10,
-  "question": "If a value never changes after it is set, Kotlin style prefers val over var.",
-  "answer": true,
+  "question": "If a value never changes after it is set, Kotlin style prefers `var` over `val`.",
+  "answer": false,
   "hint": "Which keyword makes the code safer because the value cannot change by mistake?",
-  "explanation": "Use val by default and var only when the value really must change. It makes accidental changes impossible."
+  "explanation": "Kotlin style prefers val: use val by default and var only when the value really must change. A val makes accidental changes impossible, so the statement is false."
  },
  {
   "id": "w1q-char-2",
@@ -177,8 +177,8 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "lessonId": "world-1-char",
   "topic": "Char",
   "concept": "Char vs String",
-  "difficulty": "easy",
-  "xp": 10,
+  "difficulty": "medium",
+  "xp": 15,
   "question": "Tap the line that contains an error.",
   "code": [
    "val first = 'K'",
@@ -200,7 +200,7 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "concept": "Variable templates",
   "difficulty": "easy",
   "xp": 10,
-  "question": "Complete the code so it prints Hello, Mia.",
+  "question": "Complete the code so it prints `Hello, Mia`.",
   "code": [
    "val name = \"Mia\"",
    "println(\"Hello, ___name\")"
@@ -224,16 +224,16 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "concept": "Line breaks",
   "difficulty": "medium",
   "xp": 15,
-  "question": "Which code prints Hello and World on two separate lines?",
+  "question": "Which code prints `Hello` and `World` on two separate lines?",
   "a": [
-   "print(\"Hello\")",
-   "print(\"World\")"
-  ],
-  "b": [
    "println(\"Hello\")",
    "println(\"World\")"
   ],
-  "answer": 1,
+  "b": [
+   "print(\"Hello\")",
+   "print(\"World\")"
+  ],
+  "answer": 0,
   "hint": "Which call ends the line after printing?",
   "explanation": "println ends the line after its text, so World starts on a new line. With print the output would be HelloWorld on one line."
  },
