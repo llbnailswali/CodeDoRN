@@ -14,6 +14,7 @@ import { TaskListScreen } from './TaskListScreen';
 import { BottomNav, Header, TabId } from './shell';
 import { DARK, FONT, LIGHT } from './theme';
 import { ProfileScreen } from './ProfileScreen';
+import { StatsScreen } from './StatsScreen';
 import { QuizPass, QuizProgress, buildSession, getQuizBoss, getQuizSets, getQuizWorldBank, getQuizWorlds, quizPassStatus } from './quizData';
 import { QuizQuestion } from './quizQuestions';
 
@@ -89,6 +90,7 @@ export function App({ dark = true }: { dark?: boolean }) {
   }, [quizPass, quizLoaded]);
   // The World whose lessons are listed (the Curriculum screen).
   const [curriculumWorld, setCurriculumWorld] = React.useState<number | null>(null);
+  const [statsOpen, setStatsOpen] = React.useState(false);
   // The lesson being played (the five-stage screen, full screen over everything).
   const [lesson, setLesson] = React.useState<{ world: number; title: string } | null>(null);
   const p = isDark ? DARK : LIGHT;
@@ -129,6 +131,10 @@ export function App({ dark = true }: { dark?: boolean }) {
         setQuizHub(null);
         return true;
       }
+      if (statsOpen) {
+        setStatsOpen(false);
+        return true;
+      }
       if (curriculumWorld !== null) {
         setCurriculumWorld(null);
         return true;
@@ -140,7 +146,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       return false;
     });
     return () => sub.remove();
-  }, [helpOpen, quizHub, taskWorld, quiz, curriculumWorld]);
+  }, [helpOpen, quizHub, taskWorld, quiz, curriculumWorld, statsOpen]);
 
   // The Learn, Quiz and Practice tabs stay mounted (hidden when not shown), so each keeps its scroll position and nothing is re-measured.
   const selectTab = React.useCallback((nextTab: TabId) => {
@@ -240,10 +246,15 @@ export function App({ dark = true }: { dark?: boolean }) {
           <PracticeContent p={p} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} />
         </View>
         <View pointerEvents={tab === 'profile' ? 'auto' : 'none'} style={show('profile')}>
-          <ProfileScreen p={p} quizProgress={quizProgress} onToggleTheme={toggleTheme} />
+          <ProfileScreen p={p} quizProgress={quizProgress} onToggleTheme={toggleTheme} onOpenStats={() => setStatsOpen(true)} />
         </View>
       </View>
       <BottomNav p={p} active={tab} onSelect={selectTab} />
+      {statsOpen && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
+          <StatsScreen p={p} topInset={topInset} onBack={() => setStatsOpen(false)} onToggleTheme={toggleTheme} />
+        </View>
+      )}
       {curriculumWorld !== null && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
           <CurriculumScreen
