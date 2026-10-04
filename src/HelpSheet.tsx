@@ -70,9 +70,9 @@ const s = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent', justifyContent: 'flex-end', zIndex: 50 },
   backdropTint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   sheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, borderWidth: BW, borderBottomWidth: 0, padding: 20, paddingBottom: 28, gap: 12 },
-  title: { fontFamily: FONT.outfit.sb, fontSize: fz(18 * MAIN), lineHeight: lh(18, 1.5556), letterSpacing: -0.025 * 18 * MAIN, includeFontPadding: false },
-  sub: { fontFamily: FONT.outfit.md, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.3333), includeFontPadding: false },
+  title: { fontFamily: FONT.outfit.sb, fontSize: fz(16 * MAIN), lineHeight: lh(16, 1.5), letterSpacing: -0.025 * 16 * MAIN, includeFontPadding: false },
+  sub: { fontFamily: FONT.outfit.md, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.4), includeFontPadding: false },
   option: { borderRadius: 12, borderWidth: BW, paddingHorizontal: 16, paddingVertical: 14 },
-  optionLabel: { fontFamily: FONT.outfit.b, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.25), includeFontPadding: false },
-  optionLine: { fontFamily: FONT.outfit.md, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.375), marginTop: 6, includeFontPadding: false },
+  optionLabel: { fontFamily: FONT.outfit.b, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.3), includeFontPadding: false },
+  optionLine: { fontFamily: FONT.outfit.md, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.4), marginTop: 6, includeFontPadding: false },
 });

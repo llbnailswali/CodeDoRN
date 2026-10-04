@@ -10,7 +10,6 @@ import { PracticeContent } from './PracticeScreen';
 import { QuizContent } from './QuizScreen';
 import { QuizSessionScreen } from './QuizSessionScreen';
 import { QuizLessonWiseScreen } from './QuizLessonWiseScreen';
-import { QuizModeSheet } from './QuizModeSheet';
 import { TaskListScreen } from './TaskListScreen';
 import { BottomNav, Header, TabId } from './shell';
 import { DARK, FONT, LIGHT } from './theme';
@@ -50,7 +49,6 @@ export function App({ dark = true }: { dark?: boolean }) {
   // A quiz being played (full screen over the shell). `world` is absent for the Quick quiz.
   const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[] } | null>(null);
   const [lessonWiseQuiz, setLessonWiseQuiz] = React.useState<{ order: number; title: string } | null>(null);
-  const [quizModeWorld, setQuizModeWorld] = React.useState<{ order: number; title: string } | null>(null);
   const [quizProgress, setQuizProgress] = React.useState<QuizProgress>({});
   // The World whose lessons are listed (the Curriculum screen).
   const [curriculumWorld, setCurriculumWorld] = React.useState<number | null>(null);
@@ -89,10 +87,6 @@ export function App({ dark = true }: { dark?: boolean }) {
         setLessonWiseQuiz(null);
         return true;
       }
-      if (quizModeWorld !== null) {
-        setQuizModeWorld(null);
-        return true;
-      }
       if (quiz !== null) {
         setQuiz(null);
         return true;
@@ -108,7 +102,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       return false;
     });
     return () => sub.remove();
-  }, [helpOpen, lessonWiseQuiz, quizModeWorld, taskWorld, quiz, curriculumWorld]);
+  }, [helpOpen, lessonWiseQuiz, taskWorld, quiz, curriculumWorld]);
 
   // The Learn, Quiz and Practice tabs stay mounted (hidden when not shown), so each keeps its scroll position and nothing is re-measured.
   const selectTab = React.useCallback((nextTab: TabId) => {
@@ -129,8 +123,9 @@ export function App({ dark = true }: { dark?: boolean }) {
     if (questions.length) setQuiz({ world, questions });
   }, [quizProgress]);
   const openQuizCard = React.useCallback((world?: { order: number; title: string }, review?: boolean) => {
+    // A World card opens that World's quiz hub (progress, the whole bank in one tap, review, lessons). No mode-choice sheet.
     if (world && !review && USE_LESSON_WISE_QUIZ) {
-      setQuizModeWorld(world);
+      setLessonWiseQuiz(world);
       return;
     }
     else openQuiz(world, review);
@@ -231,21 +226,14 @@ export function App({ dark = true }: { dark?: boolean }) {
             p={p}
             world={lessonWiseQuiz}
             questions={getQuizWorlds().find((w) => w.order === lessonWiseQuiz.order)?.questions ?? []}
+            progress={quizProgress}
             topInset={topInset}
             onBack={() => setLessonWiseQuiz(null)}
             onStart={(questions) => { setLessonWiseQuiz(null); setQuiz({ world: lessonWiseQuiz, questions }); }}
+            onStartAll={() => { const world = lessonWiseQuiz; setLessonWiseQuiz(null); openQuiz(world); }}
+            onReview={() => { const world = lessonWiseQuiz; setLessonWiseQuiz(null); openQuiz(world, true); }}
           />
         </View>
-      )}
-      {quizModeWorld !== null && (
-        <QuizModeSheet
-          p={p}
-          world={quizModeWorld}
-          total={getQuizWorlds().find((w) => w.order === quizModeWorld.order)?.questions.length ?? 0}
-          onLessonWise={() => { const world = quizModeWorld; setQuizModeWorld(null); setLessonWiseQuiz(world); }}
-          onAllInOne={() => { const world = quizModeWorld; setQuizModeWorld(null); openQuiz(world); }}
-          onClose={() => setQuizModeWorld(null)}
-        />
       )}
       {helpOpen && (
         <HelpSheet

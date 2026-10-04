@@ -2,6 +2,10 @@ import { CURRICULUM_WORLDS } from './curriculumData';
 import { QuizQuestion } from './quizQuestions';
 import { WORLD_1_QUIZ } from './world1Quiz';
 
+// TEMPORARY: while the expanded questions are being reviewed, the Quiz offers only these lessons (Int & Long, Strings, String Templates).
+// Delete this set and the filter in getQuizWorlds() to offer the whole bank again.
+const REVIEW_LESSON_IDS = new Set(['world-1-int-long', 'world-1-string', 'world-1-string-templates']);
+
 export interface QuizWorld { order: number; title: string; questions: QuizQuestion[] }
 export type QuizProgress = Record<string, { correct: number; wrong: number; last: number }>;
 
@@ -9,7 +13,7 @@ export type QuizProgress = Record<string, { correct: number; wrong: number; last
 export function getQuizWorlds(): QuizWorld[] {
   // Only authored quiz banks belong in QuizTab. Lesson prediction questions are
   // used by the lesson flow and must not be presented as a separate quiz bank.
-  const banks: Record<number, QuizQuestion[]> = { 1: WORLD_1_QUIZ };
+  const banks: Record<number, QuizQuestion[]> = { 1: WORLD_1_QUIZ.filter((q) => REVIEW_LESSON_IDS.has(q.lessonId)) };
   return CURRICULUM_WORLDS
     .filter((world) => Boolean(banks[world.order]))
     .map((world) => ({ order: world.order, title: world.title, questions: banks[world.order] }));

@@ -468,7 +468,7 @@ function QuestionScreen({
 
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 16 }}>
         <View style={{ gap: 12 }}>
-          <Text style={[s.concept, { color: muted }]}>Concept · {q.topic}</Text>
+          <Text style={[s.concept, { color: muted }]}>Concept · {q.topic} · {q.difficulty}</Text>
           <Text style={[s.question, { color: title }]}>{q.question}</Text>
           {q.type === 'multi_select' && Array.isArray(value) && value.length > 0 && (
             <View style={[s.selectedPill, { backgroundColor: dark ? 'rgba(99,102,241,0.2)' : '#E0E7FF' }]}>

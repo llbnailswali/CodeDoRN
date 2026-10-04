@@ -22,7 +22,7 @@ const CONTINUE_LABELS: Record<StageKey, string> = {
   learn: 'Learn', explore: 'Explore', predict: 'Predict', writeRun: 'Write & Run', debug: 'Debug', mastered: 'Mastered',
 };
 
-type WebStageApi = { open: (lessonKey: string, stage: string, dark: boolean, practice?: boolean) => Promise<'continue' | 'continue_debug' | 'back'> };
+type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: string, dark: boolean, practice?: boolean) => Promise<'continue' | 'continue_debug' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
 const px = (n: number) => fz(n * MAIN);
@@ -99,11 +99,11 @@ const heading = (dark: boolean, size: number, extra?: object) => ({
 const CodeScroll = HorizontalCodeScroll;
 
 type ExploreCardData = NonNullable<LessonData['explore']>['cards'][number];
-const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, active, index, onSelect }: { card: ExploreCardData; dark: boolean; active: boolean; index: number; onSelect: (index: number) => void }) {
+const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, active }: { card: ExploreCardData; dark: boolean; active: boolean }) {
   const t = tk(dark);
   return (
-    <Pressable onPress={() => onSelect(index)}>
-      <Card dark={dark} active={active} style={{ padding: 14 }}>
+    <View>
+      <Card dark={dark} active={active} shadow={false} style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
             <NumberTag text={card.number} dark={dark} />
@@ -112,8 +112,8 @@ const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, 
           <LangPill text={card.language} dark={dark} />
         </View>
         <Text style={{ fontFamily: FONT.body, fontSize: px(14), lineHeight: lh(14, 1.4286), marginBottom: 12, color: dark ? '#CBD5E1' : '#475569', includeFontPadding: false }}>{card.subtitle}</Text>
-        <View style={{ marginHorizontal: -14, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, backgroundColor: t.codeBg2, borderWidth: BW, borderColor: t.codeBorder2 }}>
-          <CodeScroll><KotlinLines lines={card.code} dark={dark} size={14} /></CodeScroll>
+        <View style={{ marginHorizontal: -14, paddingVertical: 8, marginBottom: 12, backgroundColor: t.codeBg2, borderWidth: BW, borderColor: t.codeBorder2 }}>
+          <CodeScroll inset={12}><KotlinLines lines={card.code} dark={dark} size={14} /></CodeScroll>
         </View>
         <View style={{ marginBottom: 16 }}>
           <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(11), lineHeight: lh(11, 1.5), letterSpacing: 0.05 * 11 * MAIN, color: dark ? '#94A3B8' : '#64748B', marginBottom: 8, includeFontPadding: false }}>WHAT IT MEANS</Text>
@@ -134,7 +134,7 @@ const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, 
           <Text style={{ fontFamily: FONT.body, fontSize: px(12), lineHeight: lh(12, 1.5), color: dark ? '#E2E8F0' : '#1E293B', includeFontPadding: false }}>{card.whatChanged}</Text>
         </View>
       </Card>
-    </Pressable>
+    </View>
   );
 });
 
@@ -428,6 +428,8 @@ export function LessonScreenPersistent({
   const cardTops = React.useRef<number[]>([]);
   const cardsY = React.useRef(0);
   const barH = React.useRef(44);
+  const locked = React.useRef(false);
+  const lockTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLearnStep = React.useRef<number | null>(null);
   const revealScrollFrame = React.useRef<number | null>(null);
   const revealScrollTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -436,7 +438,39 @@ export function LessonScreenPersistent({
   const cardScrollFrame = React.useRef<number | null>(null);
   const cardScrollTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const lock = (ms = 750) => {
+    locked.current = true;
+    if (lockTimer.current) clearTimeout(lockTimer.current);
+    lockTimer.current = setTimeout(() => (locked.current = false), ms);
+  };
+  // Reveal scrolls (Explore / Predict) run as one eased scroll whose duration grows with the distance. The native animated scrollTo has
+  // a short fixed duration, so a tall card scrolling into view went by in a blink and looked jerky.
+  const smoothFrame = React.useRef<number | null>(null);
+  const cancelSmoothScroll = () => {
+    if (smoothFrame.current !== null) cancelAnimationFrame(smoothFrame.current);
+    smoothFrame.current = null;
+  };
+  const smoothScrollTo = (target: number) => {
+    cancelSmoothScroll();
+    const from = scrollY.current;
+    const to = Math.max(0, target);
+    const distance = to - from;
+    if (Math.abs(distance) < 2) return;
+    const duration = Math.min(900, Math.max(380, Math.abs(distance) * 0.8));
+    const startedAt = Date.now();
+    const step = () => {
+      const p = Math.min(1, (Date.now() - startedAt) / duration);
+      const eased = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      const y = from + distance * eased;
+      scrollY.current = y;
+      scrollRef.current?.scrollTo({ y, animated: false });
+      smoothFrame.current = p < 1 ? requestAnimationFrame(step) : null;
+    };
+    smoothFrame.current = requestAnimationFrame(step);
+  };
   React.useEffect(() => () => {
+    if (smoothFrame.current !== null) cancelAnimationFrame(smoothFrame.current);
+    if (lockTimer.current) clearTimeout(lockTimer.current);
     if (revealScrollFrame.current !== null) cancelAnimationFrame(revealScrollFrame.current);
     if (revealScrollTimer.current) clearTimeout(revealScrollTimer.current);
     if (cardScrollFrame.current !== null) cancelAnimationFrame(cardScrollFrame.current);
@@ -500,6 +534,12 @@ export function LessonScreenPersistent({
   // Write & Run and Debug are the web's screens: open the stage over this one, then follow what the learner did there.
   const [webOpen, setWebOpen] = React.useState(false);
   const launching = React.useRef(false);
+  // Start the browser engine behind the editor stages as soon as the lesson opens, so Write & Run / Debug open faster.
+  const hasEditorStage = !!lesson && (lesson.hasWriteRun || lesson.hasDebug);
+  React.useEffect(() => {
+    if (hasEditorStage) WebStage?.warmUp?.();
+  }, [hasEditorStage]);
+
   const openWebStage = React.useCallback((requestedStage: 'writeRun' | 'debug') => {
     if (!lesson || !WebStage || launching.current) return;
     launching.current = true;
@@ -533,6 +573,7 @@ export function LessonScreenPersistent({
     const y = savedScroll.current[current] ?? 0;
     pendingLearnStep.current = null;
     pendingCardScroll.current = null;
+    cancelSmoothScroll();
     if (revealScrollFrame.current !== null) cancelAnimationFrame(revealScrollFrame.current);
     if (revealScrollTimer.current) clearTimeout(revealScrollTimer.current);
     if (cardScrollFrame.current !== null) cancelAnimationFrame(cardScrollFrame.current);
@@ -565,7 +606,7 @@ export function LessonScreenPersistent({
       cardScrollTimer.current = setTimeout(() => {
         const top = cardTops.current[idx];
         if (top === undefined) return;
-        scrollRef.current?.scrollTo({ y: Math.max(0, cardsY.current + top - barH.current - 8), animated: true });
+        smoothScrollTo(cardsY.current + top - barH.current - 8);
       }, 60);
     });
   };
@@ -580,19 +621,39 @@ export function LessonScreenPersistent({
     scheduleCardScroll(idx);
   };
   const scrollToCard = (idx: number, newlyRevealed = false) => {
+    lock();
     if (newlyRevealed) delete cardTops.current[idx];
     if (cardTops.current[idx] === undefined) pendingCardScroll.current = idx;
     else scheduleCardScroll(idx);
   };
   const scrollToEnd = () => {
+    lock();
     requestAnimationFrame(() => {
       setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
+        smoothScrollTo(contentH.current - viewH.current);
       }, 60);
     });
   };
 
-  // Active number tags change on reveal or an explicit tap; scrolling only saves its restore position.
+  // The card that is "current" while the learner scrolls: the last one whose top has passed the sticky bar; the last card at the bottom.
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>, visible: number, set: (i: number) => void) => {
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    scrollY.current = contentOffset.y;
+    viewH.current = layoutMeasurement.height;
+    contentH.current = contentSize.height;
+    if (locked.current || visible <= 0) return;
+    if (contentSize.height - contentOffset.y - layoutMeasurement.height < 50) return set(visible - 1);
+    const line = contentOffset.y + barH.current + 60;
+    let match = 0;
+    for (let i = visible - 1; i >= 0; i--) {
+      const top = cardTops.current[i];
+      if (top !== undefined && cardsY.current + top <= line) {
+        match = i;
+        break;
+      }
+    }
+    set(match);
+  };
 
   if (!lesson) {
     return (
@@ -635,7 +696,6 @@ export function LessonScreenPersistent({
     setExploreIdx(idx);
     scrollToCard(idx);
   };
-  const selectExplore = React.useCallback((idx: number) => setExploreIdx(idx), []);
 
   // ---- Predict ----
   const pr = lesson.predict;
@@ -657,7 +717,7 @@ export function LessonScreenPersistent({
     const next = predictReveal + 1;
     setPredictReveal(next);
     setPredictIdx(next - 1);
-    scrollToCard(next - 1, true);
+    pendingEndCard.current = next - 1;
   };
   const predictIndicator = (idx: number) => {
     if (idx < predictReveal) {
@@ -695,6 +755,7 @@ export function LessonScreenPersistent({
   let children: React.ReactNode[] = [];
   let sticky: number[] = [];
   let bottom: React.ReactNode = null;
+  const scrollProps: { onScrollEnd?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void } = {};
 
   if (current === 'learn') {
     const reveal = learnFull ? undefined : revealLearn;
@@ -716,10 +777,10 @@ export function LessonScreenPersistent({
           {learnReveal >= 2 && (
             <RevealedItem animate={learnReveal === 2} onLayout={() => onLearnItemLayout(2)}>
               <View style={{ marginTop: 4, marginBottom: 16 }}>
-              <Card dark={dark}>
+              <Card dark={dark} shadow={false}>
                 <Text style={heading(dark, 14, { lineHeight: lh(14, 1.4286), marginBottom: 10, color: dark ? '#F8FAFC' : '#1E293B' })}>{learn.exampleTitle}</Text>
-                <View style={{ borderRadius: 12, padding: 12, backgroundColor: t.codeBg, borderWidth: BW, borderColor: t.codeBorder }}>
-                  <CodeScroll>
+                <View style={{ borderRadius: 12, paddingVertical: 12, overflow: 'hidden', backgroundColor: t.codeBg, borderWidth: BW, borderColor: t.codeBorder }}>
+                  <CodeScroll inset={12}>
                     <KotlinLines lines={learn.codeSnippet} dark={dark} size={13} />
                   </CodeScroll>
                 </View>
@@ -740,7 +801,7 @@ export function LessonScreenPersistent({
                 {learn.keyIdeas.map((idea, i) =>
                   learnReveal < 3 + i ? null : (
                     <RevealedItem key={idea.number} animate={learnReveal === 3 + i} onLayout={() => onLearnItemLayout(3 + i)}>
-                      <Card dark={dark} style={{ padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 12 }}>
+                      <Card dark={dark} shadow={false} style={{ padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 12 }}>
                       <View style={{ width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 2, backgroundColor: dark ? 'rgba(30,27,75,0.8)' : '#EEF2FF', borderWidth: BW, borderColor: dark ? 'rgba(67,56,202,0.5)' : '#E0E7FF' }}>
                         <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(12), lineHeight: lh(12, 1.3333), color: dark ? '#818CF8' : '#4F46E5', includeFontPadding: false }}>{idea.number}</Text>
                       </View>
@@ -817,7 +878,7 @@ export function LessonScreenPersistent({
             {ex.cards.map((card, i) =>
               exploreReveal < 1 + i ? null : (
                 <RevealedItem key={card.id} animate={exploreReveal === i + 1} onLayout={(e) => onCardLayout(i, e.nativeEvent.layout.y)}>
-                  <ExploreExampleCard card={card} dark={dark} active={exploreIdx === i} index={i} onSelect={selectExplore} />
+                  <ExploreExampleCard card={card} dark={dark} active={exploreIdx === i} />
                 </RevealedItem>
               )
             )}
@@ -825,6 +886,7 @@ export function LessonScreenPersistent({
         )
       );
     }
+    scrollProps.onScrollEnd = (e) => onScroll(e, Math.min(exploreReveal, exMax), setExploreIdx);
     bottom = !exFull ? <TapHint dark={dark} onPress={revealExplore} /> : <PrimaryButton dark={dark} label={`Continue to ${nextLabel ?? ''}`} onPress={goNext} />;
   } else if (current === 'predict' && pr) {
     const reveal = !prFull && allRevealedCorrect ? revealPredict : undefined;
@@ -863,7 +925,7 @@ export function LessonScreenPersistent({
       children.push(
         tap(
           'cards',
-          <View onLayout={(e) => (cardsY.current = e.nativeEvent.layout.y)} style={{ gap: 16, marginBottom: 24 }}>
+          <View onLayout={(e) => (cardsY.current = e.nativeEvent.layout.y)} style={{ gap: 16, marginBottom: 0 }}>
             {pr.questions.map((q, qi) => {
               if (predictReveal < 1 + qi) return null;
               const selected = answers[qi];
@@ -872,7 +934,7 @@ export function LessonScreenPersistent({
               return (
                 <RevealedItem key={q.id} animate={predictReveal === qi + 1} onLayout={(e) => onCardLayout(qi, e.nativeEvent.layout.y)}>
                   <Pressable onPress={() => setPredictIdx(qi)}>
-                    <Card dark={dark} active={predictIdx === qi} style={{ gap: 14 }}>
+                    <Card dark={dark} active={predictIdx === qi} shadow={false} style={{ gap: 14 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0 }}>
                           <NumberTag text={qi < 9 ? `0${qi + 1}` : `${qi + 1}`} dark={dark} />
@@ -881,8 +943,8 @@ export function LessonScreenPersistent({
                         {!!q.code && q.code.length > 0 && <LangPill text={q.language} dark={dark} />}
                       </View>
                       {!!q.code && q.code.length > 0 && (
-                        <View style={{ borderRadius: 12, padding: 16, backgroundColor: t.codeBg2, borderWidth: BW, borderColor: dark ? '#262C3D' : 'rgba(226,232,240,0.8)' }}>
-                          <CodeScroll>
+                        <View style={{ borderRadius: 12, paddingVertical: 16, overflow: 'hidden', backgroundColor: t.codeBg2, borderWidth: BW, borderColor: dark ? '#262C3D' : 'rgba(226,232,240,0.8)' }}>
+                          <CodeScroll inset={16}>
                             <KotlinLines lines={q.code} dark={dark} size={12} />
                           </CodeScroll>
                         </View>
@@ -951,6 +1013,7 @@ export function LessonScreenPersistent({
         )
       );
     }
+    scrollProps.onScrollEnd = (e) => onScroll(e, Math.min(predictReveal, prMax), setPredictIdx);
     bottom = !prFull ? (
       <TapHint
         dark={dark}
@@ -1027,16 +1090,22 @@ export function LessonScreenPersistent({
         nestedScrollEnabled
         directionalLockEnabled
         style={[{ flex: 1 }, { opacity: stageOpacity }]}
-        contentContainerStyle={{ paddingHorizontal: 6, paddingBottom: 110 }}
+        contentContainerStyle={{ paddingHorizontal: 6, paddingBottom: current === 'predict' ? 84 : 110 }}
         stickyHeaderIndices={sticky}
         scrollEventThrottle={32}
         onLayout={(e) => { viewH.current = e.nativeEvent.layout.height; }}
         onContentSizeChange={(_, height) => { contentH.current = height; }}
+        onScrollBeginDrag={() => {
+          locked.current = false;
+          cancelSmoothScroll();
+        }}
         onScrollEndDrag={(e) => {
           scrollY.current = e.nativeEvent.contentOffset.y;
+          scrollProps.onScrollEnd?.(e);
         }}
         onMomentumScrollEnd={(e) => {
           scrollY.current = e.nativeEvent.contentOffset.y;
+          scrollProps.onScrollEnd?.(e);
         }}
       >
         {children}

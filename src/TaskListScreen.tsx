@@ -12,7 +12,7 @@ import { FONT, Palette } from './theme';
 
 type Mode = 'writeRun' | 'debug';
 type Status = 'not_started' | 'in_progress' | 'completed';
-type WebStageApi = { open: (lessonKey: string, stage: Mode, dark: boolean, practice: boolean) => Promise<'continue' | 'back'> };
+type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: Mode, dark: boolean, practice: boolean) => Promise<'continue' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
 const practiceLessonKey = (worldOrder: number, mode: Mode, title: string) => {
@@ -130,6 +130,10 @@ export function TaskListScreen({
   const dark = p.isDark;
   const [mode, setMode] = React.useState<Mode>(startMode);
   const [expanded, setExpanded] = React.useState<number | null>(null);
+  // Start the browser engine behind the editor now, so opening a task is faster.
+  React.useEffect(() => {
+    WebStage?.warmUp?.();
+  }, []);
   const tasks = PRACTICE_TASKS[worldOrder]?.[mode] ?? [];
   const mc = MODE_COLORS[mode];
   const modeColor = dark ? mc.dark : mc.light;
