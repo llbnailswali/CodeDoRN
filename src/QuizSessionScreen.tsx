@@ -609,7 +609,7 @@ function QuestionScreen({
                   dark ? { borderColor: 'rgba(252,211,77,0.3)', backgroundColor: 'rgba(252,211,77,0.1)' } : { borderColor: '#FCD34D', backgroundColor: '#FFFBEB' },
                 ]}
               >
-                <Icon name="lightbulb" size={18} exact color={dark ? '#FEF3C7' : '#78350F'} />
+                <Icon name="lightbulb" size={14} exact color={dark ? '#FEF3C7' : '#78350F'} />
                 <Text style={[s.hintText, { color: dark ? '#FEF3C7' : '#78350F' }]}>{q.hint}</Text>
               </View>
             ) : (
@@ -620,7 +620,7 @@ function QuestionScreen({
                   dark ? { borderColor: 'rgba(129,140,248,0.4)', backgroundColor: 'rgba(129,140,248,0.1)' } : { borderColor: '#A5B4FC', backgroundColor: '#EEF2FF' },
                 ]}
               >
-                <Icon name="lightbulb" size={18} exact color={dark ? '#C7D2FE' : '#4338CA'} />
+                <Icon name="lightbulb" size={14} exact color={dark ? '#C7D2FE' : '#4338CA'} />
                 <Text style={[s.hintBtnText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>Need a hint?</Text>
               </Pressable>
             )}
@@ -664,7 +664,8 @@ function QuestionScreen({
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#fadeUp)" />
         </Svg>
         <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20 }}>
-          {__DEV__ && (
+          {/* TEMPORARY: Pass / Fail test shortcut, shown in release builds too. Remove before public release. */}
+          {true && (
             <View style={s.debugRow}>
               <Text style={[s.debugLabel, { color: muted }]}>DEBUG</Text>
               <Pressable onPress={() => onContinue(true, value)} style={[s.debugBtn, { borderColor: '#10B981', backgroundColor: dark ? 'rgba(16,185,129,0.12)' : '#ECFDF5' }]}>
@@ -993,10 +994,10 @@ const s = StyleSheet.create({
   cmpCard: { width: '100%', borderRadius: 16, padding: 14, gap: 12 },
   cmpTitle: { flex: 1, fontFamily: FONT.outfit.sb, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4286), includeFontPadding: false },
   // hint + feedback
-  hintBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 14, borderRadius: 12, borderWidth: BW },
-  hintBtnText: { fontFamily: FONT.outfit.sb, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
-  hintBox: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 12, borderWidth: BW, paddingHorizontal: 14, paddingVertical: 12 },
-  hintText: { flex: 1, fontFamily: FONT.body, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.4), includeFontPadding: false },
+  hintBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 32, paddingHorizontal: 10, borderRadius: 10, borderWidth: BW },
+  hintBtnText: { fontFamily: FONT.outfit.sb, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.4), includeFontPadding: false },
+  hintBox: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 10, borderWidth: BW, paddingHorizontal: 10, paddingVertical: 8 },
+  hintText: { flex: 1, fontFamily: FONT.body, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.4), includeFontPadding: false },
   feedback: { borderRadius: 16, borderWidth: TWO, padding: 12, gap: 6 },
   feedbackTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4), includeFontPadding: false },
   explain: { fontFamily: FONT.body, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },

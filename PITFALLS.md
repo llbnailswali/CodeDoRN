@@ -2717,3 +2717,26 @@ constructor parameters, an unknown member reached through a call result (`makeA(
 **Rule, reinforced:** write the hand-derived expected output next to each program FIRST, then run it through the engine. Twelve of the
 36 programs disagreed on the first run, and nine of those were engine bugs, not arithmetic slips. The three slips (`dropLast`, an
 Int/String `+`, a missing counter declaration in a step) were found the same way.
+
+## Explore card output: judge it with real Kotlin, not the simulator (arrays, `main` return type, `runBlocking<Unit>`)
+
+Filling in each Explore card's `output` (`npm run explore-output -- <worlds> --real`) used real `kotlinc` as the judge instead of the
+simulator, and it found content the simulator had been quietly agreeing with. Tools: `npm run kotlinc:fetch` (downloads Kotlin 2.0.21 and
+kotlinx-coroutines into the git-ignored `web-editor/tools/`), `scripts/minikotlin/` (batch runner, cross-check, `real-only-outputs.json`,
+`excluded-cards.json`), `npm run audit:explore-output` (every stored output must match the simulator, or `real-only-outputs.json`).
+
+1. **`println(array)` printed `[a, b, c]` in the simulator but `[Ljava.lang.String;@1b6d3586` in real Kotlin.** World 6's Arrays lesson
+   taught the wrong output in Explore, Predict, Write & Run and Debug. Arrays need `contentToString()`; lists and sets print directly.
+   Never author `println(someArray)` expecting readable text.
+2. **`fun main() = runBlocking { ... }` is not a valid entry point when the block's last expression is not `Unit`** (a `try`/`catch`
+   whose branches differ, an `async` result, a `coroutineScope` value). Real Kotlin compiles it but the JVM reports "Main method not
+   found". Write `runBlocking<Unit> { ... }` or `fun main(): Unit`. The simulator accepted both silently.
+3. **`runBlocking<Unit> { ... }` (an explicit type argument before a trailing lambda) was not stripped by the runner**, only
+   `async<T>`/`launch<T>` were, so it failed with `Unexpected token '('`. The same strip now covers `runBlocking`, `coroutineScope`,
+   `supervisorScope` and `withContext`.
+4. **A scope-function card with no `println` shows nothing.** `val size = "Kotlin".let { it.length }` computes a value and prints
+   nothing, so the Explore output block says "(no output)". Print the result when the point of the card is the value.
+5. **Card ids are not unique across worlds** (`boss-explore-2` exists in several). A tool that finds a card by id alone writes into the
+   wrong lesson; always scope the match to the owning lesson id. `audit:explore-output` is what caught it.
+6. **Concurrent coroutine output can differ between runs** (two Explore cards printed different values on different JVM runs). The real
+   runner runs each program three times and skips any whose output differs; known cases are in `excluded-cards.json`.

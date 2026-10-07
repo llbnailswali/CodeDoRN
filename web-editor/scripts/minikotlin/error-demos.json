@@ -1,0 +1,16 @@
+{
+  "world-12-in-variance/in-variance-explore-3": "compile",
+  "world-12-out-variance/out-variance-explore-3": "compile",
+  "world-12-reified-type-parameters/reified-type-parameters-explore-1": "compile",
+  "world-15-avoiding-swallowed-errors/world-15-avoiding-swallowed-errors-explore-6": "runtime",
+  "world-15-catch/world-15-catch-explore-2": "runtime",
+  "world-15-catch/world-15-catch-explore-5": "runtime",
+  "world-15-custom-exceptions/world-15-custom-exceptions-explore-1": "runtime",
+  "world-15-designing-meaningful-failure-paths/world-15-designing-meaningful-failure-paths-explore-4": "runtime",
+  "world-15-error-handling-patterns/world-15-error-handling-patterns-explore-7": "runtime",
+  "world-15-throw/world-15-throw-explore-2": "runtime",
+  "world-15-throw/world-15-throw-explore-4": "runtime",
+  "world-16-exception-handling-in-coroutines/world-16-exception-handling-in-coroutines-explore-1": "runtime",
+  "world-7-non-null-assertion/nonnull-explore-2": "runtime",
+  "world-11-visibility-and-api-design/world-11-visibility-and-api-design-explore-6": "compile"
+}

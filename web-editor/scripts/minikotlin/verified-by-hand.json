@@ -1,0 +1,208 @@
+{
+  "world-5-boss/world-5-boss-explore-3": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "12"
+    ]
+  },
+  "world-5-boss/world-5-boss-explore-4": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "Hi, Kai"
+    ]
+  },
+  "world-5-named-arguments/world-5-named-arguments-explore-1": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "8"
+    ]
+  },
+  "world-5-named-arguments/world-5-named-arguments-explore-2": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "2, 4"
+    ]
+  },
+  "world-5-named-arguments/world-5-named-arguments-explore-3": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "255 120 0"
+    ]
+  },
+  "world-5-named-arguments/world-5-named-arguments-explore-4": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "Pen x1, express=true"
+    ]
+  },
+  "world-5-vararg/world-5-vararg-explore-1": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "A",
+      "B"
+    ]
+  },
+  "world-5-vararg/world-5-vararg-explore-2": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "6"
+    ]
+  },
+  "world-5-vararg/world-5-vararg-explore-3": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "Ready"
+    ]
+  },
+  "world-5-vararg/world-5-vararg-explore-4": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "Hi, Ana!",
+      "Hi, Bo!"
+    ]
+  },
+  "world-6-adding-removing-updating-mutable-element/mutating-explore-5": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "[Kotlin, New]"
+    ]
+  },
+  "world-6-adding-removing-updating-mutable-element/mutating-explore-6": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "{Riya=82}"
+    ]
+  },
+  "world-6-boss/boss-explore-1": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "[Math, Science]"
+    ]
+  },
+  "world-6-boss/boss-explore-2": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "[Riya, Tom, Zara]",
+      "{Riya=82, Tom=91, Zara=76}"
+    ]
+  },
+  "world-6-choosing-the-right-collection-type/choosing-explore-2": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "[501, 502, 503]"
+    ]
+  },
+  "world-6-maps/maps-explore-1": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "{Sam=21, Ana=34}"
+    ]
+  },
+  "world-6-sets/sets-explore-1": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "[1, 2, 3]"
+    ]
+  },
+  "world-6-sets/sets-explore-3": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "[Kotlin, Fun, New]"
+    ]
+  },
+  "world-7-nullable-collections-and-collection-valu/nullablecollections-explore-6": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "[0, 7]",
+      "[0, null, 7]"
+    ]
+  },
+  "world-7-safe-call/safecall-explore-4": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "null"
+    ]
+  },
+  "world-8-data-classes/dataclasses-explore-1": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "User(name=Ana, age=30)"
+    ]
+  },
+  "world-8-data-classes/dataclasses-explore-2": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "User: User(name=Ana, age=30)"
+    ]
+  },
+  "world-8-data-classes/dataclasses-explore-3": {
+    "reason": "minikotlin wrong output",
+    "output": [
+      "Data(name=Sam)"
+    ]
+  },
+  "world-8-enums/enums-explore-1": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "SUMMER",
+      "true"
+    ]
+  },
+  "world-8-enums/enums-explore-2": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "0",
+      "-1"
+    ]
+  },
+  "world-8-enums/enums-explore-3": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "Cold"
+    ]
+  },
+  "world-8-interfaces/interfaces-explore-1": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "Hello from Kim"
+    ]
+  },
+  "world-8-interfaces/interfaces-explore-2": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "Hi, I'm Ana",
+      "BEEP BOOP UNIT 7"
+    ]
+  },
+  "world-8-interfaces/interfaces-explore-3": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "Hi, I'm Zoe"
+    ]
+  },
+  "world-8-objects/objects-explore-1": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "1.0"
+    ]
+  },
+  "world-8-objects/objects-explore-2": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "25"
+    ]
+  },
+  "world-8-objects/objects-explore-3": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "2"
+    ]
+  },
+  "world-8-overriding-members/overriding-explore-3": {
+    "reason": "minikotlin compile gap (unsupported feature)",
+    "output": [
+      "Woof",
+      "Meow"
+    ]
+  }
+}

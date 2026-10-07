@@ -106,7 +106,7 @@ export const PRACTICE_TASKS: Record<number, { writeRun: PracticeTask[]; debug: P
 export interface LessonData {
   id: string; key: string; worldName: string; topicTitle: string;
   learn: { title: string; subtitle: string; exampleTitle: string; codeSnippet: string[]; explanation: string; keyIdeas: { number: number; title: string; description: string }[]; keyTakeaway: string };
-  explore?: { title: string; subtitle: string; cards: { id: string; number: string; title: string; language: string; subtitle: string; code: string[]; whatItMeans: { label: string; description: string }[]; whatChanged: string }[] };
+  explore?: { title: string; subtitle: string; cards: { id: string; number: string; title: string; language: string; subtitle: string; code: string[]; output?: string[]; outputKind?: 'runtimeError' | 'compileError'; whatItMeans: { label: string; description: string }[]; whatChanged: string }[] };
   predict?: { title: string; subtitle?: string; questions: { id: string; topicMeta: string; title?: string; language: string; code?: string[]; prompt: string; options: { id: string; label: string; isCorrect: boolean }[]; explanation: { codeRef: string; detail: string } }[] };
   mastered: { topicTitle: string; summary: string; passedCount: string; verificationItems: { title: string; subtitle: string }[]; xpEarned: number; streakDays: number; accuracy: string };
   hasWriteRun: boolean; hasDebug: boolean; boss: boolean;

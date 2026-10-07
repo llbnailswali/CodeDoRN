@@ -1,3 +1,8 @@
 node_modules
 dist
 .DS_Store
+
+# minikotlin.run oracle: downloaded by scripts/minikotlin/fetch.mjs, no licence found, never commit
+tools/minikotlin/
+tools/kotlinc/
+tools/*.jar

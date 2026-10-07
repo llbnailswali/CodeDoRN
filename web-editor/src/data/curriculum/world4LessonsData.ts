@@ -38,6 +38,7 @@ export const FOR_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Run the same line once for each value in the range.',
         code: ['for (i in 1..3) {', '  println(i)', '}'],
+        output: ['1', '2', '3'],
         whatItMeans: [
           { label: 'for (i in 1..3)', description: 'Creates a loop variable i that takes the values 1, 2, then 3' },
           { label: 'println(i)', description: 'Runs once per value, printing the current value of i each time' }
@@ -51,6 +52,7 @@ export const FOR_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Even a range with a single value still runs the loop body once.',
         code: ['for (i in 4..4) {', '  println("Ran once")', '}'],
+        output: ['Ran once'],
         whatItMeans: [
           { label: '4..4', description: 'A range whose start and end are the same value still contains that one value, 4' },
           { label: 'Result', description: 'The loop body runs exactly once, printing "Ran once" -- not zero times' }
@@ -64,6 +66,7 @@ export const FOR_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'i is a normal value -- use it in expressions, not just println(i) directly.',
         code: ['for (i in 1..4) {', '  println(i * i)', '}'],
+        output: ['1', '4', '9', '16'],
         whatItMeans: [
           { label: 'i * i', description: 'Multiplies the current loop value by itself' },
           { label: 'Result', description: 'Prints 1, 4, 9, then 16 -- the square of each value from 1 to 4' }
@@ -77,6 +80,7 @@ export const FOR_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Combine a for loop with a mutable accumulator variable.',
         code: ['var total = 0', 'for (i in 1..5) {', '  total = total + i', '}', 'println(total)'],
+        output: ['15'],
         whatItMeans: [
           { label: 'var total = 0', description: 'A mutable variable that starts at 0, ready to accumulate a sum' },
           { label: 'total = total + i', description: 'On each pass, adds the current loop value to the running total' },
@@ -91,6 +95,7 @@ export const FOR_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: "A range's start and end don't have to be literal numbers.",
         code: ['val start = 2', 'val end = 5', 'for (i in start..end) {', '  println(i)', '}'],
+        output: ['2', '3', '4', '5'],
         whatItMeans: [
           { label: 'start..end', description: 'The range bounds come from variables instead of literal numbers' },
           { label: 'Result', description: 'i takes the values 2, 3, 4, then 5, since start is 2 and end is 5' }
@@ -316,6 +321,7 @@ export const WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A var counter increases until the condition turns false.',
         code: ['var count = 1', 'while (count <= 3) {', '  println(count)', '  count++', '}'],
+        output: ['1', '2', '3'],
         whatItMeans: [
           { label: 'var count = 1', description: 'A mutable counter the condition will check' },
           { label: 'count <= 3', description: 'Checked before every pass -- true for 1, 2, and 3' },
@@ -330,6 +336,7 @@ export const WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'When the condition is already false, the body never runs -- not even once.',
         code: ['var attempts = 5', 'while (attempts < 3) {', '  println("Retrying")', '  attempts++', '}', 'println("No retries needed")'],
+        output: ['No retries needed'],
         whatItMeans: [
           { label: 'attempts < 3', description: 'attempts is 5, so 5 < 3 is false the very first time it is checked' },
           { label: 'Result', description: 'The loop body is skipped completely -- "Retrying" never prints, only "No retries needed" does' }
@@ -343,6 +350,7 @@ export const WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Ideal for while: the number of passes is not known in advance.',
         code: ['var price = 100', 'while (price > 50) {', '  price -= 20', '}', 'println(price)'],
+        output: ['40'],
         whatItMeans: [
           { label: 'price > 50', description: 'Keeps discounting price by 20 as long as it is still above 50' },
           { label: 'price -= 20', description: '100 -> 80 -> 60 -> 40, then the condition finally turns false' },
@@ -357,6 +365,7 @@ export const WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The loop body can contain any code you already know, including conditions.',
         code: ['var n = 1', 'while (n <= 5) {', '  if (n % 2 == 0) {', '    println("$n is even")', '  }', '  n++', '}'],
+        output: ['2 is even', '4 is even'],
         whatItMeans: [
           { label: 'while (n <= 5)', description: 'Repeats for n = 1 through 5' },
           { label: 'if (n % 2 == 0)', description: 'Only even values of n trigger a println inside the loop body' },
@@ -371,6 +380,7 @@ export const WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The update step does not have to be ++ or -- by exactly 1.',
         code: ['var fuel = 4', 'while (fuel > 0) {', '  println("Fuel remaining: $fuel")', '  fuel -= 2', '}', 'println("Out of fuel")'],
+        output: ['Fuel remaining: 4', 'Fuel remaining: 2', 'Out of fuel'],
         whatItMeans: [
           { label: 'fuel > 0', description: 'Keeps the loop going while there is fuel left' },
           { label: 'fuel -= 2', description: 'Each pass drains 2 units instead of 1: 4 -> 2 -> 0' },
@@ -619,6 +629,7 @@ export const DO_WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'When the condition starts true, do-while looks just like a while loop.',
         code: ['var i = 1', 'do {', '  println(i)', '  i++', '} while (i <= 3)'],
+        output: ['1', '2', '3'],
         whatItMeans: [
           { label: 'do { ... }', description: 'runs first: prints 1, then i becomes 2' },
           { label: 'while (i <= 3)', description: 'checked after each pass -- true for i = 2 and i = 3, false once i becomes 4' },
@@ -633,6 +644,7 @@ export const DO_WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: "The condition is false from the very start -- but the body still runs once.",
         code: ['var attempts = 10', 'do {', '  println("Attempt: $attempts")', '  attempts++', '} while (attempts < 5)'],
+        output: ['Attempt: 10'],
         whatItMeans: [
           { label: 'attempts = 10', description: 'attempts < 5 is already false before the loop even begins' },
           { label: 'do { ... }', description: 'runs anyway -- prints "Attempt: 10" and increments attempts to 11' },
@@ -647,6 +659,7 @@ export const DO_WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A plain while loop facing an initially-false condition never runs its body at all.',
         code: ['var stock = 0', 'while (stock > 0) {', '  println("Restocking")', '  stock--', '}', 'println("Check complete")'],
+        output: ['Check complete'],
         whatItMeans: [
           { label: 'stock = 0', description: 'stock > 0 is false immediately' },
           { label: 'while (stock > 0)', description: 'checked BEFORE the body -- since it is false, the body is skipped entirely' },
@@ -661,6 +674,7 @@ export const DO_WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Swapping to do-while with a similarly false-from-the-start condition still forces one run.',
         code: ['var tickets = 0', 'do {', '  println("Selling ticket")', '  tickets++', '} while (tickets < 0)'],
+        output: ['Selling ticket'],
         whatItMeans: [
           { label: 'tickets = 0', description: 'tickets < 0 is already false -- a while loop here would never run' },
           { label: 'do { ... }', description: 'runs first regardless -- prints "Selling ticket" and tickets becomes 1' },
@@ -675,6 +689,7 @@ export const DO_WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Withdraw from a balance until it runs out, counting how many withdrawals happened.',
         code: ['var balance = 100', 'var withdrawals = 0', 'do {', '  balance -= 20', '  withdrawals++', '} while (balance > 0)', 'println("Withdrawals: $withdrawals")'],
+        output: ['Withdrawals: 5'],
         whatItMeans: [
           { label: 'do { ... }', description: 'each pass subtracts 20 from balance and counts the withdrawal' },
           { label: 'while (balance > 0)', description: 'checked after each withdrawal: 80, 60, 40, 20 are all > 0, but 0 is not' },
@@ -689,6 +704,7 @@ export const DO_WHILE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'do-while still checks once before deciding to stop -- even when nothing needed fixing.',
         code: ['var pin = 1234', 'var tries = 0', 'do {', '  tries++', '} while (pin != 1234 && tries < 3)', 'println("Tries: $tries")'],
+        output: ['Tries: 1'],
         whatItMeans: [
           { label: 'do { tries++ }', description: 'always runs at least once, incrementing tries to 1' },
           { label: 'pin != 1234', description: 'false, since pin is already 1234 -- the && short-circuits to false' },
@@ -941,6 +957,7 @@ export const RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Iterate through every value from 1 to 5, inclusive.',
         code: ['for (i in 1..5) {', '  println(i)', '}'],
+        output: ['1', '2', '3', '4', '5'],
         whatItMeans: [
           { label: '1..5', description: 'The inclusive sequence 1, 2, 3, 4, 5' },
           { label: 'for (i in 1..5)', description: 'Visits each of those five values in order, one per pass' }
@@ -954,6 +971,7 @@ export const RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: "A range's start and end can come from variables, not just literal numbers.",
         code: ['val start = 3', 'val end = 6', 'for (i in start..end) {', '  println(i)', '}'],
+        output: ['3', '4', '5', '6'],
         whatItMeans: [
           { label: 'start..end', description: 'Builds the range from the current values of start and end: 3..6' },
           { label: 'Result', description: 'Prints 3, 4, 5, 6 -- exactly as if it had been written 3..6 directly' }
@@ -967,6 +985,7 @@ export const RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Ask whether a value falls inside a range, without looping at all.',
         code: ['val age = 15', 'if (age in 13..19) {', '  println("Teenager")', '}'],
+        output: ['Teenager'],
         whatItMeans: [
           { label: 'age in 13..19', description: 'Evaluates to true if age is anywhere between 13 and 19 inclusive' },
           { label: 'Result', description: '15 is inside that range, so "Teenager" prints' }
@@ -980,6 +999,7 @@ export const RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Test whether a value falls outside a range.',
         code: ['val age = 25', 'if (age !in 13..19) {', '  println("Not a teenager")', '}'],
+        output: ['Not a teenager'],
         whatItMeans: [
           { label: 'age !in 13..19', description: 'Evaluates to true if age is NOT between 13 and 19' },
           { label: 'Result', description: '25 falls outside that range, so "Not a teenager" prints' }
@@ -993,6 +1013,7 @@ export const RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The exact endpoint value still counts as a match.',
         code: ['val score = 100', 'if (score in 90..100) {', '  println("Top score")', '}'],
+        output: ['Top score'],
         whatItMeans: [
           { label: 'score = 100', description: 'Exactly matches the upper boundary of the range' },
           { label: '90..100', description: 'Includes 100 itself, since ranges never exclude their own endpoints' }
@@ -1006,6 +1027,7 @@ export const RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: "A for-loop range that stops one short, on purpose.",
         code: ['for (i in 0 until 5) {', '  println(i)', '}'],
+        output: ['0', '1', '2', '3', '4'],
         whatItMeans: [
           { label: '0 until 5', description: 'Visits every value from 0 up to, but NOT including, 5' },
           { label: 'Result', description: 'Prints 0, 1, 2, 3, 4 -- five values total, with 5 itself never visited' }
@@ -1019,6 +1041,7 @@ export const RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The two supported uses of a range can work together in the same program.',
         code: ['for (i in 1..10) {', '  if (i in 4..6) {', '    println(i)', '  }', '}'],
+        output: ['4', '5', '6'],
         whatItMeans: [
           { label: 'for (i in 1..10)', description: 'Drives the loop through every value from 1 to 10' },
           { label: 'if (i in 4..6)', description: 'On each pass, tests whether the current i also falls inside a second, narrower range' },
@@ -1284,6 +1307,7 @@ export const PROGRESSIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A plain range is already a progression -- just with step 1 left unwritten.',
         code: ['for (i in 1..5) {', '  println(i)', '}'],
+        output: ['1', '2', '3', '4', '5'],
         whatItMeans: [
           { label: '1..5', description: 'a progression from 1 to 5 with an implicit step of 1' },
           { label: 'Result', description: 'visits every value one apart: 1, 2, 3, 4, 5' }
@@ -1297,6 +1321,7 @@ export const PROGRESSIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Adding step 2 doubles the gap between consecutive values.',
         code: ['for (i in 0..10 step 2) {', '  println(i)', '}'],
+        output: ['0', '2', '4', '6', '8', '10'],
         whatItMeans: [
           { label: 'step 2', description: 'each value is 2 more than the last, instead of 1 more' },
           { label: 'Result', description: '0, 2, 4, 6, 8, 10 -- since 10 - 0 = 10 divides evenly by 2, the sequence lands exactly on the upper bound' }
@@ -1310,6 +1335,7 @@ export const PROGRESSIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The sequence can stop short of the upper bound entirely.',
         code: ['for (i in 1..10 step 4) {', '  println(i)', '}'],
+        output: ['1', '5', '9'],
         whatItMeans: [
           { label: 'step 4', description: 'values are 1, 5, 9 -- the next one would be 13' },
           { label: 'Result', description: '13 is past 10, so the loop stops at 9 -- 10 is never visited, even though it is the range\'s written bound' }
@@ -1323,6 +1349,7 @@ export const PROGRESSIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'until already excludes the upper bound -- step compounds on top of that.',
         code: ['for (i in 0 until 15 step 5) {', '  println(i)', '}'],
+        output: ['0', '5', '10'],
         whatItMeans: [
           { label: '0 until 15', description: 'an exclusive range -- 15 itself is never a candidate value' },
           { label: 'step 5', description: 'values are 0, 5, 10 -- the next one, 15, is excluded by until anyway' }
@@ -1336,6 +1363,7 @@ export const PROGRESSIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'downTo still needs a positive step -- the direction comes from downTo itself.',
         code: ['for (i in 20 downTo 0 step 5) {', '  println(i)', '}'],
+        output: ['20', '15', '10', '5', '0'],
         whatItMeans: [
           { label: 'downTo', description: 'sets the direction to descending' },
           { label: 'step 5', description: 'written as a positive number even though the values are decreasing' },
@@ -1350,6 +1378,7 @@ export const PROGRESSIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The step does not have to be a literal number -- a variable works too.',
         code: ['val gap = 3', 'for (i in 0..12 step gap) {', '  println(i)', '}'],
+        output: ['0', '3', '6', '9', '12'],
         whatItMeans: [
           { label: 'val gap = 3', description: 'stores the step amount in a variable' },
           { label: 'step gap', description: 'uses that variable directly inside the for-loop header' },
@@ -1572,6 +1601,7 @@ export const DOWNTO_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Count down from 5 to 1, printing each number.',
         code: ['for (i in 5 downTo 1) {', '  println(i)', '}'],
+        output: ['5', '4', '3', '2', '1'],
         whatItMeans: [
           { label: 'downTo', description: 'counts backwards from the left value toward the right value' },
           { label: '5 downTo 1', description: 'visits 5, 4, 3, 2, 1 -- five iterations total' }
@@ -1585,6 +1615,7 @@ export const DOWNTO_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The lower bound does not have to be 1 -- it can be any value, including 0.',
         code: ['for (i in 3 downTo 0) {', '  println(i)', '}'],
+        output: ['3', '2', '1', '0'],
         whatItMeans: [
           { label: '3 downTo 0', description: 'both ends are inclusive, so 0 is visited too -- 3, 2, 1, 0' }
         ],
@@ -1597,6 +1628,7 @@ export const DOWNTO_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Combine downTo with step to skip values while counting down.',
         code: ['for (i in 10 downTo 0 step 2) {', '  println(i)', '}'],
+        output: ['10', '8', '6', '4', '2', '0'],
         whatItMeans: [
           { label: 'step 2', description: 'decreases by 2 each time instead of by 1' },
           { label: '10 downTo 0 step 2', description: 'visits 10, 8, 6, 4, 2, 0' }
@@ -1610,6 +1642,7 @@ export const DOWNTO_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A realistic use for downTo: printing a launch countdown.',
         code: ['for (i in 3 downTo 1) {', '  println("T-minus $i")', '}', 'println("Liftoff!")'],
+        output: ['T-minus 3', 'T-minus 2', 'T-minus 1', 'Liftoff!'],
         whatItMeans: [
           { label: '3 downTo 1', description: 'visits 3, 2, 1' },
           { label: '"T-minus $i"', description: 'interpolates each counted-down value into the message' },
@@ -1624,6 +1657,7 @@ export const DOWNTO_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Writing a plain range backwards does NOT count down -- it produces nothing.',
         code: ['for (i in 5..1) {', '  println(i)', '}', 'println("Loop finished")'],
+        output: ['Loop finished'],
         whatItMeans: [
           { label: '5..1', description: 'a plain range where the start (5) is already greater than the end (1)' },
           { label: 'Result', description: 'the loop body never runs even once -- only "Loop finished" prints' }
@@ -1836,6 +1870,7 @@ export const STEP_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The stepped sequence reaches 10 exactly, and .. includes it.',
         code: ['for (i in 1..10 step 3) {', '  println(i)', '}'],
+        output: ['1', '4', '7', '10'],
         whatItMeans: [
           { label: '1..10 step 3', description: 'Counts up from 1 by 3 each time: 1, 4, 7, 10' },
           { label: 'Result', description: '10 is reached exactly and .. is inclusive, so 10 is printed too -- the next value, 13, is past 10 and the loop stops' }
@@ -1849,6 +1884,7 @@ export const STEP_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The stepped sequence skips past 10 without ever landing on it.',
         code: ['for (i in 1..10 step 4) {', '  println(i)', '}'],
+        output: ['1', '5', '9'],
         whatItMeans: [
           { label: '1..10 step 4', description: 'Counts up from 1 by 4 each time: 1, 5, 9' },
           { label: 'Result', description: 'The next value would be 13, which is greater than 10, so the loop simply stops at 9 -- 10 is never visited or printed' }
@@ -1862,6 +1898,7 @@ export const STEP_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: "Swapping .. for until excludes the endpoint even when step would have landed on it.",
         code: ['for (i in 1 until 10 step 3) {', '  println(i)', '}'],
+        output: ['1', '4', '7'],
         whatItMeans: [
           { label: '1 until 10 step 3', description: 'Counts up from 1 by 3 each time: 1, 4, 7' },
           { label: 'Result', description: 'The next value, 10, satisfies "would equal 10" but until 10 means strictly less than 10, so 10 is excluded -- only 1, 4, 7 print' }
@@ -1875,6 +1912,7 @@ export const STEP_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'downTo still supplies the direction; step still supplies the gap.',
         code: ['for (i in 10 downTo 1 step 3) {', '  println(i)', '}'],
+        output: ['10', '7', '4', '1'],
         whatItMeans: [
           { label: '10 downTo 1 step 3', description: 'Counts down from 10 by 3 each time: 10, 7, 4, 1' },
           { label: 'Result', description: '1 is reached exactly and downTo is inclusive of its lower bound, so 1 prints -- the next value, -2, is past 1 and the loop stops' }
@@ -1888,6 +1926,7 @@ export const STEP_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The step amount does not have to be a literal number.',
         code: ['val interval = 5', 'for (i in 0..20 step interval) {', '  println(i)', '}'],
+        output: ['0', '5', '10', '15', '20'],
         whatItMeans: [
           { label: 'interval', description: 'Holds 5, and is used directly after step, just like a literal number would be' },
           { label: '0..20 step interval', description: 'Counts up from 0 by 5 each time: 0, 5, 10, 15, 20' }
@@ -2101,6 +2140,7 @@ export const BREAK_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'break stops the loop the moment i reaches 5 -- the rest of the range is never visited.',
         code: ['for (i in 1..10) {', '  if (i == 5) {', '    break', '  }', '  println(i)', '}'],
+        output: ['1', '2', '3', '4'],
         whatItMeans: [
           { label: 'if (i == 5)', description: 'Stays false for i = 1, 2, 3, 4, so println(i) runs normally each time' },
           { label: 'break', description: 'Once i == 5 becomes true, break runs immediately and the loop exits -- 5 is never printed, and 6 through 10 are never visited at all' }
@@ -2114,6 +2154,7 @@ export const BREAK_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'break only exits the loop -- execution continues normally right after it.',
         code: ['for (i in 1..10) {', '  if (i == 5) {', '    break', '  }', '  println(i)', '}', 'println("Loop ended")'],
+        output: ['1', '2', '3', '4', 'Loop ended'],
         whatItMeans: [
           { label: 'break', description: 'Exits the for loop as soon as i == 5' },
           { label: 'println("Loop ended")', description: 'This line is not part of the loop, so it runs right after break exits it -- exactly as if the loop had finished on its own' }
@@ -2127,6 +2168,7 @@ export const BREAK_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A very common use of break: stop looking the moment the target is found.',
         code: ['val target = 6', 'for (i in 1..10) {', '  if (i == target) {', '    println("Found $target")', '    break', '  }', '}'],
+        output: ['Found 6'],
         whatItMeans: [
           { label: 'i == target', description: 'False for i = 1 through 5, so the loop keeps going without printing anything' },
           { label: 'break', description: 'Once i reaches 6, "Found 6" prints and break exits immediately -- there is no reason to keep checking 7 through 10' }
@@ -2140,6 +2182,7 @@ export const BREAK_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'break works the same way in a while loop -- it is not limited to for loops.',
         code: ['var count = 0', 'while (true) {', '  if (count == 3) {', '    break', '  }', '  println(count)', '  count++', '}'],
+        output: ['0', '1', '2'],
         whatItMeans: [
           { label: 'while (true)', description: 'Would loop forever on its own, with no condition to stop it' },
           { label: 'if (count == 3) { break }', description: 'Gives the loop its only way to stop -- once count reaches 3, break exits before 3 is ever printed' }
@@ -2153,6 +2196,7 @@ export const BREAK_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'break does not have to compare i directly -- it can react to any condition, including one built up during the loop.',
         code: ['var total = 0', 'for (i in 1..100) {', '  total += i', '  if (total > 20) {', '    break', '  }', '}', 'println(total)'],
+        output: ['21'],
         whatItMeans: [
           { label: 'total += i', description: 'Adds 1, then 2, then 3, then 4, then 5, then 6 to total, giving 1, 3, 6, 10, 15, 21' },
           { label: 'if (total > 20)', description: 'Becomes true right after total reaches 21 (at i = 6), so break exits there -- the loop never reaches i = 7 or beyond' }
@@ -2382,6 +2426,7 @@ export const CONTINUE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'continue skips println(i) only on the iterations where the condition matches.',
         code: ['for (i in 1..5) {', '  if (i % 2 == 0) {', '    continue', '  }', '  println(i)', '}'],
+        output: ['1', '3', '5'],
         whatItMeans: [
           { label: 'i % 2 == 0', description: 'true whenever i is even -- true for i = 2 and i = 4' },
           { label: 'continue', description: 'skips println(i) for that iteration and jumps to the next value of i' },
@@ -2396,6 +2441,7 @@ export const CONTINUE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Flip the condition to skip a different set of values.',
         code: ['for (i in 1..6) {', '  if (i % 2 != 0) {', '    continue', '  }', '  println(i)', '}'],
+        output: ['2', '4', '6'],
         whatItMeans: [
           { label: 'i % 2 != 0', description: 'true whenever i is odd -- true for i = 1, 3, 5' },
           { label: 'Result', description: 'those odd values are skipped, so only 2, 4, 6 print' }
@@ -2409,6 +2455,7 @@ export const CONTINUE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'continue works the same way outside for loops too.',
         code: ['var i = 0', 'while (i < 6) {', '  i++', '  if (i % 2 == 0) {', '    continue', '  }', '  println(i)', '}'],
+        output: ['1', '3', '5'],
         whatItMeans: [
           { label: 'i++', description: 'runs first every iteration, so i is already updated before continue could ever skip it' },
           { label: 'continue', description: 'skips println(i) but the while condition i < 6 is still checked again right after' },
@@ -2423,6 +2470,7 @@ export const CONTINUE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Scale the same pattern to a longer range.',
         code: ['for (i in 1..10) {', '  if (i % 3 == 0) {', '    continue', '  }', '  println(i)', '}'],
+        output: ['1', '2', '4', '5', '7', '8', '10'],
         whatItMeans: [
           { label: 'i % 3 == 0', description: 'true for i = 3, 6, and 9' },
           { label: 'Result', description: 'those three values are skipped -- every other number from 1 to 10 still prints: 1, 2, 4, 5, 7, 8, 10' }
@@ -2436,6 +2484,7 @@ export const CONTINUE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The same condition, but continue only removes ONE value from the output.',
         code: ['for (i in 1..5) {', '  if (i == 3) {', '    continue', '  }', '  println(i)', '}'],
+        output: ['1', '2', '4', '5'],
         whatItMeans: [
           { label: 'continue at i == 3', description: 'skips only printing 3 -- the loop still goes on to check i = 4 and i = 5' },
           { label: 'Result', description: 'prints 1, 2, 4, 5' },
@@ -2680,6 +2729,7 @@ export const NESTED_LOOPS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The inner loop completes fully for every outer value.',
         code: ['for (row in 1..2) {', '  for (col in 1..2) {', '    println("row=$row, col=$col")', '  }', '}'],
+        output: ['row=1, col=1', 'row=1, col=2', 'row=2, col=1', 'row=2, col=2'],
         whatItMeans: [
           { label: 'for (row in 1..2)', description: 'the outer loop -- runs row = 1, then row = 2' },
           { label: 'for (col in 1..2)', description: 'the inner loop -- for EACH row value, runs col = 1 then col = 2 to completion' },
@@ -2694,6 +2744,7 @@ export const NESTED_LOOPS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'An outer loop of 3 and an inner loop of 2 run the inner body 3 * 2 = 6 times.',
         code: ['var total = 0', 'for (i in 1..3) {', '  for (j in 1..2) {', '    total++', '  }', '}', 'println(total)'],
+        output: ['6'],
         whatItMeans: [
           { label: 'for (i in 1..3)', description: 'outer loop runs 3 times' },
           { label: 'for (j in 1..2)', description: 'inner loop runs 2 times for EACH of those 3 outer passes' },
@@ -2708,6 +2759,7 @@ export const NESTED_LOOPS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A natural, realistic use case for nested loops.',
         code: ['for (i in 1..3) {', '  for (j in 1..3) {', '    println("$i x $j = ${i * j}")', '  }', '}'],
+        output: ['1 x 1 = 1', '1 x 2 = 2', '1 x 3 = 3', '2 x 1 = 2', '2 x 2 = 4', '2 x 3 = 6', '3 x 1 = 3', '3 x 2 = 6', '3 x 3 = 9'],
         whatItMeans: [
           { label: 'Outer loop (i)', description: 'walks each row of the table, 1 through 3' },
           { label: 'Inner loop (j)', description: 'for each row i, walks every column 1 through 3, printing i x j = i * j' },
@@ -2722,6 +2774,7 @@ export const NESTED_LOOPS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Building a square of characters, row by row.',
         code: ['for (i in 1..3) {', '  for (j in 1..3) {', '    print("*")', '  }', '  println()', '}'],
+        output: ['***', '***', '***'],
         whatItMeans: [
           { label: 'Inner loop', description: 'prints 3 stars on the same line using print() (no newline yet)' },
           { label: 'println() after the inner loop', description: 'runs once per outer pass, right after the inner loop finishes -- it moves to a new line to start the next row' },
@@ -2736,6 +2789,7 @@ export const NESTED_LOOPS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A break inside the inner loop never touches the outer loop.',
         code: ['for (i in 1..3) {', '  for (j in 1..3) {', '    if (j == 2) break', '    println("i=$i, j=$j")', '  }', '}'],
+        output: ['i=1, j=1', 'i=2, j=1', 'i=3, j=1'],
         whatItMeans: [
           { label: 'if (j == 2) break', description: 'stops the CURRENT inner loop as soon as j reaches 2' },
           { label: 'Outer loop', description: 'is completely unaffected -- it moves on to the next i value normally, and the inner loop starts fresh (j = 1 again) each time' },
@@ -2972,6 +3026,7 @@ export const WORLD_4_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Sum only the numbers a step-range actually visits.',
         code: ['var sum = 0', 'for (i in 1..10 step 5) {', '  sum += i', '}', 'println("Sum: $sum")'],
+        output: ['Sum: 7'],
         whatItMeans: [{ label: 'step 5', description: 'Only visits 1 and 6, so sum accumulates 1 + 6 = 7' }],
         whatChanged: 'Combined a stepped range with a running accumulator.'
       },
@@ -2982,6 +3037,7 @@ export const WORLD_4_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Skip a number without ending the loop.',
         code: ['for (i in 1..8) {', '  if (i % 3 == 0) {', '    continue', '  }', '  println(i)', '}'],
+        output: ['1', '2', '4', '5', '7', '8'],
         whatItMeans: [{ label: 'continue', description: 'Jumps straight to the next iteration, skipping 3 and 6' }],
         whatChanged: 'Used continue to filter multiples of 3 out of the output.'
       },
@@ -2992,6 +3048,7 @@ export const WORLD_4_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Stop scanning as soon as a limit is reached.',
         code: ['for (i in 1..100) {', '  if (i > 5) {', '    break', '  }', '  println(i)', '}'],
+        output: ['1', '2', '3', '4', '5'],
         whatItMeans: [{ label: 'break', description: 'Exits the loop entirely once i exceeds 5, even though the range goes to 100' }],
         whatChanged: 'Demonstrated an early exit that bounds a loop by a condition, not just its range.'
       },
@@ -3002,6 +3059,7 @@ export const WORLD_4_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The exact pattern the boss challenge builds on.',
         code: ['var total = 0', 'for (i in 1..6) {', '  when (i % 2) {', '    0 -> total += i', '    else -> continue', '  }', '  println("Running total: $total")', '}'],
+        output: ['Running total: 2', 'Running total: 6', 'Running total: 12'],
         whatItMeans: [{ label: 'when (i % 2)', description: 'Routes odd i straight to continue, and even i into the accumulator' }],
         whatChanged: 'Fused when, continue, and an accumulator inside a single for-loop.'
       }

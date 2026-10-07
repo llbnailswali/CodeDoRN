@@ -14,7 +14,9 @@ export const INHERITANCE_ABSTRACT_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Dog().sound())"
-    ], whatItMeans: [{ label: 'Behavior', description: "open permits inheritance/override; override supplies runtime behavior." }], whatChanged: "Covers a distinct mapped scenario: Open override." },
+    ],
+        output: ['woof'],
+        whatItMeans: [{ label: 'Behavior', description: "open permits inheritance/override; override supplies runtime behavior." }], whatChanged: "Covers a distinct mapped scenario: Open override." },
     { id: "world-11-inheritance-abstract-classes-explore-2", number: "02", title: "Base reference dispatch", language: 'Kotlin', subtitle: "Overridden members use dynamic dispatch through a base reference.", code: [
       "open class Shape {",
       "  open fun name() = \"shape\"",
@@ -26,7 +28,9 @@ export const INHERITANCE_ABSTRACT_CLASSES_LESSON: FiveStageLesson = {
       "",
       "val s: Shape = Circle()",
       "println(s.name())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Overridden members use dynamic dispatch through a base reference." }], whatChanged: "Covers a distinct mapped scenario: Base reference dispatch." },
+    ],
+        output: ['circle'],
+        whatItMeans: [{ label: 'Behavior', description: "Overridden members use dynamic dispatch through a base reference." }], whatChanged: "Covers a distinct mapped scenario: Base reference dispatch." },
     { id: "world-11-inheritance-abstract-classes-explore-3", number: "03", title: "Abstract function obligation", language: 'Kotlin', subtitle: "A concrete subclass implements the abstract function.", code: [
       "abstract class Report {",
       "  abstract fun render(): String",
@@ -37,7 +41,9 @@ export const INHERITANCE_ABSTRACT_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(TextReport().render())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A concrete subclass implements the abstract function." }], whatChanged: "Covers a distinct mapped scenario: Abstract function obligation." },
+    ],
+        output: ['text'],
+        whatItMeans: [{ label: 'Behavior', description: "A concrete subclass implements the abstract function." }], whatChanged: "Covers a distinct mapped scenario: Abstract function obligation." },
     { id: "world-11-inheritance-abstract-classes-explore-4", number: "04", title: "Abstract property", language: 'Kotlin', subtitle: "Abstract properties also require concrete implementation.", code: [
       "abstract class Account {",
       "  abstract val kind: String",
@@ -48,7 +54,9 @@ export const INHERITANCE_ABSTRACT_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Savings().kind)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Abstract properties also require concrete implementation." }], whatChanged: "Covers a distinct mapped scenario: Abstract property." },
+    ],
+        output: ['savings'],
+        whatItMeans: [{ label: 'Behavior', description: "Abstract properties also require concrete implementation." }], whatChanged: "Covers a distinct mapped scenario: Abstract property." },
     { id: "world-11-inheritance-abstract-classes-explore-5", number: "05", title: "Concrete behavior in abstract class", language: 'Kotlin', subtitle: "Abstract classes may hold constructor state and concrete behavior.", code: [
       "abstract class Job(val id: Int) {",
       "  fun tag() = \"job:$id\"",
@@ -60,7 +68,9 @@ export const INHERITANCE_ABSTRACT_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(SyncJob(7).tag())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Abstract classes may hold constructor state and concrete behavior." }], whatChanged: "Covers a distinct mapped scenario: Concrete behavior in abstract class." },
+    ],
+        output: ['job:7'],
+        whatItMeans: [{ label: 'Behavior', description: "Abstract classes may hold constructor state and concrete behavior." }], whatChanged: "Covers a distinct mapped scenario: Concrete behavior in abstract class." },
     { id: "world-11-inheritance-abstract-classes-explore-6", number: "06", title: "super call", language: 'Kotlin', subtitle: "super accesses the base implementation.", code: [
       "open class Base {",
       "  open fun text() = \"base\"",
@@ -71,7 +81,9 @@ export const INHERITANCE_ABSTRACT_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Child().text())"
-    ], whatItMeans: [{ label: 'Behavior', description: "super accesses the base implementation." }], whatChanged: "Covers a distinct mapped scenario: super call." },
+    ],
+        output: ['base+child'],
+        whatItMeans: [{ label: 'Behavior', description: "super accesses the base implementation." }], whatChanged: "Covers a distinct mapped scenario: super call." },
     { id: "world-11-inheritance-abstract-classes-explore-7", number: "07", title: "final override", language: 'Kotlin', subtitle: "An override remains open unless final is used to stop further overriding.", code: [
       "open class A {",
       "  open fun f() = \"A\"",
@@ -82,14 +94,18 @@ export const INHERITANCE_ABSTRACT_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(B().f())"
-    ], whatItMeans: [{ label: 'Behavior', description: "An override remains open unless final is used to stop further overriding." }], whatChanged: "Covers a distinct mapped scenario: final override." },
+    ],
+        output: ['B'],
+        whatItMeans: [{ label: 'Behavior', description: "An override remains open unless final is used to stop further overriding." }], whatChanged: "Covers a distinct mapped scenario: final override." },
     { id: "world-11-inheritance-abstract-classes-explore-8", number: "08", title: "Compile boundary: unresolved abstract member", language: 'Kotlin', subtitle: "A concrete subclass cannot leave an abstract member unresolved.", code: [
       "abstract class Parser {",
       "  abstract fun parse(): Int",
       "}",
       "",
       "// class BadParser : Parser()  // ERROR: parse() is not implemented"
-    ], whatItMeans: [{ label: 'Behavior', description: "A concrete subclass cannot leave an abstract member unresolved." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: unresolved abstract member." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "A concrete subclass cannot leave an abstract member unresolved." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: unresolved abstract member." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-inheritance-abstract-classes-predict-1", questionNumber: 1, totalQuestions: 8, title: "Dispatch through base type", topicMeta: "output", language: 'Kotlin', code: [
@@ -197,7 +213,9 @@ export const INTERFACES_MULTIPLE_INTERFACE_IMPLEMENTATION_LESSON: FiveStageLesso
       "class File : Readable, Writable",
       "",
       "println(File().read() + \":\" + File().write())"
-    ], whatItMeans: [{ label: 'Behavior', description: "One class can implement independent interface capabilities." }], whatChanged: "Covers a distinct mapped scenario: Two interfaces." },
+    ],
+        output: ['read:write'],
+        whatItMeans: [{ label: 'Behavior', description: "One class can implement independent interface capabilities." }], whatChanged: "Covers a distinct mapped scenario: Two interfaces." },
     { id: "world-11-interfaces-multiple-interface-implementation-explore-2", number: "02", title: "Abstract + default member", language: 'Kotlin', subtitle: "A class implements the abstract member and inherits the default.", code: [
       "interface Logger {",
       "  fun name(): String",
@@ -208,7 +226,9 @@ export const INTERFACES_MULTIPLE_INTERFACE_IMPLEMENTATION_LESSON: FiveStageLesso
       "}",
       "",
       "println(App().log())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A class implements the abstract member and inherits the default." }], whatChanged: "Covers a distinct mapped scenario: Abstract + default member." },
+    ],
+        output: ['log:app'],
+        whatItMeans: [{ label: 'Behavior', description: "A class implements the abstract member and inherits the default." }], whatChanged: "Covers a distinct mapped scenario: Abstract + default member." },
     { id: "world-11-interfaces-multiple-interface-implementation-explore-3", number: "03", title: "Interface reference polymorphism", language: 'Kotlin', subtitle: "Calls through an interface reference dispatch to the implementation.", code: [
       "interface Payable {",
       "  fun pay(): String",
@@ -219,7 +239,9 @@ export const INTERFACES_MULTIPLE_INTERFACE_IMPLEMENTATION_LESSON: FiveStageLesso
       "",
       "val p: Payable = Card()",
       "println(p.pay())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Calls through an interface reference dispatch to the implementation." }], whatChanged: "Covers a distinct mapped scenario: Interface reference polymorphism." },
+    ],
+        output: ['card'],
+        whatItMeans: [{ label: 'Behavior', description: "Calls through an interface reference dispatch to the implementation." }], whatChanged: "Covers a distinct mapped scenario: Interface reference polymorphism." },
     { id: "world-11-interfaces-multiple-interface-implementation-explore-4", number: "04", title: "Conflict resolution", language: 'Kotlin', subtitle: "Conflicting defaults require an override and can call qualified super implementations.", code: [
       "interface A {",
       "  fun label() = \"A\"",
@@ -232,7 +254,9 @@ export const INTERFACES_MULTIPLE_INTERFACE_IMPLEMENTATION_LESSON: FiveStageLesso
       "}",
       "",
       "println(C().label())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Conflicting defaults require an override and can call qualified super implementations." }], whatChanged: "Covers a distinct mapped scenario: Conflict resolution." },
+    ],
+        output: ['AB'],
+        whatItMeans: [{ label: 'Behavior', description: "Conflicting defaults require an override and can call qualified super implementations." }], whatChanged: "Covers a distinct mapped scenario: Conflict resolution." },
     { id: "world-11-interfaces-multiple-interface-implementation-explore-5", number: "05", title: "One implementation satisfies matching abstracts", language: 'Kotlin', subtitle: "One override can satisfy matching abstract signatures from multiple interfaces.", code: [
       "interface X {",
       "  fun id(): Int",
@@ -245,7 +269,9 @@ export const INTERFACES_MULTIPLE_INTERFACE_IMPLEMENTATION_LESSON: FiveStageLesso
       "}",
       "",
       "println(Z().id())"
-    ], whatItMeans: [{ label: 'Behavior', description: "One override can satisfy matching abstract signatures from multiple interfaces." }], whatChanged: "Covers a distinct mapped scenario: One implementation satisfies matching abstracts." },
+    ],
+        output: ['7'],
+        whatItMeans: [{ label: 'Behavior', description: "One override can satisfy matching abstract signatures from multiple interfaces." }], whatChanged: "Covers a distinct mapped scenario: One implementation satisfies matching abstracts." },
     { id: "world-11-interfaces-multiple-interface-implementation-explore-6", number: "06", title: "Class plus interfaces", language: 'Kotlin', subtitle: "A class may extend one class and implement multiple interfaces.", code: [
       "open class Base(val id: Int)",
       "interface Named {",
@@ -259,7 +285,9 @@ export const INTERFACES_MULTIPLE_INTERFACE_IMPLEMENTATION_LESSON: FiveStageLesso
       "}",
       "",
       "println(User(3).name())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A class may extend one class and implement multiple interfaces." }], whatChanged: "Covers a distinct mapped scenario: Class plus interfaces." },
+    ],
+        output: ['u3'],
+        whatItMeans: [{ label: 'Behavior', description: "A class may extend one class and implement multiple interfaces." }], whatChanged: "Covers a distinct mapped scenario: Class plus interfaces." },
     { id: "world-11-interfaces-multiple-interface-implementation-explore-7", number: "07", title: "Compile boundary: unresolved default conflict", language: 'Kotlin', subtitle: "Kotlin rejects ambiguous inherited implementations.", code: [
       "interface A {",
       "  fun f() = 1",
@@ -269,7 +297,9 @@ export const INTERFACES_MULTIPLE_INTERFACE_IMPLEMENTATION_LESSON: FiveStageLesso
       "}",
       "",
       "// class C : A, B // ERROR: must override f"
-    ], whatItMeans: [{ label: 'Behavior', description: "Kotlin rejects ambiguous inherited implementations." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: unresolved default conflict." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Kotlin rejects ambiguous inherited implementations." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: unresolved default conflict." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-interfaces-multiple-interface-implementation-predict-1", questionNumber: 1, totalQuestions: 7, title: "Two capabilities", topicMeta: "output", language: 'Kotlin', code: [
@@ -383,7 +413,9 @@ export const SEALED_CLASSES_SEALED_INTERFACES_LESSON: FiveStageLesson = {
       "data class Ok(val value: Int) : Result",
       "",
       "println(Ok(3))"
-    ], whatItMeans: [{ label: 'Behavior', description: "Sealed families can mix singleton and data-carrying variants." }], whatChanged: "Covers a distinct mapped scenario: Object and data variants." },
+    ],
+        output: ['Ok(value=3)'],
+        whatItMeans: [{ label: 'Behavior', description: "Sealed families can mix singleton and data-carrying variants." }], whatChanged: "Covers a distinct mapped scenario: Object and data variants." },
     { id: "world-11-sealed-classes-sealed-interfaces-explore-2", number: "02", title: "Exhaustive when", language: 'Kotlin', subtitle: "All direct cases are covered without else.", code: [
       "sealed interface State",
       "data object On : State",
@@ -395,34 +427,46 @@ export const SEALED_CLASSES_SEALED_INTERFACES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(text(On))"
-    ], whatItMeans: [{ label: 'Behavior', description: "All direct cases are covered without else." }], whatChanged: "Covers a distinct mapped scenario: Exhaustive when." },
+    ],
+        output: ['on'],
+        whatItMeans: [{ label: 'Behavior', description: "All direct cases are covered without else." }], whatChanged: "Covers a distinct mapped scenario: Exhaustive when." },
     { id: "world-11-sealed-classes-sealed-interfaces-explore-3", number: "03", title: "Sealed class shared state", language: 'Kotlin', subtitle: "A sealed class can carry common constructor state.", code: [
       "sealed class Error(val code: Int)",
       "class Network : Error(503)",
       "class Auth : Error(401)",
       "",
       "println(Network().code)"
-    ], whatItMeans: [{ label: 'Behavior', description: "A sealed class can carry common constructor state." }], whatChanged: "Covers a distinct mapped scenario: Sealed class shared state." },
+    ],
+        output: ['503'],
+        whatItMeans: [{ label: 'Behavior', description: "A sealed class can carry common constructor state." }], whatChanged: "Covers a distinct mapped scenario: Sealed class shared state." },
     { id: "world-11-sealed-classes-sealed-interfaces-explore-4", number: "04", title: "Sealed interface multiple contract", language: 'Kotlin', subtitle: "A sealed interface can participate alongside other interfaces.", code: [
       "sealed interface Event",
       "interface Logged",
       "data object Start : Event, Logged",
       "",
       "println(Start is Logged)"
-    ], whatItMeans: [{ label: 'Behavior', description: "A sealed interface can participate alongside other interfaces." }], whatChanged: "Covers a distinct mapped scenario: Sealed interface multiple contract." },
-    { id: "world-11-sealed-classes-sealed-interfaces-explore-5", number: "05", title: "Enum comparison", language: 'Kotlin', subtitle: "Enum entries share one enum shape; sealed variants can carry structurally different data.", code: ["enum class Direction {","  NORTH, SOUTH","}","sealed interface Message","data class Text(val value: String) : Message"], whatItMeans: [{ label: 'Behavior', description: "Enum entries share one enum shape; sealed variants can carry structurally different data." }], whatChanged: "Covers a distinct mapped scenario: Enum comparison." },
+    ],
+        output: ['true'],
+        whatItMeans: [{ label: 'Behavior', description: "A sealed interface can participate alongside other interfaces." }], whatChanged: "Covers a distinct mapped scenario: Sealed interface multiple contract." },
+    { id: "world-11-sealed-classes-sealed-interfaces-explore-5", number: "05", title: "Enum comparison", language: 'Kotlin', subtitle: "Enum entries share one enum shape; sealed variants can carry structurally different data.", code: ["enum class Direction {","  NORTH, SOUTH","}","sealed interface Message","data class Text(val value: String) : Message"],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Enum entries share one enum shape; sealed variants can carry structurally different data." }], whatChanged: "Covers a distinct mapped scenario: Enum comparison." },
     { id: "world-11-sealed-classes-sealed-interfaces-explore-6", number: "06", title: "Compile boundary: sealed instantiation", language: 'Kotlin', subtitle: "A sealed class cannot be instantiated directly.", code: [
       "sealed class Token",
       "",
       "// val t = Token() // ERROR: sealed class is abstract"
-    ], whatItMeans: [{ label: 'Behavior', description: "A sealed class cannot be instantiated directly." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: sealed instantiation." },
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "A sealed class cannot be instantiated directly." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: sealed instantiation." },
     { id: "world-11-sealed-classes-sealed-interfaces-explore-7", number: "07", title: "Compile boundary: missing when branch", language: 'Kotlin', subtitle: "Compiler exhaustiveness is a language rule, not a simulator guess.", code: [
       "sealed interface Flag",
       "data object A : Flag",
       "data object B : Flag",
       "",
       "// fun f(x: Flag) = when (x) { A -> 1 } // ERROR: when is not exhaustive"
-    ], whatItMeans: [{ label: 'Behavior', description: "Compiler exhaustiveness is a language rule, not a simulator guess." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: missing when branch." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Compiler exhaustiveness is a language rule, not a simulator guess." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary: missing when branch." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-sealed-classes-sealed-interfaces-predict-1", questionNumber: 1, totalQuestions: 7, title: "Exhaustive state", topicMeta: "output", language: 'Kotlin', code: [
@@ -503,26 +547,34 @@ export const DATA_CLASSES_DOMAIN_ENUMS_LESSON: FiveStageLesson = {
       "data class Point(val x: Int, val y: Int)",
       "",
       "println(Point(1, 2) == Point(1, 2))"
-    ], whatItMeans: [{ label: 'Behavior', description: "Data-class equality compares primary-constructor properties structurally." }], whatChanged: "Covers a distinct mapped scenario: Structural equality." },
+    ],
+        output: ['true'],
+        whatItMeans: [{ label: 'Behavior', description: "Data-class equality compares primary-constructor properties structurally." }], whatChanged: "Covers a distinct mapped scenario: Structural equality." },
     { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-2", number: "02", title: "Hash code agreement", language: 'Kotlin', subtitle: "Equal data-class values produce matching hash codes.", code: [
       "data class Key(val id: Int)",
       "",
       "val a = Key(2)",
       "val b = Key(2)",
       "println(a.hashCode() == b.hashCode())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Equal data-class values produce matching hash codes." }], whatChanged: "Covers a distinct mapped scenario: Hash code agreement." },
+    ],
+        output: ['true'],
+        whatItMeans: [{ label: 'Behavior', description: "Equal data-class values produce matching hash codes." }], whatChanged: "Covers a distinct mapped scenario: Hash code agreement." },
     { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-3", number: "03", title: "Generated toString", language: 'Kotlin', subtitle: "Generated toString includes the class name and primary-constructor properties.", code: [
       "data class User(val name: String, val age: Int)",
       "",
       "println(User(\"Mia\", 20))"
-    ], whatItMeans: [{ label: 'Behavior', description: "Generated toString includes the class name and primary-constructor properties." }], whatChanged: "Covers a distinct mapped scenario: Generated toString." },
+    ],
+        output: ['User(name=Mia, age=20)'],
+        whatItMeans: [{ label: 'Behavior', description: "Generated toString includes the class name and primary-constructor properties." }], whatChanged: "Covers a distinct mapped scenario: Generated toString." },
     { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-4", number: "04", title: "copy with one change", language: 'Kotlin', subtitle: "copy preserves unspecified primary-constructor values and replaces named ones.", code: [
       "data class Ticket(val id: Int, val open: Boolean)",
       "",
       "val a = Ticket(1, true)",
       "val b = a.copy(open = false)",
       "println(b)"
-    ], whatItMeans: [{ label: 'Behavior', description: "copy preserves unspecified primary-constructor values and replaces named ones." }], whatChanged: "Covers a distinct mapped scenario: copy with one change." },
+    ],
+        output: ['Ticket(id=1, open=false)'],
+        whatItMeans: [{ label: 'Behavior', description: "copy preserves unspecified primary-constructor values and replaces named ones." }], whatChanged: "Covers a distinct mapped scenario: copy with one change." },
     { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-5", number: "05", title: "Body property excluded", language: 'Kotlin', subtitle: "Properties declared only in the body are excluded from generated equality.", code: [
       "data class Box(val id: Int) {",
       "  var note = \"A\"",
@@ -532,7 +584,9 @@ export const DATA_CLASSES_DOMAIN_ENUMS_LESSON: FiveStageLesson = {
       "val b = Box(1)",
       "b.note = \"B\"",
       "println(a == b)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Properties declared only in the body are excluded from generated equality." }], whatChanged: "Covers a distinct mapped scenario: Body property excluded." },
+    ],
+        output: ['true'],
+        whatItMeans: [{ label: 'Behavior', description: "Properties declared only in the body are excluded from generated equality." }], whatChanged: "Covers a distinct mapped scenario: Body property excluded." },
     { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-6", number: "06", title: "Shallow copy", language: 'Kotlin', subtitle: "copy duplicates the data-class shell, not nested mutable objects.", code: [
       "data class Team(val names: MutableList<String>)",
       "",
@@ -540,7 +594,9 @@ export const DATA_CLASSES_DOMAIN_ENUMS_LESSON: FiveStageLesson = {
       "val b = a.copy()",
       "b.names.add(\"B\")",
       "println(a.names)"
-    ], whatItMeans: [{ label: 'Behavior', description: "copy duplicates the data-class shell, not nested mutable objects." }], whatChanged: "Covers a distinct mapped scenario: Shallow copy." },
+    ],
+        output: ['[A, B]'],
+        whatItMeans: [{ label: 'Behavior', description: "copy duplicates the data-class shell, not nested mutable objects." }], whatChanged: "Covers a distinct mapped scenario: Shallow copy." },
     { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-7", number: "07", title: "Enum data", language: 'Kotlin', subtitle: "Enum entries can carry constructor data shared by the enum shape.", code: [
       "enum class Level(val code: Int) {",
       "  LOW(1),",
@@ -548,8 +604,12 @@ export const DATA_CLASSES_DOMAIN_ENUMS_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Level.HIGH.code)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Enum entries can carry constructor data shared by the enum shape." }], whatChanged: "Covers a distinct mapped scenario: Enum data." },
-    { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-8", number: "08", title: "Enum exhaustive when", language: 'Kotlin', subtitle: "A when over all enum entries can be exhaustive.", code: ["enum class Mode {","  AUTO, MANUAL","}","","fun text(m: Mode) = when (m) {","  Mode.AUTO -> \"A\"","  Mode.MANUAL -> \"M\"","}","","println(text(Mode.AUTO))"], whatItMeans: [{ label: 'Behavior', description: "A when over all enum entries can be exhaustive." }], whatChanged: "Covers a distinct mapped scenario: Enum exhaustive when." }
+    ],
+        output: ['9'],
+        whatItMeans: [{ label: 'Behavior', description: "Enum entries can carry constructor data shared by the enum shape." }], whatChanged: "Covers a distinct mapped scenario: Enum data." },
+    { id: "world-11-data-classes-in-domain-modeling-enum-classes-explore-8", number: "08", title: "Enum exhaustive when", language: 'Kotlin', subtitle: "A when over all enum entries can be exhaustive.", code: ["enum class Mode {","  AUTO, MANUAL","}","","fun text(m: Mode) = when (m) {","  Mode.AUTO -> \"A\"","  Mode.MANUAL -> \"M\"","}","","println(text(Mode.AUTO))"],
+        output: ['A'],
+        whatItMeans: [{ label: 'Behavior', description: "A when over all enum entries can be exhaustive." }], whatChanged: "Covers a distinct mapped scenario: Enum exhaustive when." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-data-classes-in-domain-modeling-enum-classes-predict-1", questionNumber: 1, totalQuestions: 8, title: "Equality", topicMeta: "equality", language: 'Kotlin', code: [
@@ -628,7 +688,9 @@ export const NESTED_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Box.Label(\"A\").text)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Use Outer.Nested() syntax." }], whatChanged: "Covers a distinct mapped scenario: Construct directly." },
+    ],
+        output: ['A'],
+        whatItMeans: [{ label: 'Behavior', description: "Use Outer.Nested() syntax." }], whatChanged: "Covers a distinct mapped scenario: Construct directly." },
     { id: "world-11-nested-classes-explore-2", number: "02", title: "No outer instance", language: 'Kotlin', subtitle: "Nested construction does not require Outer().", code: [
       "class Outer {",
       "  class Nested {",
@@ -637,14 +699,18 @@ export const NESTED_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Outer.Nested().n())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Nested construction does not require Outer()." }], whatChanged: "Covers a distinct mapped scenario: No outer instance." },
+    ],
+        output: ['2'],
+        whatItMeans: [{ label: 'Behavior', description: "Nested construction does not require Outer()." }], whatChanged: "Covers a distinct mapped scenario: No outer instance." },
     { id: "world-11-nested-classes-explore-3", number: "03", title: "Own constructor state", language: 'Kotlin', subtitle: "Nested classes have their own properties and constructors.", code: [
       "class Api {",
       "  class Error(val code: Int)",
       "}",
       "",
       "println(Api.Error(404).code)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Nested classes have their own properties and constructors." }], whatChanged: "Covers a distinct mapped scenario: Own constructor state." },
+    ],
+        output: ['404'],
+        whatItMeans: [{ label: 'Behavior', description: "Nested classes have their own properties and constructors." }], whatChanged: "Covers a distinct mapped scenario: Own constructor state." },
     { id: "world-11-nested-classes-explore-4", number: "04", title: "Explicit outer reference", language: 'Kotlin', subtitle: "A nested class can use an explicitly supplied outer instance.", code: [
       "class Outer(val n: Int) {",
       "  class Nested {",
@@ -653,14 +719,18 @@ export const NESTED_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Outer.Nested().read(Outer(7)))"
-    ], whatItMeans: [{ label: 'Behavior', description: "A nested class can use an explicitly supplied outer instance." }], whatChanged: "Covers a distinct mapped scenario: Explicit outer reference." },
+    ],
+        output: ['7'],
+        whatItMeans: [{ label: 'Behavior', description: "A nested class can use an explicitly supplied outer instance." }], whatChanged: "Covers a distinct mapped scenario: Explicit outer reference." },
     { id: "world-11-nested-classes-explore-5", number: "05", title: "Compile boundary", language: 'Kotlin', subtitle: "There is no implicit outer receiver.", code: [
       "class Outer(val n: Int) {",
       "  class Nested {",
       "    // fun read() = n // ERROR",
       "  }",
       "}"
-    ], whatItMeans: [{ label: 'Behavior', description: "There is no implicit outer receiver." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "There is no implicit outer receiver." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-nested-classes-predict-1", questionNumber: 1, totalQuestions: 5, title: "Construction", topicMeta: "output", language: 'Kotlin', code: [
@@ -733,7 +803,9 @@ export const INNER_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(O(4).I().f())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Inner directly reads x from its outer instance." }], whatChanged: "Covers a distinct mapped scenario: Read outer state." },
+    ],
+        output: ['4'],
+        whatItMeans: [{ label: 'Behavior', description: "Inner directly reads x from its outer instance." }], whatChanged: "Covers a distinct mapped scenario: Read outer state." },
     { id: "world-11-inner-classes-explore-2", number: "02", title: "Different outers", language: 'Kotlin', subtitle: "Each inner instance is tied to the outer that created it.", code: [
       "class O(val x: Int) {",
       "  inner class I {",
@@ -744,7 +816,9 @@ export const INNER_CLASSES_LESSON: FiveStageLesson = {
       "val a = O(1)",
       "val b = O(2)",
       "println(a.I().f() + b.I().f())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Each inner instance is tied to the outer that created it." }], whatChanged: "Covers a distinct mapped scenario: Different outers." },
+    ],
+        output: ['3'],
+        whatItMeans: [{ label: 'Behavior', description: "Each inner instance is tied to the outer that created it." }], whatChanged: "Covers a distinct mapped scenario: Different outers." },
     { id: "world-11-inner-classes-explore-3", number: "03", title: "Private outer member", language: 'Kotlin', subtitle: "Inner classes can access outer private members.", code: [
       "class Vault(private val code: Int) {",
       "  inner class Key {",
@@ -753,7 +827,9 @@ export const INNER_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Vault(7).Key().reveal())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Inner classes can access outer private members." }], whatChanged: "Covers a distinct mapped scenario: Private outer member." },
+    ],
+        output: ['7'],
+        whatItMeans: [{ label: 'Behavior', description: "Inner classes can access outer private members." }], whatChanged: "Covers a distinct mapped scenario: Private outer member." },
     { id: "world-11-inner-classes-explore-4", number: "04", title: "Qualified this", language: 'Kotlin', subtitle: "this@Outer disambiguates the outer receiver.", code: [
       "class O(val x: Int) {",
       "  inner class I(val x: Int) {",
@@ -762,14 +838,18 @@ export const INNER_CLASSES_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(O(5).I(9).outerX())"
-    ], whatItMeans: [{ label: 'Behavior', description: "this@Outer disambiguates the outer receiver." }], whatChanged: "Covers a distinct mapped scenario: Qualified this." },
+    ],
+        output: ['5'],
+        whatItMeans: [{ label: 'Behavior', description: "this@Outer disambiguates the outer receiver." }], whatChanged: "Covers a distinct mapped scenario: Qualified this." },
     { id: "world-11-inner-classes-explore-5", number: "05", title: "Compile boundary", language: 'Kotlin', subtitle: "Inner construction requires a specific outer object.", code: [
       "class O {",
       "  inner class I",
       "}",
       "",
       "// val i = O.I() // ERROR: an outer instance is required"
-    ], whatItMeans: [{ label: 'Behavior', description: "Inner construction requires a specific outer object." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Inner construction requires a specific outer object." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-inner-classes-predict-1", questionNumber: 1, totalQuestions: 5, title: "Outer value", topicMeta: "output", language: 'Kotlin', code: [
@@ -856,7 +936,9 @@ export const OBJECT_DECLARATIONS_LESSON: FiveStageLesson = {
       "",
       "println(Counter.next())",
       "println(Counter.next())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Both calls use the same singleton state." }], whatChanged: "Covers a distinct mapped scenario: Shared counter." },
+    ],
+        output: ['1', '2'],
+        whatItMeans: [{ label: 'Behavior', description: "Both calls use the same singleton state." }], whatChanged: "Covers a distinct mapped scenario: Shared counter." },
     { id: "world-11-object-declarations-explore-2", number: "02", title: "Implement interface", language: 'Kotlin', subtitle: "A singleton can implement an interface.", code: [
       "interface Clock {",
       "  fun now(): String",
@@ -866,13 +948,19 @@ export const OBJECT_DECLARATIONS_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(FixedClock.now())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A singleton can implement an interface." }], whatChanged: "Covers a distinct mapped scenario: Implement interface." },
+    ],
+        output: ['12:00'],
+        whatItMeans: [{ label: 'Behavior', description: "A singleton can implement an interface." }], whatChanged: "Covers a distinct mapped scenario: Implement interface." },
     { id: "world-11-object-declarations-explore-3", number: "03", title: "Identity", language: 'Kotlin', subtitle: "The object name refers to the same instance.", code: [
       "object Config",
       "",
       "println(Config === Config)"
-    ], whatItMeans: [{ label: 'Behavior', description: "The object name refers to the same instance." }], whatChanged: "Covers a distinct mapped scenario: Identity." },
-    { id: "world-11-object-declarations-explore-4", number: "04", title: "Private state", language: 'Kotlin', subtitle: "Singleton state can still be encapsulated.", code: ["object Registry {","  private var n = 0","  fun add() {","    n++","  }","  fun size() = n","}","","Registry.add()","println(Registry.size())"], whatItMeans: [{ label: 'Behavior', description: "Singleton state can still be encapsulated." }], whatChanged: "Covers a distinct mapped scenario: Private state." },
+    ],
+        output: ['true'],
+        whatItMeans: [{ label: 'Behavior', description: "The object name refers to the same instance." }], whatChanged: "Covers a distinct mapped scenario: Identity." },
+    { id: "world-11-object-declarations-explore-4", number: "04", title: "Private state", language: 'Kotlin', subtitle: "Singleton state can still be encapsulated.", code: ["object Registry {","  private var n = 0","  fun add() {","    n++","  }","  fun size() = n","}","","Registry.add()","println(Registry.size())"],
+        output: ['1'],
+        whatItMeans: [{ label: 'Behavior', description: "Singleton state can still be encapsulated." }], whatChanged: "Covers a distinct mapped scenario: Private state." },
     { id: "world-11-object-declarations-explore-5", number: "05", title: "Object expression", language: 'Kotlin', subtitle: "An object expression creates an anonymous object value.", code: [
       "interface Label {",
       "  fun text(): String",
@@ -882,12 +970,16 @@ export const OBJECT_DECLARATIONS_LESSON: FiveStageLesson = {
       "  override fun text() = \"A\"",
       "}",
       "println(a.text())"
-    ], whatItMeans: [{ label: 'Behavior', description: "An object expression creates an anonymous object value." }], whatChanged: "Covers a distinct mapped scenario: Object expression." },
+    ],
+        output: ['A'],
+        whatItMeans: [{ label: 'Behavior', description: "An object expression creates an anonymous object value." }], whatChanged: "Covers a distinct mapped scenario: Object expression." },
     { id: "world-11-object-declarations-explore-6", number: "06", title: "Compile boundary", language: 'Kotlin', subtitle: "Named object declarations are referenced, not instantiated.", code: [
       "object Settings",
       "",
       "// val s = Settings() // ERROR: object declaration is not constructed"
-    ], whatItMeans: [{ label: 'Behavior', description: "Named object declarations are referenced, not instantiated." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Named object declarations are referenced, not instantiated." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-object-declarations-predict-1", questionNumber: 1, totalQuestions: 6, title: "Shared state", topicMeta: "output", language: 'Kotlin', code: [
@@ -952,7 +1044,9 @@ export const COMPANION_OBJECTS_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Token.of(\"x\").v)"
-    ], whatItMeans: [{ label: 'Behavior', description: "A companion factory can call a private constructor." }], whatChanged: "Covers a distinct mapped scenario: Factory." },
+    ],
+        output: ['x'],
+        whatItMeans: [{ label: 'Behavior', description: "A companion factory can call a private constructor." }], whatChanged: "Covers a distinct mapped scenario: Factory." },
     { id: "world-11-companion-objects-explore-2", number: "02", title: "Constant", language: 'Kotlin', subtitle: "Eligible compile-time constants can live in a companion.", code: [
       "class Limits {",
       "  companion object {",
@@ -961,7 +1055,9 @@ export const COMPANION_OBJECTS_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Limits.MAX)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Eligible compile-time constants can live in a companion." }], whatChanged: "Covers a distinct mapped scenario: Constant." },
+    ],
+        output: ['5'],
+        whatItMeans: [{ label: 'Behavior', description: "Eligible compile-time constants can live in a companion." }], whatChanged: "Covers a distinct mapped scenario: Constant." },
     { id: "world-11-companion-objects-explore-3", number: "03", title: "Named companion", language: 'Kotlin', subtitle: "A named companion can be reached through the class or its companion name.", code: [
       "class A {",
       "  companion object Factory {",
@@ -971,7 +1067,9 @@ export const COMPANION_OBJECTS_LESSON: FiveStageLesson = {
       "",
       "println(A.n())",
       "println(A.Factory.n())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A named companion can be reached through the class or its companion name." }], whatChanged: "Covers a distinct mapped scenario: Named companion." },
+    ],
+        output: ['2', '2'],
+        whatItMeans: [{ label: 'Behavior', description: "A named companion can be reached through the class or its companion name." }], whatChanged: "Covers a distinct mapped scenario: Named companion." },
     { id: "world-11-companion-objects-explore-4", number: "04", title: "Companion as value", language: 'Kotlin', subtitle: "A companion can implement an interface and be passed as a value.", code: [
       "interface Factory {",
       "  fun make(): String",
@@ -984,7 +1082,9 @@ export const COMPANION_OBJECTS_LESSON: FiveStageLesson = {
       "",
       "val f: Factory = A",
       "println(f.make())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A companion can implement an interface and be passed as a value." }], whatChanged: "Covers a distinct mapped scenario: Companion as value." },
+    ],
+        output: ['A'],
+        whatItMeans: [{ label: 'Behavior', description: "A companion can implement an interface and be passed as a value." }], whatChanged: "Covers a distinct mapped scenario: Companion as value." },
     { id: "world-11-companion-objects-explore-5", number: "05", title: "No instance state", language: 'Kotlin', subtitle: "Receive an instance explicitly when companion behavior needs instance data.", code: [
       "class User(val name: String) {",
       "  companion object {",
@@ -993,14 +1093,18 @@ export const COMPANION_OBJECTS_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(User.label(User(\"Mia\")))"
-    ], whatItMeans: [{ label: 'Behavior', description: "Receive an instance explicitly when companion behavior needs instance data." }], whatChanged: "Covers a distinct mapped scenario: No instance state." },
+    ],
+        output: ['Mia'],
+        whatItMeans: [{ label: 'Behavior', description: "Receive an instance explicitly when companion behavior needs instance data." }], whatChanged: "Covers a distinct mapped scenario: No instance state." },
     { id: "world-11-companion-objects-explore-6", number: "06", title: "Compile boundary", language: 'Kotlin', subtitle: "The companion has no implicit User instance.", code: [
       "class User(val name: String) {",
       "  companion object {",
       "    // fun bad() = name // ERROR",
       "  }",
       "}"
-    ], whatItMeans: [{ label: 'Behavior', description: "The companion has no implicit User instance." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "The companion has no implicit User instance." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-companion-objects-predict-1", questionNumber: 1, totalQuestions: 6, title: "Factory call", topicMeta: "output", language: 'Kotlin', code: [
@@ -1078,18 +1182,24 @@ export const EXTENSION_FUNCTIONS_LESSON: FiveStageLesson = {
       "fun String.shout() = uppercase() + \"!\"",
       "",
       "println(\"hi\".shout())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Extension call uses normal dot syntax." }], whatChanged: "Covers a distinct mapped scenario: Basic receiver." },
+    ],
+        output: ['HI!'],
+        whatItMeans: [{ label: 'Behavior', description: "Extension call uses normal dot syntax." }], whatChanged: "Covers a distinct mapped scenario: Basic receiver." },
     { id: "world-11-extension-functions-explore-2", number: "02", title: "Parameter", language: 'Kotlin', subtitle: "Extensions can accept parameters and return values.", code: [
       "fun Int.timesText(s: String) = s.repeat(this)",
       "",
       "println(3.timesText(\"x\"))"
-    ], whatItMeans: [{ label: 'Behavior', description: "Extensions can accept parameters and return values." }], whatChanged: "Covers a distinct mapped scenario: Parameter." },
+    ],
+        output: ['xxx'],
+        whatItMeans: [{ label: 'Behavior', description: "Extensions can accept parameters and return values." }], whatChanged: "Covers a distinct mapped scenario: Parameter." },
     { id: "world-11-extension-functions-explore-3", number: "03", title: "Nullable receiver", language: 'Kotlin', subtitle: "Nullable receiver extensions can handle null directly.", code: [
       "fun String?.orDash() = this ?: \"-\"",
       "",
       "val s: String? = null",
       "println(s.orDash())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Nullable receiver extensions can handle null directly." }], whatChanged: "Covers a distinct mapped scenario: Nullable receiver." },
+    ],
+        output: ['-'],
+        whatItMeans: [{ label: 'Behavior', description: "Nullable receiver extensions can handle null directly." }], whatChanged: "Covers a distinct mapped scenario: Nullable receiver." },
     { id: "world-11-extension-functions-explore-4", number: "04", title: "Member wins", language: 'Kotlin', subtitle: "A member function wins over an extension of the same signature.", code: [
       "class A {",
       "  fun f() = \"member\"",
@@ -1097,7 +1207,9 @@ export const EXTENSION_FUNCTIONS_LESSON: FiveStageLesson = {
       "fun A.f() = \"extension\"",
       "",
       "println(A().f())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A member function wins over an extension of the same signature." }], whatChanged: "Covers a distinct mapped scenario: Member wins." },
+    ],
+        output: ['member'],
+        whatItMeans: [{ label: 'Behavior', description: "A member function wins over an extension of the same signature." }], whatChanged: "Covers a distinct mapped scenario: Member wins." },
     { id: "world-11-extension-functions-explore-5", number: "05", title: "Static resolution", language: 'Kotlin', subtitle: "The A extension is chosen from the variable's compile-time type.", code: [
       "open class A",
       "class B : A()",
@@ -1107,17 +1219,23 @@ export const EXTENSION_FUNCTIONS_LESSON: FiveStageLesson = {
       "",
       "val x: A = B()",
       "println(x.name())"
-    ], whatItMeans: [{ label: 'Behavior', description: "The A extension is chosen from the variable's compile-time type." }], whatChanged: "Covers a distinct mapped scenario: Static resolution." },
+    ],
+        output: ['A'],
+        whatItMeans: [{ label: 'Behavior', description: "The A extension is chosen from the variable's compile-time type." }], whatChanged: "Covers a distinct mapped scenario: Static resolution." },
     { id: "world-11-extension-functions-explore-6", number: "06", title: "Private boundary", language: 'Kotlin', subtitle: "Member-like syntax does not grant private/protected access.", code: [
       "class User(private val secret: String)",
       "",
       "// fun User.reveal() = secret // ERROR: extension cannot access private receiver state"
-    ], whatItMeans: [{ label: 'Behavior', description: "Member-like syntax does not grant private/protected access." }], whatChanged: "Covers a distinct mapped scenario: Private boundary." },
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Member-like syntax does not grant private/protected access." }], whatChanged: "Covers a distinct mapped scenario: Private boundary." },
     { id: "world-11-extension-functions-explore-7", number: "07", title: "Top-level/import model", language: 'Kotlin', subtitle: "Top-level extensions are ordinary declarations that can be imported.", code: [
       "fun String.wordCount() = trim().split(\" \").size",
       "",
       "println(\"one two\".wordCount())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Top-level extensions are ordinary declarations that can be imported." }], whatChanged: "Covers a distinct mapped scenario: Top-level/import model." }
+    ],
+        output: ['2'],
+        whatItMeans: [{ label: 'Behavior', description: "Top-level extensions are ordinary declarations that can be imported." }], whatChanged: "Covers a distinct mapped scenario: Top-level/import model." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-extension-functions-predict-1", questionNumber: 1, totalQuestions: 7, title: "Basic call", topicMeta: "output", language: 'Kotlin', code: [
@@ -1194,16 +1312,22 @@ export const EXTENSION_PROPERTIES_LESSON: FiveStageLesson = {
       "val String.lastIndexSafe: Int get() = length - 1",
       "",
       "println(\"abc\".lastIndexSafe)"
-    ], whatItMeans: [{ label: 'Behavior', description: "The getter derives a value from receiver state." }], whatChanged: "Covers a distinct mapped scenario: Computed getter." },
+    ],
+        output: ['2'],
+        whatItMeans: [{ label: 'Behavior', description: "The getter derives a value from receiver state." }], whatChanged: "Covers a distinct mapped scenario: Computed getter." },
     { id: "world-11-extension-properties-explore-2", number: "02", title: "Nullable receiver", language: 'Kotlin', subtitle: "Nullable receiver properties can safely derive values.", code: [
       "val String?.lengthOrZero: Int get() = this?.length ?: 0",
       "",
       "val s: String? = null",
       "println(s.lengthOrZero)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Nullable receiver properties can safely derive values." }], whatChanged: "Covers a distinct mapped scenario: Nullable receiver." },
+    ],
+        output: ['0'],
+        whatItMeans: [{ label: 'Behavior', description: "Nullable receiver properties can safely derive values." }], whatChanged: "Covers a distinct mapped scenario: Nullable receiver." },
     { id: "world-11-extension-properties-explore-3", number: "03", title: "No initializer storage", language: 'Kotlin', subtitle: "Extension properties cannot have backing fields.", code: [
       "// val String.cached: Int = 1 // invalid extension property with backing storage"
-    ], whatItMeans: [{ label: 'Behavior', description: "Extension properties cannot have backing fields." }], whatChanged: "Covers a distinct mapped scenario: No initializer storage." },
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Extension properties cannot have backing fields." }], whatChanged: "Covers a distinct mapped scenario: No initializer storage." },
     { id: "world-11-extension-properties-explore-4", number: "04", title: "Member property wins", language: 'Kotlin', subtitle: "A real member property wins over the extension.", code: [
       "class A {",
       "  val count = 5",
@@ -1211,18 +1335,24 @@ export const EXTENSION_PROPERTIES_LESSON: FiveStageLesson = {
       "val A.count: Int get() = 9",
       "",
       "println(A().count)"
-    ], whatItMeans: [{ label: 'Behavior', description: "A real member property wins over the extension." }], whatChanged: "Covers a distinct mapped scenario: Member property wins." },
+    ],
+        output: ['5'],
+        whatItMeans: [{ label: 'Behavior', description: "A real member property wins over the extension." }], whatChanged: "Covers a distinct mapped scenario: Member property wins." },
     { id: "world-11-extension-properties-explore-5", number: "05", title: "Derived domain view", language: 'Kotlin', subtitle: "Computed property syntax suits value-like views.", code: [
       "data class Price(val cents: Int)",
       "val Price.dollars: Int get() = cents / 100",
       "",
       "println(Price(500).dollars)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Computed property syntax suits value-like views." }], whatChanged: "Covers a distinct mapped scenario: Derived domain view." },
+    ],
+        output: ['5'],
+        whatItMeans: [{ label: 'Behavior', description: "Computed property syntax suits value-like views." }], whatChanged: "Covers a distinct mapped scenario: Derived domain view." },
     { id: "world-11-extension-properties-explore-6", number: "06", title: "Private boundary", language: 'Kotlin', subtitle: "Extension status does not grant access to receiver-private members.", code: [
       "class A(private val n: Int)",
       "",
       "// val A.hidden: Int get() = n // ERROR"
-    ], whatItMeans: [{ label: 'Behavior', description: "Extension status does not grant access to receiver-private members." }], whatChanged: "Covers a distinct mapped scenario: Private boundary." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "Extension status does not grant access to receiver-private members." }], whatChanged: "Covers a distinct mapped scenario: Private boundary." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-extension-properties-predict-1", questionNumber: 1, totalQuestions: 6, title: "Computed value", topicMeta: "output", language: 'Kotlin', code: [
@@ -1303,7 +1433,9 @@ export const DELEGATION_LESSON: FiveStageLesson = {
       "class Wrap(p: P) : P by p",
       "",
       "println(Wrap(Base()).text())"
-    ], whatItMeans: [{ label: 'Behavior', description: "by forwards the interface call." }], whatChanged: "Covers a distinct mapped scenario: Basic forwarding." },
+    ],
+        output: ['base'],
+        whatItMeans: [{ label: 'Behavior', description: "by forwards the interface call." }], whatChanged: "Covers a distinct mapped scenario: Basic forwarding." },
     { id: "world-11-delegation-explore-2", number: "02", title: "Override selected member", language: 'Kotlin', subtitle: "An explicit wrapper override replaces forwarding for that member.", code: [
       "interface P {",
       "  fun text(): String",
@@ -1316,7 +1448,9 @@ export const DELEGATION_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Wrap(Base()).text())"
-    ], whatItMeans: [{ label: 'Behavior', description: "An explicit wrapper override replaces forwarding for that member." }], whatChanged: "Covers a distinct mapped scenario: Override selected member." },
+    ],
+        output: ['wrap'],
+        whatItMeans: [{ label: 'Behavior', description: "An explicit wrapper override replaces forwarding for that member." }], whatChanged: "Covers a distinct mapped scenario: Override selected member." },
     { id: "world-11-delegation-explore-3", number: "03", title: "Constructor delegate", language: 'Kotlin', subtitle: "Delegate objects are commonly supplied as constructor dependencies.", code: [
       "interface Store {",
       "  fun size(): Int",
@@ -1327,7 +1461,9 @@ export const DELEGATION_LESSON: FiveStageLesson = {
       "class Repo(private val s: Store) : Store by s",
       "",
       "println(Repo(Memory()).size())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Delegate objects are commonly supplied as constructor dependencies." }], whatChanged: "Covers a distinct mapped scenario: Constructor delegate." },
+    ],
+        output: ['2'],
+        whatItMeans: [{ label: 'Behavior', description: "Delegate objects are commonly supplied as constructor dependencies." }], whatChanged: "Covers a distinct mapped scenario: Constructor delegate." },
     { id: "world-11-delegation-explore-4", number: "04", title: "Different object identity", language: 'Kotlin', subtitle: "The wrapper and delegate are distinct objects.", code: [
       "interface X {",
       "  fun n(): Int",
@@ -1339,8 +1475,12 @@ export const DELEGATION_LESSON: FiveStageLesson = {
       "",
       "val d = D()",
       "val w = W(d)",
-      "println(w === d)"
-    ], whatItMeans: [{ label: 'Behavior', description: "The wrapper and delegate are distinct objects." }], whatChanged: "Covers a distinct mapped scenario: Different object identity." },
+      "val a: X = w",
+      "val b: X = d",
+      "println(a === b)"
+    ],
+        output: ['false'],
+        whatItMeans: [{ label: 'Behavior', description: "The wrapper and delegate are distinct objects." }], whatChanged: "Covers a distinct mapped scenario: Different object identity." },
     { id: "world-11-delegation-explore-5", number: "05", title: "Manual vs by", language: 'Kotlin', subtitle: "Manual forwarding and by express the same composition idea; by removes boilerplate.", code: [
       "interface X {",
       "  fun n(): Int",
@@ -1353,8 +1493,12 @@ export const DELEGATION_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(W(D()).n())"
-    ], whatItMeans: [{ label: 'Behavior', description: "Manual forwarding and by express the same composition idea; by removes boilerplate." }], whatChanged: "Covers a distinct mapped scenario: Manual vs by." },
-    { id: "world-11-delegation-explore-6", number: "06", title: "Self-call nuance", language: 'Kotlin', subtitle: "D.b() calls D.a() internally, so the result remains D rather than W.", code: ["interface X{","  fun a():String","  fun b():String","}","class D:X{","  override fun a()=\"D\"","  override fun b()=this.a()","}","class W(d:X):X by d{","  override fun a()=\"W\"","}","println(W(D()).b())"], whatItMeans: [{ label: 'Behavior', description: "D.b() calls D.a() internally, so the result remains D rather than W." }], whatChanged: "Covers a distinct mapped scenario: Self-call nuance." }
+    ],
+        output: ['4'],
+        whatItMeans: [{ label: 'Behavior', description: "Manual forwarding and by express the same composition idea; by removes boilerplate." }], whatChanged: "Covers a distinct mapped scenario: Manual vs by." },
+    { id: "world-11-delegation-explore-6", number: "06", title: "Self-call nuance", language: 'Kotlin', subtitle: "D.b() calls D.a() internally, so the result remains D rather than W.", code: ["interface X{","  fun a():String","  fun b():String","}","class D:X{","  override fun a()=\"D\"","  override fun b()=this.a()","}","class W(d:X):X by d{","  override fun a()=\"W\"","}","println(W(D()).b())"],
+        output: ['D'],
+        whatItMeans: [{ label: 'Behavior', description: "D.b() calls D.a() internally, so the result remains D rather than W." }], whatChanged: "Covers a distinct mapped scenario: Self-call nuance." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-delegation-predict-1", questionNumber: 1, totalQuestions: 6, title: "Forward", topicMeta: "output", language: 'Kotlin', code: [
@@ -1451,7 +1595,9 @@ export const DELEGATED_PROPERTIES_LESSON: FiveStageLesson = {
       "",
       "println(\"before\")",
       "println(value)"
-    ], whatItMeans: [{ label: 'Behavior', description: "The initializer runs only when value is first read." }], whatChanged: "Covers a distinct mapped scenario: lazy first access." },
+    ],
+        output: ['before', 'build', '7'],
+        whatItMeans: [{ label: 'Behavior', description: "The initializer runs only when value is first read." }], whatChanged: "Covers a distinct mapped scenario: lazy first access." },
     { id: "world-11-delegated-properties-explore-2", number: "02", title: "lazy caches", language: 'Kotlin', subtitle: "The initializer runs once and the cached value is reused.", code: [
       "var calls = 0",
       "val value by lazy {",
@@ -1462,7 +1608,9 @@ export const DELEGATED_PROPERTIES_LESSON: FiveStageLesson = {
       "println(value)",
       "println(value)",
       "println(calls)"
-    ], whatItMeans: [{ label: 'Behavior', description: "The initializer runs once and the cached value is reused." }], whatChanged: "Covers a distinct mapped scenario: lazy caches." },
+    ],
+        output: ['10', '10', '1'],
+        whatItMeans: [{ label: 'Behavior', description: "The initializer runs once and the cached value is reused." }], whatChanged: "Covers a distinct mapped scenario: lazy caches." },
     { id: "world-11-delegated-properties-explore-3", number: "03", title: "Custom getValue", language: 'Kotlin', subtitle: "A read-only custom delegate supplies getValue.", code: [
       "import kotlin.reflect.KProperty",
       "",
@@ -1472,16 +1620,26 @@ export const DELEGATED_PROPERTIES_LESSON: FiveStageLesson = {
       "",
       "val status by D()",
       "println(status)"
-    ], whatItMeans: [{ label: 'Behavior', description: "A read-only custom delegate supplies getValue." }], whatChanged: "Covers a distinct mapped scenario: Custom getValue." },
-    { id: "world-11-delegated-properties-explore-4", number: "04", title: "Custom mutable delegate", language: 'Kotlin', subtitle: "A var delegate needs both getValue and setValue.", code: ["import kotlin.reflect.KProperty","","class D {","  private var v = 0","  operator fun getValue(r: Any?, p: KProperty<*>) = v","  operator fun setValue(r: Any?, p: KProperty<*>, n: Int) {","    v = n","  }","}","","var score by D()","score = 5","println(score)"], whatItMeans: [{ label: 'Behavior', description: "A var delegate needs both getValue and setValue." }], whatChanged: "Covers a distinct mapped scenario: Custom mutable delegate." },
+    ],
+        output: ['status:ok'],
+        whatItMeans: [{ label: 'Behavior', description: "A read-only custom delegate supplies getValue." }], whatChanged: "Covers a distinct mapped scenario: Custom getValue." },
+    { id: "world-11-delegated-properties-explore-4", number: "04", title: "Custom mutable delegate", language: 'Kotlin', subtitle: "A var delegate needs both getValue and setValue.", code: ["import kotlin.reflect.KProperty","","class D {","  private var v = 0","  operator fun getValue(r: Any?, p: KProperty<*>) = v","  operator fun setValue(r: Any?, p: KProperty<*>, n: Int) {","    v = n","  }","}","","var score by D()","score = 5","println(score)"],
+        output: ['5'],
+        whatItMeans: [{ label: 'Behavior', description: "A var delegate needs both getValue and setValue." }], whatChanged: "Covers a distinct mapped scenario: Custom mutable delegate." },
     { id: "world-11-delegated-properties-explore-5", number: "05", title: "Map-backed property", language: 'Kotlin', subtitle: "Map delegation can provide values by property name.", code: [
       "val user = mapOf(\"name\" to \"Ada\")",
       "val name: String by user",
       "",
       "println(name)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Map delegation can provide values by property name." }], whatChanged: "Covers a distinct mapped scenario: Map-backed property." },
-    { id: "world-11-delegated-properties-explore-6", number: "06", title: "Local lazy", language: 'Kotlin', subtitle: "Local variables can also be delegated.", code: ["fun main() {","  val n by lazy {","    3 * 4","  }","  println(n)","}"], whatItMeans: [{ label: 'Behavior', description: "Local variables can also be delegated." }], whatChanged: "Covers a distinct mapped scenario: Local lazy." },
-    { id: "world-11-delegated-properties-explore-7", number: "07", title: "Compile boundary var + lazy", language: 'Kotlin', subtitle: "A read-only delegate cannot satisfy a mutable var.", code: ["// var n by lazy { 1 } // ERROR: lazy is read-only and has no setValue"], whatItMeans: [{ label: 'Behavior', description: "A read-only delegate cannot satisfy a mutable var." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary var + lazy." }
+    ],
+        output: ['Ada'],
+        whatItMeans: [{ label: 'Behavior', description: "Map delegation can provide values by property name." }], whatChanged: "Covers a distinct mapped scenario: Map-backed property." },
+    { id: "world-11-delegated-properties-explore-6", number: "06", title: "Local lazy", language: 'Kotlin', subtitle: "Local variables can also be delegated.", code: ["fun main() {","  val n by lazy {","    3 * 4","  }","  println(n)","}"],
+        output: ['12'],
+        whatItMeans: [{ label: 'Behavior', description: "Local variables can also be delegated." }], whatChanged: "Covers a distinct mapped scenario: Local lazy." },
+    { id: "world-11-delegated-properties-explore-7", number: "07", title: "Compile boundary var + lazy", language: 'Kotlin', subtitle: "A read-only delegate cannot satisfy a mutable var.", code: ["// var n by lazy { 1 } // ERROR: lazy is read-only and has no setValue"],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "A read-only delegate cannot satisfy a mutable var." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary var + lazy." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-delegated-properties-predict-1", questionNumber: 1, totalQuestions: 7, title: "Lazy order", topicMeta: "output", language: 'Kotlin', code: [
@@ -1541,7 +1699,9 @@ export const VISIBILITY_API_DESIGN_LESSON: FiveStageLesson = {
   id: "world-11-visibility-and-api-design", worldId: 'world-11', worldName: 'OOP Evolution', stageName: 'STAGE 11 — ADVANCED OOP', topicTitle: "Visibility & API Design",
   learn: { title: "Use Visibility to Define the Supported API", subtitle: "Design a small public surface, protect invariants with visibility, and understand public/private/protected/internal boundaries. Prerequisite: Classes, inheritance, modules, properties.", exampleTag: 'EXAMPLE', exampleTitle: "Core Visibility & API Design syntax", language: 'Kotlin', codeSnippet: ["class Wallet(initial: Int) {","  var balance: Int = initial","  private set","  fun deposit(amount: Int) {","    if (amount > 0) balance += amount","  }","}","","fun main() {","  val w = Wallet(10)","  w.deposit(5)","  println(w.balance)","}"], explanation: "Design a small public surface, protect invariants with visibility, and understand public/private/protected/internal boundaries. The examples use real Kotlin semantics; compile-time boundaries are called out explicitly rather than simulated as runtime behavior.", keyIdeas: [{ number: 1, title: "public is the default", description: "Expose only the declarations callers should rely on." }, { number: 2, title: "private protects implementation/invariants", description: "Class-private members are visible only inside the class; top-level private is file-scoped." }, { number: 3, title: "protected is subclass-facing", description: "Protected class members are visible in the class and subclasses, not unrelated callers." }, { number: 4, title: "internal is module-scoped", description: "internal means visible within the same Kotlin module, not package-private." }, { number: 5, title: "Restrict mutation separately", description: "A public/readable property can use private set to keep writes inside the class." }], keyTakeaway: "Design a small public surface, protect invariants with visibility, and understand public/private/protected/internal boundaries." },
   explore: { title: 'Explore the Concept', subtitle: "6 coverage-derived scenarios; no fixed activity quota.", cards: [
-    { id: "world-11-visibility-and-api-design-explore-1", number: "01", title: "private set", language: 'Kotlin', subtitle: "Callers can read n but only class code can set it.", code: ["class Counter {","  var n = 0","  private set","  fun inc() {","    n++","  }","}","","val c = Counter()","c.inc()","println(c.n)"], whatItMeans: [{ label: 'Behavior', description: "Callers can read n but only class code can set it." }], whatChanged: "Covers a distinct mapped scenario: private set." },
+    { id: "world-11-visibility-and-api-design-explore-1", number: "01", title: "private set", language: 'Kotlin', subtitle: "Callers can read n but only class code can set it.", code: ["class Counter {","  var n = 0","  private set","  fun inc() {","    n++","  }","}","","val c = Counter()","c.inc()","println(c.n)"],
+        output: ['1'],
+        whatItMeans: [{ label: 'Behavior', description: "Callers can read n but only class code can set it." }], whatChanged: "Covers a distinct mapped scenario: private set." },
     { id: "world-11-visibility-and-api-design-explore-2", number: "02", title: "Private constructor", language: 'Kotlin', subtitle: "Constructor visibility can enforce controlled creation.", code: [
       "class Token private constructor(val v: String) {",
       "  companion object {",
@@ -1550,7 +1710,9 @@ export const VISIBILITY_API_DESIGN_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Token.of(\"x\").v)"
-    ], whatItMeans: [{ label: 'Behavior', description: "Constructor visibility can enforce controlled creation." }], whatChanged: "Covers a distinct mapped scenario: Private constructor." },
+    ],
+        output: ['x'],
+        whatItMeans: [{ label: 'Behavior', description: "Constructor visibility can enforce controlled creation." }], whatChanged: "Covers a distinct mapped scenario: Private constructor." },
     { id: "world-11-visibility-and-api-design-explore-3", number: "03", title: "Protected member", language: 'Kotlin', subtitle: "A subclass can access protected state.", code: [
       "open class Base {",
       "  protected val code = 7",
@@ -1560,20 +1722,29 @@ export const VISIBILITY_API_DESIGN_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(Child().read())"
-    ], whatItMeans: [{ label: 'Behavior', description: "A subclass can access protected state." }], whatChanged: "Covers a distinct mapped scenario: Protected member." },
+    ],
+        output: ['7'],
+        whatItMeans: [{ label: 'Behavior', description: "A subclass can access protected state." }], whatChanged: "Covers a distinct mapped scenario: Protected member." },
     { id: "world-11-visibility-and-api-design-explore-4", number: "04", title: "Internal concept", language: 'Kotlin', subtitle: "internal is a module boundary; a single-file JVM compilation is within one module.", code: [
       "internal class Engine(val name: String)",
       "",
       "println(Engine(\"core\").name)"
-    ], whatItMeans: [{ label: 'Behavior', description: "internal is a module boundary; a single-file JVM compilation is within one module." }], whatChanged: "Covers a distinct mapped scenario: Internal concept." },
+    ],
+        output: ['core'],
+        whatItMeans: [{ label: 'Behavior', description: "internal is a module boundary; a single-file JVM compilation is within one module." }], whatChanged: "Covers a distinct mapped scenario: Internal concept." },
     { id: "world-11-visibility-and-api-design-explore-5", number: "05", title: "Top-level private", language: 'Kotlin', subtitle: "Top-level private remains usable within its file.", code: [
       "private fun secret() = \"x\"",
       "",
       "fun main() {",
       "  println(secret())",
       "}"
-    ], whatItMeans: [{ label: 'Behavior', description: "Top-level private remains usable within its file." }], whatChanged: "Covers a distinct mapped scenario: Top-level private." },
-    { id: "world-11-visibility-and-api-design-explore-6", number: "06", title: "Compile boundary external private set", language: 'Kotlin', subtitle: "The compiler enforces restricted setters.", code: ["class A {","  var n = 0","  private set","}","","// fun main() { A().n = 2 } // ERROR"], whatItMeans: [{ label: 'Behavior', description: "The compiler enforces restricted setters." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary external private set." }
+    ],
+        output: ['x'],
+        whatItMeans: [{ label: 'Behavior', description: "Top-level private remains usable within its file." }], whatChanged: "Covers a distinct mapped scenario: Top-level private." },
+    { id: "world-11-visibility-and-api-design-explore-6", number: "06", title: "Compile boundary external private set", language: 'Kotlin', subtitle: "The compiler enforces restricted setters.", code: ["// Does not compile:","class A {","  var n = 0","  private set","}","","fun main() {","  A().n = 2","}"],
+        output: ['error: cannot access \'n\': it is private in \'A\'.'],
+        outputKind: 'compileError',
+        whatItMeans: [{ label: 'Behavior', description: "The compiler enforces restricted setters: code outside the class cannot assign to n, because its setter is private." }], whatChanged: "Covers a distinct mapped scenario: Compile boundary external private set." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-visibility-and-api-design-predict-1", questionNumber: 1, totalQuestions: 6, title: "Private setter", topicMeta: "output", language: 'Kotlin', code: ["class A {","  var n = 1","  private set","  fun inc() {","    n++","  }","}","","fun main() {","  val a = A()","  a.inc()","  println(a.n)","}"], prompt: "Output question: which result is correct?", options: [{ id: "A", label: "2", isCorrect: true }, { id: "B", label: "1", isCorrect: false }, { id: "C", label: "0", isCorrect: false }, { id: "D", label: "Compilation error", isCorrect: false }], explanation: { codeRef: "Private setter", detail: "Class code can use the private setter." } },
@@ -1619,7 +1790,9 @@ export const DOMAIN_MODEL_ENGINE_BOSS_LESSON: FiveStageLesson = {
   id: "world-11-boss", worldId: 'world-11', worldName: 'OOP Evolution', stageName: 'STAGE 11 — ADVANCED OOP', topicTitle: "Domain Model Engine (World Boss)",
   learn: { title: "Integrate OOP Features Only Where the Domain Needs Them", subtitle: "Design a coherent domain model using value records, fixed categories, contracts, extension behavior, encapsulation, and a focused service/formatter object. Prerequisite: All World 11 lessons; collections, null safety, functions.", exampleTag: 'EXAMPLE', exampleTitle: "Core Domain Model Engine (World Boss) syntax", language: 'Kotlin', codeSnippet: ["enum class Priority {","  NORMAL, URGENT","}","data class Ticket(val id: Int, val title: String, val priority: Priority)","interface Formatter {","  fun format(ticket: Ticket): String","}","object TicketFormatter : Formatter {","  override fun format(ticket: Ticket) = \"${ticket.id}:${ticket.title}:${ticket.priority}\"","}"], explanation: "Design a coherent domain model using value records, fixed categories, contracts, extension behavior, encapsulation, and a focused service/formatter object. The examples use real Kotlin semantics; compile-time boundaries are called out explicitly rather than simulated as runtime behavior.", keyIdeas: [{ number: 1, title: "Model meaning first", description: "Use data class for value records, enum for fixed shared-shape categories, and interfaces for capabilities." }, { number: 2, title: "Keep mutation behind an API", description: "Services should protect internal mutable collections and expose deliberate operations/read-only views." }, { number: 3, title: "Extensions should be derived convenience", description: "Add extension behavior when it reads naturally and does not pretend to own receiver state." }, { number: 4, title: "Do not force every feature", description: "Nested/inner/companion/delegation belong only when the domain actually benefits from them." }], keyTakeaway: "Design a coherent domain model using value records, fixed categories, contracts, extension behavior, encapsulation, and a focused service/formatter object." },
   explore: { title: 'Explore the Concept', subtitle: "8 coverage-derived scenarios; no fixed activity quota.", cards: [
-    { id: "world-11-boss-explore-1", number: "01", title: "Value record + enum", language: 'Kotlin', subtitle: "A data class plus enum models a stable value snapshot.", code: ["enum class Status {","  OPEN, CLOSED","}","data class Issue(val id: Int, val status: Status)","","println(Issue(1, Status.OPEN))"], whatItMeans: [{ label: 'Behavior', description: "A data class plus enum models a stable value snapshot." }], whatChanged: "Covers a distinct mapped scenario: Value record + enum." },
+    { id: "world-11-boss-explore-1", number: "01", title: "Value record + enum", language: 'Kotlin', subtitle: "A data class plus enum models a stable value snapshot.", code: ["enum class Status {","  OPEN, CLOSED","}","data class Issue(val id: Int, val status: Status)","","println(Issue(1, Status.OPEN))"],
+        output: ['Issue(id=1, status=OPEN)'],
+        whatItMeans: [{ label: 'Behavior', description: "A data class plus enum models a stable value snapshot." }], whatChanged: "Covers a distinct mapped scenario: Value record + enum." },
     { id: "world-11-boss-explore-2", number: "02", title: "Formatter contract", language: 'Kotlin', subtitle: "An interface plus object supplies a replaceable formatting capability.", code: [
       "interface Formatter<T> {",
       "  fun format(value: T): String",
@@ -1630,29 +1803,43 @@ export const DOMAIN_MODEL_ENGINE_BOSS_LESSON: FiveStageLesson = {
       "}",
       "",
       "println(UserFormatter.format(User(\"Ada\")))"
-    ], whatItMeans: [{ label: 'Behavior', description: "An interface plus object supplies a replaceable formatting capability." }], whatChanged: "Covers a distinct mapped scenario: Formatter contract." },
+    ],
+        output: ['ADA'],
+        whatItMeans: [{ label: 'Behavior', description: "An interface plus object supplies a replaceable formatting capability." }], whatChanged: "Covers a distinct mapped scenario: Formatter contract." },
     { id: "world-11-boss-explore-3", number: "03", title: "Derived extension", language: 'Kotlin', subtitle: "A computed extension property adds a value-like presentation view.", code: [
       "data class Product(val cents: Int)",
       "val Product.priceLabel: String get() = \"₹${cents / 100}\"",
       "",
       "println(Product(500).priceLabel)"
-    ], whatItMeans: [{ label: 'Behavior', description: "A computed extension property adds a value-like presentation view." }], whatChanged: "Covers a distinct mapped scenario: Derived extension." },
-    { id: "world-11-boss-explore-4", number: "04", title: "Encapsulated service", language: 'Kotlin', subtitle: "The service owns mutation and returns a snapshot.", code: ["class Repo {","  private val xs = mutableListOf<String>()","  fun add(x: String) {","    xs += x","  }","  fun all(): List<String> = xs.toList()","}","","val r = Repo()","r.add(\"A\")","println(r.all())"], whatItMeans: [{ label: 'Behavior', description: "The service owns mutation and returns a snapshot." }], whatChanged: "Covers a distinct mapped scenario: Encapsulated service." },
-    { id: "world-11-boss-explore-5", number: "05", title: "Polymorphic formatter", language: 'Kotlin', subtitle: "Interface polymorphism can process multiple implementations uniformly.", code: ["interface F {","  fun text(): String","}","class A : F {","  override fun text() = \"A\"","}","class B : F {","  override fun text() = \"B\"","}","","println(listOf<F>(A(), B()).joinToString(\"\") {","    it.text()","})"], whatItMeans: [{ label: 'Behavior', description: "Interface polymorphism can process multiple implementations uniformly." }], whatChanged: "Covers a distinct mapped scenario: Polymorphic formatter." },
-    { id: "world-11-boss-explore-6", number: "06", title: "Copy state transition", language: 'Kotlin', subtitle: "copy creates a new value snapshot for a state transition.", code: ["enum class S {","  NEW, DONE","}","data class Task(val id: Int, val state: S)","","val done = Task(1, S.NEW).copy(state = S.DONE)","println(done)"], whatItMeans: [{ label: 'Behavior', description: "copy creates a new value snapshot for a state transition." }], whatChanged: "Covers a distinct mapped scenario: Copy state transition." },
+    ],
+        output: ['₹5'],
+        whatItMeans: [{ label: 'Behavior', description: "A computed extension property adds a value-like presentation view." }], whatChanged: "Covers a distinct mapped scenario: Derived extension." },
+    { id: "world-11-boss-explore-4", number: "04", title: "Encapsulated service", language: 'Kotlin', subtitle: "The service owns mutation and returns a snapshot.", code: ["class Repo {","  private val xs = mutableListOf<String>()","  fun add(x: String) {","    xs += x","  }","  fun all(): List<String> = xs.toList()","}","","val r = Repo()","r.add(\"A\")","println(r.all())"],
+        output: ['[A]'],
+        whatItMeans: [{ label: 'Behavior', description: "The service owns mutation and returns a snapshot." }], whatChanged: "Covers a distinct mapped scenario: Encapsulated service." },
+    { id: "world-11-boss-explore-5", number: "05", title: "Polymorphic formatter", language: 'Kotlin', subtitle: "Interface polymorphism can process multiple implementations uniformly.", code: ["interface F {","  fun text(): String","}","class A : F {","  override fun text() = \"A\"","}","class B : F {","  override fun text() = \"B\"","}","","println(listOf<F>(A(), B()).joinToString(\"\") {","    it.text()","})"],
+        output: ['AB'],
+        whatItMeans: [{ label: 'Behavior', description: "Interface polymorphism can process multiple implementations uniformly." }], whatChanged: "Covers a distinct mapped scenario: Polymorphic formatter." },
+    { id: "world-11-boss-explore-6", number: "06", title: "Copy state transition", language: 'Kotlin', subtitle: "copy creates a new value snapshot for a state transition.", code: ["enum class S {","  NEW, DONE","}","data class Task(val id: Int, val state: S)","","val done = Task(1, S.NEW).copy(state = S.DONE)","println(done)"],
+        output: ['Task(id=1, state=DONE)'],
+        whatItMeans: [{ label: 'Behavior', description: "copy creates a new value snapshot for a state transition." }], whatChanged: "Covers a distinct mapped scenario: Copy state transition." },
     { id: "world-11-boss-explore-7", number: "07", title: "Singleton service helper", language: 'Kotlin', subtitle: "A stateless object can represent one intentional shared formatter/helper.", code: [
       "object Slug {",
       "  fun of(s: String) = s.trim().lowercase().replace(\" \", \"-\")",
       "}",
       "",
       "println(Slug.of(\"Hello World\"))"
-    ], whatItMeans: [{ label: 'Behavior', description: "A stateless object can represent one intentional shared formatter/helper." }], whatChanged: "Covers a distinct mapped scenario: Singleton service helper." },
+    ],
+        output: ['hello-world'],
+        whatItMeans: [{ label: 'Behavior', description: "A stateless object can represent one intentional shared formatter/helper." }], whatChanged: "Covers a distinct mapped scenario: Singleton service helper." },
     { id: "world-11-boss-explore-8", number: "08", title: "Boundary: don't expose mutable list", language: 'Kotlin', subtitle: "A coherent domain API protects invariants instead of leaking mutable implementation state.", code: [
       "class BadRepo {",
       "  val items = mutableListOf<String>()",
       "}",
       "// Better: private mutable storage + read-only/snapshot API"
-    ], whatItMeans: [{ label: 'Behavior', description: "A coherent domain API protects invariants instead of leaking mutable implementation state." }], whatChanged: "Covers a distinct mapped scenario: Boundary: don't expose mutable list." }
+    ],
+        output: [],
+        whatItMeans: [{ label: 'Behavior', description: "A coherent domain API protects invariants instead of leaking mutable implementation state." }], whatChanged: "Covers a distinct mapped scenario: Boundary: don't expose mutable list." }
   ] },
   predict: { title: 'What will this code do?', subtitle: 'Independent Kotlin reasoning with one correct answer per question.', questions: [
     { id: "world-11-boss-predict-1", questionNumber: 1, totalQuestions: 8, title: "Value equality", topicMeta: "equality", language: 'Kotlin', code: [

@@ -61,6 +61,7 @@ export const ARITHMETIC_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Addition, subtraction, and multiplication behave as expected.',
         code: ['val a = 10', 'val b = 3', 'println(a + b)', 'println(a - b)', 'println(a * b)'],
+        output: ['13', '7', '30'],
         whatItMeans: [
           { label: 'a + b', description: 'Adds the two values: 10 + 3 = 13' },
           { label: 'a - b', description: 'Subtracts b from a: 10 - 3 = 7' },
@@ -75,6 +76,7 @@ export const ARITHMETIC_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Dividing two Ints drops the decimal part entirely.',
         code: ['val a = 7', 'val b = 2', 'println(a / b)'],
+        output: ['3'],
         whatItMeans: [
           { label: 'a / b', description: 'Int / Int division: 7 / 2 is mathematically 3.5, but the result truncates to 3' },
           { label: 'No rounding', description: 'Kotlin does not round -- it simply discards everything after the decimal point' }
@@ -88,6 +90,7 @@ export const ARITHMETIC_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Get the remainder left over from division.',
         code: ['val a = 17', 'val b = 5', 'println(a % b)'],
+        output: ['2'],
         whatItMeans: [
           { label: 'a % b', description: '5 divides into 17 three times (15), leaving a remainder of 2' },
           { label: 'Use cases', description: 'Modulo is commonly used to check even/odd numbers or wrap values around a limit' }
@@ -101,6 +104,7 @@ export const ARITHMETIC_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'One Double operand is enough to switch to floating-point math.',
         code: ['val a = 5', 'val b = 2', 'println(a / b)', 'println(a / 2.0)'],
+        output: ['2', '2.5'],
         whatItMeans: [
           { label: 'a / b', description: 'Both operands are Int, so this still truncates to 2' },
           { label: 'a / 2.0', description: 'The Double literal 2.0 promotes the whole expression to Double: 5 / 2.0 is 2.5' }
@@ -114,6 +118,7 @@ export const ARITHMETIC_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Multiplication and division run before addition and subtraction.',
         code: ['val result = 2 + 3 * 4', 'println(result)'],
+        output: ['14'],
         whatItMeans: [
           { label: '3 * 4', description: 'Multiplication is evaluated first, producing 12' },
           { label: '2 + 12', description: 'Addition happens second, producing the final result: 14' }
@@ -369,6 +374,7 @@ export const COMPARISON_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Comparing content, not memory location.',
         code: ['val str1 = "CodeDo"', 'val str2 = "CodeDo"', 'println(str1 == str2)'],
+        output: ['true'],
         whatItMeans: [
           { label: 'str1 == str2', description: 'Compares the actual text content of both strings' },
           { label: 'Result', description: 'true, because both strings contain the exact same characters' }
@@ -382,6 +388,7 @@ export const COMPARISON_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Checking whether two values differ.',
         code: ['val attempts = 3', 'val maxAttempts = 3', 'println(attempts != maxAttempts)'],
+        output: ['false'],
         whatItMeans: [
           { label: 'attempts != maxAttempts', description: 'Evaluates to true only if the two values are different' },
           { label: 'Result', description: 'false, because attempts and maxAttempts are both 3 -- they are equal' }
@@ -395,6 +402,7 @@ export const COMPARISON_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Checking whether one value is smaller than another.',
         code: ['val budget = 40', 'val price = 45', 'println(budget < price)'],
+        output: ['true'],
         whatItMeans: [
           { label: 'budget < price', description: 'true only if budget is strictly smaller than price' },
           { label: 'Result', description: 'true, because 40 is less than 45' }
@@ -408,6 +416,7 @@ export const COMPARISON_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Checking whether one value exceeds another.',
         code: ['val wins = 12', 'val losses = 15', 'println(wins > losses)'],
+        output: ['false'],
         whatItMeans: [
           { label: 'wins > losses', description: 'true only if wins is strictly larger than losses' },
           { label: 'Result', description: 'false, because 12 is not greater than 15' }
@@ -421,6 +430,7 @@ export const COMPARISON_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Ordering numbers with >=.',
         code: ['val score = 72', 'val passMark = 60', 'println(score >= passMark)'],
+        output: ['true'],
         whatItMeans: [
           { label: 'score >= passMark', description: 'true if score is greater than OR equal to passMark' },
           { label: 'Result', description: 'true, because 72 is greater than 60' }
@@ -434,6 +444,7 @@ export const COMPARISON_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: '< and > are not only for numbers.',
         code: ['val a = "apple"', 'val b = "banana"', 'println(a < b)'],
+        output: ['true'],
         whatItMeans: [
           { label: 'a < b', description: 'Strings compare alphabetically (lexicographically), like dictionary order' },
           { label: 'Result', description: 'true, because "apple" comes before "banana" alphabetically' }
@@ -692,6 +703,7 @@ export const LOGICAL_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Combining two conditions with &&.',
         code: ['val hasKey = true', 'val hasCode = false', 'println(hasKey && hasCode)'],
+        output: ['false'],
         whatItMeans: [{ label: 'hasKey && hasCode', description: 'true && false is false -- AND needs both sides to be true' }],
         whatChanged: 'Combined two conditions; the result is false because hasCode is false.'
       },
@@ -702,6 +714,7 @@ export const LOGICAL_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Combining the same two conditions with ||.',
         code: ['val hasKey = true', 'val hasCode = false', 'println(hasKey || hasCode)'],
+        output: ['true'],
         whatItMeans: [{ label: 'hasKey || hasCode', description: 'true || false is true -- OR only needs one side to be true' }],
         whatChanged: 'Combined the same two conditions with OR; the result flips to true.'
       },
@@ -712,6 +725,7 @@ export const LOGICAL_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Flipping true to false, and false to true.',
         code: ['val isRaining = false', 'println(!isRaining)'],
+        output: ['true'],
         whatItMeans: [{ label: '!isRaining', description: 'Flips false to true -- ! always inverts the Boolean that follows it' }],
         whatChanged: 'Introduced ! as the third logical operator, alongside && and ||.'
       },
@@ -722,6 +736,7 @@ export const LOGICAL_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Mixing && and || in one expression.',
         code: ['val hasPass = false', 'val isVip = true', 'val isOpen = false', 'val canEnter = hasPass || isVip && isOpen', 'println(canEnter)'],
+        output: ['false'],
         whatItMeans: [
           {
             label: 'hasPass || isVip && isOpen',
@@ -743,6 +758,7 @@ export const LOGICAL_OPERATORS_LESSON: FiveStageLesson = {
           'val canEnter = (hasTicket || isVip) && !isBanned',
           'println(canEnter)'
         ],
+        output: ['false'],
         whatItMeans: [
           { label: '(hasTicket || isVip)', description: 'The parentheses group the OR first: true || false = true' },
           { label: '!isBanned', description: 'Negates isBanned: !true = false' },
@@ -765,6 +781,7 @@ export const LOGICAL_OPERATORS_LESSON: FiveStageLesson = {
           'val result = hasKey && expensiveCheck()',
           'println(result)'
         ],
+        output: ['false'],
         whatItMeans: [
           { label: 'hasKey && expensiveCheck()', description: 'hasKey is false, so && already knows the whole expression must be false -- expensiveCheck() never runs' },
           { label: '"Checked!" never prints', description: 'Proof that the right side was skipped, not just that the final answer happened to be false' }
@@ -1040,6 +1057,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Replacing a value outright.',
         code: ['var temperature = 20', 'temperature = 25', 'println(temperature)'],
+        output: ['25'],
         whatItMeans: [
           { label: 'var temperature', description: 'Declared as mutable with initial value 20' },
           { label: 'temperature = 25', description: 'Discards 20 and stores 25 in its place' }
@@ -1053,6 +1071,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Increasing a value based on itself.',
         code: ['var coins = 100', 'coins += 50', 'println(coins)'],
+        output: ['150'],
         whatItMeans: [
           { label: 'coins += 50', description: 'Shorthand for coins = coins + 50' },
           { label: 'Result', description: '100 + 50 = 150' }
@@ -1066,6 +1085,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Decreasing a value based on itself.',
         code: ['var health = 80', 'health -= 30', 'println(health)'],
+        output: ['50'],
         whatItMeans: [
           { label: 'health -= 30', description: 'Shorthand for health = health - 30' },
           { label: 'Result', description: '80 - 30 = 50' }
@@ -1079,6 +1099,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Scaling a value based on itself.',
         code: ['var multiplier = 3', 'multiplier *= 4', 'println(multiplier)'],
+        output: ['12'],
         whatItMeans: [
           { label: 'multiplier *= 4', description: 'Shorthand for multiplier = multiplier * 4' },
           { label: 'Result', description: '3 * 4 = 12' }
@@ -1092,6 +1113,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Shrinking a value based on itself.',
         code: ['var pool = 20', 'pool /= 4', 'println(pool)'],
+        output: ['5'],
         whatItMeans: [
           { label: 'pool /= 4', description: 'Shorthand for pool = pool / 4' },
           { label: 'Result', description: '20 / 4 = 5' }
@@ -1105,6 +1127,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Keeping only the remainder of a division.',
         code: ['var remainder = 17', 'remainder %= 5', 'println(remainder)'],
+        output: ['2'],
         whatItMeans: [
           { label: 'remainder %= 5', description: 'Shorthand for remainder = remainder % 5' },
           { label: 'Result', description: '17 % 5 = 2 (17 divided by 5 leaves a remainder of 2)' }
@@ -1118,6 +1141,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Compound assignment works on text too, not just numbers.',
         code: ['var message = "Hello"', 'message += ", World!"', 'println(message)'],
+        output: ['Hello, World!'],
         whatItMeans: [
           { label: 'message += ", World!"', description: 'Shorthand for message = message + ", World!" -- concatenation, not arithmetic' },
           { label: 'Result', description: '"Hello" + ", World!" = "Hello, World!"' }
@@ -1131,6 +1155,7 @@ export const ASSIGNMENT_OPERATORS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Compound assignment works the same way on decimal values.',
         code: ['var total = 10.0', 'total *= 1.5', 'println(total)'],
+        output: ['15.0'],
         whatItMeans: [
           { label: 'total *= 1.5', description: 'Shorthand for total = total * 1.5' },
           { label: 'Result', description: '10.0 * 1.5 = 15.0 -- still a Double, printed with its decimal point' }
@@ -1392,6 +1417,7 @@ export const INCREMENT_DECREMENT_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Add 1 to a mutable variable.',
         code: ['var count = 5', 'count++', 'println(count)'],
+        output: ['6'],
         whatItMeans: [
           { label: 'var count', description: 'Declares a mutable variable starting at 5' },
           { label: 'count++', description: 'Increments count by 1, so it becomes 6' }
@@ -1405,6 +1431,7 @@ export const INCREMENT_DECREMENT_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Subtract 1 from a mutable variable.',
         code: ['var lives = 3', 'lives--', 'println(lives)'],
+        output: ['2'],
         whatItMeans: [
           { label: 'var lives', description: 'Declares a mutable variable starting at 3' },
           { label: 'lives--', description: 'Decrements lives by 1, so it becomes 2' }
@@ -1418,6 +1445,7 @@ export const INCREMENT_DECREMENT_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The ++ can also go before the variable.',
         code: ['var score = 10', '++score', 'println(score)'],
+        output: ['11'],
         whatItMeans: [
           { label: '++score', description: 'Prefix form: still just adds 1 to score' },
           { label: 'Result', description: 'score becomes 11, same end result as score++' }
@@ -1431,6 +1459,7 @@ export const INCREMENT_DECREMENT_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Apply ++ and -- multiple times in sequence.',
         code: ['var attempts = 0', 'attempts++', 'attempts++', 'attempts--', 'println(attempts)'],
+        output: ['1'],
         whatItMeans: [
           { label: 'attempts++ (x2)', description: 'Raises attempts from 0 to 1, then to 2' },
           { label: 'attempts--', description: 'Lowers attempts from 2 back down to 1' }
@@ -1444,6 +1473,7 @@ export const INCREMENT_DECREMENT_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The value used elsewhere differs, even though the variable ends up the same.',
         code: ['var count = 5', 'val old = count++', 'println(old)', 'println(count)'],
+        output: ['5', '6'],
         whatItMeans: [
           { label: 'val old = count++', description: 'Postfix returns the value BEFORE incrementing: old is 5' },
           { label: 'println(count)', description: 'count itself is still incremented to 6, same as always' }
@@ -1457,6 +1487,7 @@ export const INCREMENT_DECREMENT_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The same variable, but ++ moved before it changes what gets captured.',
         code: ['var count = 5', 'val fresh = ++count', 'println(fresh)', 'println(count)'],
+        output: ['6', '6'],
         whatItMeans: [
           { label: 'val fresh = ++count', description: 'Prefix returns the value AFTER incrementing: fresh is 6' },
           { label: 'println(count)', description: 'count is also 6 -- the variable itself ends up the same either way' }
@@ -1470,6 +1501,7 @@ export const INCREMENT_DECREMENT_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The compiler blocks ++ / -- on a val.',
         code: ['val locked = 5', '// locked++  <-- Val cannot be reassigned', 'println(locked)'],
+        output: ['5'],
         whatItMeans: [
           { label: 'val locked', description: 'A read-only reference' },
           { label: 'locked++', description: 'Would reassign locked, so it is rejected at compile time' }
@@ -1751,6 +1783,7 @@ export const OPERATOR_PRECEDENCE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: '* is evaluated before +, even though + appears first.',
         code: ['val total = 2 + 3 * 4', 'println(total)'],
+        output: ['14'],
         whatItMeans: [
           { label: '3 * 4', description: 'Evaluated first because * outranks +, producing 12' },
           { label: '2 + 12', description: 'The addition happens second, producing 14' }
@@ -1764,6 +1797,7 @@ export const OPERATOR_PRECEDENCE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Each comparison resolves to true/false before && combines them.',
         code: ['val ok = 5 > 3 && 2 < 1', 'println(ok)'],
+        output: ['false'],
         whatItMeans: [
           { label: '5 > 3', description: 'Evaluated first, producing true' },
           { label: '2 < 1', description: 'Also evaluated first (comparisons outrank &&), producing false' },
@@ -1778,6 +1812,7 @@ export const OPERATOR_PRECEDENCE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: '&& groups with its neighbors before || does.',
         code: ['val hasPass = false', 'val isVip = true', 'val isOpen = false', 'val canEnter = hasPass || isVip && isOpen', 'println(canEnter)'],
+        output: ['false'],
         whatItMeans: [
           { label: 'isVip && isOpen', description: 'Evaluated first because && outranks ||, producing true && false = false' },
           { label: 'hasPass || false', description: 'The || runs last, producing false || false = false' }
@@ -1791,6 +1826,7 @@ export const OPERATOR_PRECEDENCE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Wrapping part of an expression in ( ) forces it to run first.',
         code: ['val withoutParens = 2 + 3 * 4', 'val withParens = (2 + 3) * 4', 'println(withoutParens)', 'println(withParens)'],
+        output: ['14', '20'],
         whatItMeans: [
           { label: '(2 + 3)', description: 'The parentheses force the addition to happen before the multiplication' },
           { label: '5 * 4', description: 'Only after the parenthesized part resolves does the multiplication run, producing 20' }
@@ -2002,6 +2038,7 @@ export const WORLD_2_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Compound assignment accumulates a value over multiple steps.',
         code: ['var cart = 0', 'cart += 25', 'cart += 40', 'println(cart)'],
+        output: ['65'],
         whatItMeans: [{ label: 'cart += 25 then cart += 40', description: 'Each += adds to the running total: 0 + 25 = 25, then 25 + 40 = 65' }],
         whatChanged: 'Used += repeatedly to build up a total instead of one single assignment.'
       },
@@ -2012,6 +2049,7 @@ export const WORLD_2_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A comparison feeds directly into a logical AND.',
         code: ['val age = 20', 'val hasId = true', 'val canBuy = age >= 18 && hasId', 'println(canBuy)'],
+        output: ['true'],
         whatItMeans: [{ label: 'age >= 18 && hasId', description: 'age >= 18 is 20 >= 18 = true, so true && hasId (true) = true' }],
         whatChanged: 'Combined a relational comparison with a logical AND to produce one eligibility decision.'
       },
@@ -2022,6 +2060,7 @@ export const WORLD_2_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Multiplication resolves before addition, just like earlier in this world.',
         code: ['val base = 50', 'val bonus = 10', 'val multiplier = 2', 'val score = base + bonus * multiplier', 'println(score)'],
+        output: ['70'],
         whatItMeans: [{ label: 'bonus * multiplier', description: 'Evaluated first (10 * 2 = 20), then added to base: 50 + 20 = 70' }],
         whatChanged: 'Applied precedence rules inside a realistic scoring formula.'
       },
@@ -2032,6 +2071,7 @@ export const WORLD_2_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Tracking a shrinking resource with --.',
         code: ['var attemptsLeft = 3', 'attemptsLeft--', 'attemptsLeft--', 'println(attemptsLeft)'],
+        output: ['1'],
         whatItMeans: [{ label: 'attemptsLeft-- (x2)', description: 'Each -- subtracts 1: 3 becomes 2, then 2 becomes 1' }],
         whatChanged: 'Used -- to model a countdown, the same pattern a real game or retry system would use.'
       }

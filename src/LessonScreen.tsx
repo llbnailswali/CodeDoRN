@@ -107,14 +107,27 @@ const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
             <NumberTag text={card.number} dark={dark} />
-            <Text style={{ flexShrink: 1, fontFamily: FONT.outfit.b, fontSize: px(18), lineHeight: lh(18, 1.5556), color: t.title, includeFontPadding: false }}>{card.title}</Text>
+            <Text style={{ flexShrink: 1, fontFamily: FONT.outfit.b, fontSize: px(16), lineHeight: lh(16, 1.5), color: t.title, includeFontPadding: false }}>{card.title}</Text>
           </View>
           <LangPill text={card.language} dark={dark} />
         </View>
         <Text style={{ fontFamily: FONT.body, fontSize: px(14), lineHeight: lh(14, 1.4286), marginBottom: 12, color: dark ? '#CBD5E1' : '#475569', includeFontPadding: false }}>{card.subtitle}</Text>
         <View style={{ marginHorizontal: -14, paddingVertical: 8, marginBottom: 12, backgroundColor: t.codeBg2, borderWidth: BW, borderColor: t.codeBorder2 }}>
-          <CodeScroll inset={12}><KotlinLines lines={card.code} dark={dark} size={14} /></CodeScroll>
+          <CodeScroll inset={12}><KotlinLines lines={card.code} dark={dark} size={12} /></CodeScroll>
         </View>
+        {!!card.output && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(11), lineHeight: lh(11, 1.5), letterSpacing: 0.05 * 11 * MAIN, color: dark ? '#94A3B8' : '#64748B', marginBottom: 8, includeFontPadding: false }}>{card.outputKind === 'compileError' ? 'COMPILER ERROR' : 'OUTPUT'}</Text>
+            <View style={{ borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, borderWidth: BW, backgroundColor: card.outputKind ? (dark ? 'rgba(127,29,29,0.3)' : '#FEF2F2') : dark ? 'rgba(0,0,0,0.4)' : '#ECFDF5', borderColor: card.outputKind ? (dark ? 'rgba(248,113,113,0.3)' : '#FECACA') : dark ? 'rgba(52,211,153,0.2)' : '#A7F3D0' }}>
+              {card.output.length === 0 && (
+                <Text style={{ fontFamily: FONT.mono.r, fontSize: px(13), lineHeight: lh(13, 1.5), fontStyle: 'italic', opacity: 0.6, color: dark ? '#A7F3D0' : '#064E3B', includeFontPadding: false }}>(no output)</Text>
+              )}
+              {card.output.map((line, i) => (
+                <Text key={i} style={{ fontFamily: FONT.mono.r, fontSize: px(13), lineHeight: lh(13, 1.5), color: card.outputKind && /^(error:|Exception in thread)/.test(line) ? (dark ? '#FCA5A5' : '#991B1B') : dark ? '#A7F3D0' : '#064E3B', includeFontPadding: false }}>{line === '' ? ' ' : line}</Text>
+              ))}
+            </View>
+          </View>
+        )}
         <View style={{ marginBottom: 16 }}>
           <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(11), lineHeight: lh(11, 1.5), letterSpacing: 0.05 * 11 * MAIN, color: dark ? '#94A3B8' : '#64748B', marginBottom: 8, includeFontPadding: false }}>WHAT IT MEANS</Text>
           <View style={{ gap: 6 }}>
@@ -253,7 +266,10 @@ function PrimaryButton({ label, icon = 'arrow_forward', onPress, disabled, dark,
 }
 
 function TapHint({ dark, enabled = true, label = 'Tap to continue', onPress, extra }: { dark: boolean; enabled?: boolean; label?: string; onPress: () => void; extra?: React.ReactNode }) {
+  // The whole strip is the tap target: a little above the button, and everything to its left, right and below it (down to the screen
+  // edge). The negative margins cancel the BottomBar's own padding so the layout is unchanged; the content itself never advances.
   return (
+    <Pressable onPress={onPress} style={{ marginHorizontal: -8, marginTop: -6, marginBottom: -20, paddingHorizontal: 8, paddingTop: 6, paddingBottom: 20 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12 }}>
       <View>
         <ShadowStack r={999} shadows={[{ dy: 4, blur: 6, rgb: '0,0,0', alpha: dark ? 0.4 : 0.1 }]} />
@@ -274,10 +290,11 @@ function TapHint({ dark, enabled = true, label = 'Tap to continue', onPress, ext
       </View>
       {extra}
     </View>
+    </Pressable>
   );
 }
 
-function RevealedItem({ children, animate, onLayout }: { children: React.ReactNode; animate: boolean; onLayout?: (e: LayoutChangeEvent) => void }) {
+function RevealedItem({ children, animate, onLayout, itemRef }: { children: React.ReactNode; animate: boolean; onLayout?: (e: LayoutChangeEvent) => void; itemRef?: (node: View | null) => void }) {
   const opacity = React.useRef(new Animated.Value(animate ? 0 : 1)).current;
 
   React.useEffect(() => {
@@ -287,7 +304,7 @@ function RevealedItem({ children, animate, onLayout }: { children: React.ReactNo
     return () => animation.stop();
   }, [animate, opacity]);
 
-  return <Animated.View onLayout={onLayout} style={{ opacity }}>{children}</Animated.View>;
+  return <Animated.View ref={itemRef as any} onLayout={onLayout} style={{ opacity }}>{children}</Animated.View>;
 }
 
 function SkipButton({ dark, onPress, tall }: { dark: boolean; onPress: () => void; tall?: boolean }) {
@@ -426,6 +443,8 @@ export function LessonScreen({
   const contentH = React.useRef(0);
   const savedScroll = React.useRef<Partial<Record<StageKey, number>>>({});
   const cardTops = React.useRef<number[]>([]);
+  const cardRefs = React.useRef<Array<View | null>>([]);
+  const settleTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardsY = React.useRef(0);
   const barH = React.useRef(44);
   const locked = React.useRef(false);
@@ -475,6 +494,7 @@ export function LessonScreen({
     if (revealScrollTimer.current) clearTimeout(revealScrollTimer.current);
     if (cardScrollFrame.current !== null) cancelAnimationFrame(cardScrollFrame.current);
     if (cardScrollTimer.current) clearTimeout(cardScrollTimer.current);
+    if (settleTimer.current) clearTimeout(settleTimer.current);
   }, []);
 
   const onLearnItemLayout = (step: number) => {
@@ -599,14 +619,50 @@ export function LessonScreen({
     };
   }, [current, stageOpacity]);
 
-  const scheduleCardScroll = (idx: number) => {
+  // The card's real top inside the scroll content, measured natively right now. onLayout's y is relative to the card's parent view
+  // (and goes stale when cards above change size), so it cannot be trusted as a scroll target.
+  const measureCardTop = (idx: number, done: (y: number) => void) => {
+    const node = cardRefs.current[idx];
+    const sv = scrollRef.current as any;
+    const inner = sv?.getInnerViewRef?.() ?? sv?.getInnerViewNode?.();
+    if (!node || !inner) {
+      const top = cardTops.current[idx];
+      if (top !== undefined) done(cardsY.current + top);
+      return;
+    }
+    node.measureLayout(inner, (_x: number, y: number) => done(y), () => {});
+  };
+  const scheduleCardScroll = (idx: number, fitEnd = false) => {
     if (cardScrollFrame.current !== null) cancelAnimationFrame(cardScrollFrame.current);
     if (cardScrollTimer.current) clearTimeout(cardScrollTimer.current);
+    if (settleTimer.current) clearTimeout(settleTimer.current);
     cardScrollFrame.current = requestAnimationFrame(() => {
       cardScrollTimer.current = setTimeout(() => {
-        const top = cardTops.current[idx];
-        if (top === undefined) return;
-        smoothScrollTo(cardsY.current + top - barH.current - 8);
+        // A newly revealed card scrolls toward the end of the content (so a short card shows whole), but never past the point
+        // where its own top would slide under the sticky bar: a tall card keeps its top visible and the rest scrolls.
+        const targetFor = (y: number) => {
+          const top = y - barH.current - 8;
+          return fitEnd ? Math.min(top, contentH.current - viewH.current) : top;
+        };
+        measureCardTop(idx, (y) => {
+          smoothScrollTo(targetFor(y));
+          // Once the eased scroll has stopped, measure again (layout may have shifted meanwhile) and correct without animation.
+          let tries = 0;
+          const settle = () => {
+            if (smoothFrame.current !== null && tries++ < 30) {
+              settleTimer.current = setTimeout(settle, 100);
+              return;
+            }
+            measureCardTop(idx, (y2) => {
+              const want = Math.max(0, targetFor(y2));
+              if (Math.abs(want - scrollY.current) > 3) {
+                scrollY.current = want;
+                scrollRef.current?.scrollTo({ y: want, animated: false });
+              }
+            });
+          };
+          settleTimer.current = setTimeout(settle, 150);
+        });
       }, 60);
     });
   };
@@ -614,7 +670,8 @@ export function LessonScreen({
     cardTops.current[idx] = y;
     if (pendingEndCard.current === idx) {
       pendingEndCard.current = null;
-      requestAnimationFrame(() => setTimeout(() => scrollToEnd(), 60));
+      lock();
+      scheduleCardScroll(idx, true);
     }
     if (pendingCardScroll.current !== idx) return;
     pendingCardScroll.current = null;
@@ -746,11 +803,8 @@ export function LessonScreen({
 
   // ---- the stage's scroll children (a sticky one is the indicator bar) ----
   const strip = <ProgressStrip key="strip" dark={dark} topic={lesson.topicTitle} stages={stages} index={index} onJump={jump} />;
-  const tap = (key: string, node: React.ReactNode, onPress?: () => void) => (
-    <Pressable key={key} onPress={onPress} disabled={!onPress}>
-      {node}
-    </Pressable>
-  );
+  // Continuing is done only from the bottom "Tap to continue" strip (TapHint); tapping the content itself does nothing.
+  const tap = (key: string, node: React.ReactNode, _onPress?: () => void) => <View key={key}>{node}</View>;
 
   let children: React.ReactNode[] = [];
   let sticky: number[] = [];
@@ -877,7 +931,7 @@ export function LessonScreen({
           <View onLayout={(e) => (cardsY.current = e.nativeEvent.layout.y)} style={{ gap: 16, marginBottom: 24 }}>
             {ex.cards.map((card, i) =>
               exploreReveal < 1 + i ? null : (
-                <RevealedItem key={card.id} animate={exploreReveal === i + 1} onLayout={(e) => onCardLayout(i, e.nativeEvent.layout.y)}>
+                <RevealedItem key={card.id} animate={exploreReveal === i + 1} itemRef={(n) => { cardRefs.current[i] = n; }} onLayout={(e) => onCardLayout(i, e.nativeEvent.layout.y)}>
                   <ExploreExampleCard card={card} dark={dark} active={exploreIdx === i} />
                 </RevealedItem>
               )
@@ -932,7 +986,7 @@ export function LessonScreen({
               const hasAnswer = selected !== undefined;
               const isOk = correct(qi);
               return (
-                <RevealedItem key={q.id} animate={predictReveal === qi + 1} onLayout={(e) => onCardLayout(qi, e.nativeEvent.layout.y)}>
+                <RevealedItem key={q.id} animate={predictReveal === qi + 1} itemRef={(n) => { cardRefs.current[qi] = n; }} onLayout={(e) => onCardLayout(qi, e.nativeEvent.layout.y)}>
                   <Pressable onPress={() => setPredictIdx(qi)}>
                     <Card dark={dark} active={predictIdx === qi} shadow={false} style={{ gap: 14 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -943,14 +997,14 @@ export function LessonScreen({
                         {!!q.code && q.code.length > 0 && <LangPill text={q.language} dark={dark} />}
                       </View>
                       {!!q.code && q.code.length > 0 && (
-                        <View style={{ borderRadius: 12, paddingVertical: 16, overflow: 'hidden', backgroundColor: t.codeBg2, borderWidth: BW, borderColor: dark ? '#262C3D' : 'rgba(226,232,240,0.8)' }}>
+                        <View style={{ borderRadius: 12, paddingVertical: 8, overflow: 'hidden', backgroundColor: t.codeBg2, borderWidth: BW, borderColor: dark ? '#262C3D' : 'rgba(226,232,240,0.8)' }}>
                           <CodeScroll inset={16}>
                             <KotlinLines lines={q.code} dark={dark} size={12} />
                           </CodeScroll>
                         </View>
                       )}
                       <Text style={{ fontFamily: FONT.outfit.sb, fontSize: px(16), lineHeight: lh(16, 1.5), letterSpacing: -0.025 * 16 * MAIN, color: t.title, includeFontPadding: false }}>{q.prompt}</Text>
-                      <View style={{ gap: 10 }}>
+                      <View style={{ gap: 8 }}>
                         {q.options.map((opt) => {
                           const sel = selected === opt.id;
                           const ok = opt.isCorrect;
@@ -965,18 +1019,18 @@ export function LessonScreen({
                             <Pressable
                               key={opt.id}
                               onPress={() => choose(qi, opt.id)}
-                              style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: 14, borderRadius: 12, borderWidth: BW, backgroundColor: palette.bg, borderColor: palette.border }}
+                              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 42, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: BW, backgroundColor: palette.bg, borderColor: palette.border }}
                             >
-                              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 0 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                                 <View
                                   style={{
-                                    width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                                    width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
                                     backgroundColor: sel ? (ok ? '#059669' : '#E11D48') : dark ? '#171B26' : '#F1F5F9',
                                   }}
                                 >
-                                  <Text style={{ fontFamily: sel ? FONT.outfit.b : FONT.outfit.sb, fontSize: px(12), lineHeight: lh(12, 1.3333), color: sel ? '#FFFFFF' : dark ? '#94A3B8' : '#475569', includeFontPadding: false }}>{opt.id}</Text>
+                                  <Text style={{ fontFamily: sel ? FONT.outfit.b : FONT.outfit.sb, fontSize: px(11), lineHeight: lh(11, 1.3), color: sel ? '#FFFFFF' : dark ? '#94A3B8' : '#475569', includeFontPadding: false }}>{opt.id}</Text>
                                 </View>
-                                <Text style={{ flex: 1, fontFamily: FONT.body, fontSize: px(14), lineHeight: lh(14, 1.4286), color: palette.text, includeFontPadding: false }}>{opt.label}</Text>
+                                <Text style={{ flex: 1, fontFamily: FONT.outfit.md, fontSize: px(13), lineHeight: lh(13, 1.4), color: palette.text, includeFontPadding: false }}>{opt.label}</Text>
                               </View>
                               {sel && <Icon name={ok ? 'check_circle' : 'cancel'} filled color={ok ? '#10B981' : '#F43F5E'} />}
                             </Pressable>
@@ -986,18 +1040,18 @@ export function LessonScreen({
                       {hasAnswer && (
                         <View
                           style={{
-                            borderRadius: 12, padding: 16, borderWidth: BW, gap: 8,
+                            borderRadius: 16, padding: 12, borderWidth: BW, gap: 6,
                             backgroundColor: isOk ? (dark ? 'rgba(2,44,34,0.4)' : 'rgba(236,253,245,0.8)') : dark ? 'rgba(76,5,25,0.4)' : 'rgba(255,241,242,0.8)',
                             borderColor: isOk ? (dark ? 'rgba(16,185,129,0.4)' : '#A7F3D0') : dark ? 'rgba(244,63,94,0.4)' : '#FECDD3',
                           }}
                         >
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Icon name={isOk ? 'check_circle' : 'info'} color={isOk ? (dark ? '#34D399' : '#059669') : dark ? '#FB7185' : '#E11D48'} />
-                            <Text style={{ fontFamily: FONT.outfit.sb, fontSize: px(12), lineHeight: lh(12, 1.3333), letterSpacing: 0.05 * 12 * MAIN, color: isOk ? (dark ? '#34D399' : '#059669') : dark ? '#FB7185' : '#E11D48', includeFontPadding: false }}>
-                              {isOk ? 'CORRECT!' : 'INCORRECT'}
+                            <Icon name={isOk ? 'check_circle' : 'info'} size={18} exact color={isOk ? (dark ? '#34D399' : '#059669') : dark ? '#FB7185' : '#E11D48'} />
+                            <Text style={{ fontFamily: FONT.outfit.sb, fontSize: px(14), lineHeight: lh(14, 1.4), color: isOk ? (dark ? '#34D399' : '#059669') : dark ? '#FB7185' : '#E11D48', includeFontPadding: false }}>
+                              {isOk ? 'Correct!' : 'Not quite'}
                             </Text>
                           </View>
-                          <Text style={{ fontFamily: FONT.body, fontSize: px(12), lineHeight: lh(12, 1.625), color: dark ? '#CBD5E1' : '#475569', includeFontPadding: false }}>
+                          <Text style={{ fontFamily: FONT.body, fontSize: px(12), lineHeight: lh(12, 1.5), color: dark ? '#E2E8F0' : '#334155', includeFontPadding: false }}>
                             <Text style={{ fontFamily: FONT.mono.r, fontSize: px(11), color: isOk ? (dark ? '#34D399' : '#059669') : dark ? '#FB7185' : '#E11D48' }}>{q.explanation.codeRef}</Text>
                             {' '}
                             {q.explanation.detail}

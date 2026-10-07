@@ -1,0 +1,4 @@
+{
+  "world-16-dispatchers-jobs/world-16-dispatchers-jobs-explore-4": "thread race: real Kotlin printed both 'false, true' and 'true, true' on different runs",
+  "world-16-coroutine-best-practices/world-16-coroutine-best-practices-explore-2": "thread race: real Kotlin printed 0 and 12 on different runs"
+}

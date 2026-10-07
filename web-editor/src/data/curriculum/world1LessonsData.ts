@@ -199,6 +199,7 @@ export const KOTLIN_SYNTAX_LESSON: FiveStageLesson = {
           '',
           '}'
         ],
+        output: [],
         whatItMeans: [
           { label: 'main', description: 'the special name Kotlin looks for first when a program starts' },
           { label: '()', description: 'required syntax after every entry point name' },
@@ -217,6 +218,7 @@ export const KOTLIN_SYNTAX_LESSON: FiveStageLesson = {
           '  println("Hello, Kotlin!")',
           '}'
         ],
+        output: ['Hello, Kotlin!'],
         whatItMeans: [
           { label: 'println(...)', description: 'prints text to the console, followed by a new line' },
           { label: '"Hello, Kotlin!"', description: 'a String literal -- text wrapped in double quotes' }
@@ -236,6 +238,7 @@ export const KOTLIN_SYNTAX_LESSON: FiveStageLesson = {
           '  println("Third")',
           '}'
         ],
+        output: ['First', 'Second', 'Third'],
         whatItMeans: [
           { label: 'Line order', description: 'Kotlin executes each statement in the order it appears' },
           { label: 'Three println calls', description: 'produce three separate lines of output, in sequence' }
@@ -468,6 +471,7 @@ export const COMMENTS_LESSON: FiveStageLesson = {
           'val score = 100',
           'println(score) // Prints 100'
         ],
+        output: ['100'],
         whatItMeans: [
           { label: '//', description: 'Everything following on that line is ignored' },
           { label: 'Inline note', description: 'Can be placed right after code on the same line' }
@@ -487,6 +491,7 @@ export const COMMENTS_LESSON: FiveStageLesson = {
           '*/',
           'println("Ready!")'
         ],
+        output: ['Ready!'],
         whatItMeans: [
           { label: '/*', description: 'Starts a multi-line comment block' },
           { label: '*/', description: 'Closes the multi-line comment block' }
@@ -504,6 +509,7 @@ export const COMMENTS_LESSON: FiveStageLesson = {
           '// println("Debug: health is $health")',
           'println("Game start!")'
         ],
+        output: ['Game start!'],
         whatItMeans: [
           { label: 'Disabled line', description: 'The debug statement is not executed' },
           { label: 'Active line', description: 'Only "Game start!" will print' }
@@ -520,6 +526,7 @@ export const COMMENTS_LESSON: FiveStageLesson = {
           'val website = "Visit http://example.com for docs"',
           'println(website)'
         ],
+        output: ['Visit http://example.com for docs'],
         whatItMeans: [
           { label: '// inside "..."', description: 'The // in http:// is just literal text here, not the start of a comment' }
         ],
@@ -734,6 +741,7 @@ export const PRINT_PRINTLN_LESSON: FiveStageLesson = {
           'println("Hello")',
           'println("World")'
         ],
+        output: ['Hello', 'World'],
         whatItMeans: [
           { label: 'Line 1', description: 'Outputs "Hello" and moves down' },
           { label: 'Line 2', description: 'Outputs "World" on the next line' }
@@ -751,6 +759,7 @@ export const PRINT_PRINTLN_LESSON: FiveStageLesson = {
           'print("B")',
           'print("C")'
         ],
+        output: ['ABC'],
         whatItMeans: [
           { label: 'Single line', description: 'Outputs "ABC" with no line breaks between them' }
         ],
@@ -766,6 +775,7 @@ export const PRINT_PRINTLN_LESSON: FiveStageLesson = {
           'print("Count: ")',
           'println(42)'
         ],
+        output: ['Count: 42'],
         whatItMeans: [
           { label: 'print("Count: ")', description: 'Prints "Count: " and waits' },
           { label: 'println(42)', description: 'Prints 42 on the same line, then breaks to a new line' }
@@ -783,6 +793,7 @@ export const PRINT_PRINTLN_LESSON: FiveStageLesson = {
           'println()',
           'println("Bye")'
         ],
+        output: ['Hi', '', 'Bye'],
         whatItMeans: [
           { label: 'println()', description: 'Prints nothing but still ends the current line, inserting a blank line between "Hi" and "Bye"' }
         ],
@@ -1001,6 +1012,7 @@ export const VAL_VS_VAR_LESSON: FiveStageLesson = {
           'val pi = 3.14159',
           'println(pi)'
         ],
+        output: ['3.14159'],
         whatItMeans: [
           { label: 'val', description: 'Locks the identifier "pi"' },
           { label: 'Value', description: '3.14159 is stored and cannot be overwritten' }
@@ -1018,6 +1030,7 @@ export const VAL_VS_VAR_LESSON: FiveStageLesson = {
           'coins = 15',
           'println(coins)'
         ],
+        output: ['15'],
         whatItMeans: [
           { label: 'var coins', description: 'Declared as mutable with initial value 10' },
           { label: 'coins = 15', description: 'Overwrites the previous value with 15' }
@@ -1035,6 +1048,7 @@ export const VAL_VS_VAR_LESSON: FiveStageLesson = {
           '// id = 102  <-- Val cannot be reassigned',
           'println(id)'
         ],
+        output: ['101'],
         whatItMeans: [
           { label: 'Compiler error', description: 'Prevents the code from ever compiling if re-assigned' }
         ],
@@ -1261,6 +1275,7 @@ export const VARIABLES_TYPE_INFERENCE_LESSON: FiveStageLesson = {
           'val name = "Alex"',
           'println(name)'
         ],
+        output: ['Alex'],
         whatItMeans: [
           { label: 'count', description: 'Inferred as Int from 42' },
           { label: 'name', description: 'Inferred as String from "Alex"' }
@@ -1278,6 +1293,7 @@ export const VARIABLES_TYPE_INFERENCE_LESSON: FiveStageLesson = {
           'val level: Int = 5',
           'println(greeting)'
         ],
+        output: ['Hello'],
         whatItMeans: [
           { label: ': String', description: 'Guarantees the variable holds text' },
           { label: ': Int', description: 'Guarantees the variable holds an integer' }
@@ -1295,6 +1311,7 @@ export const VARIABLES_TYPE_INFERENCE_LESSON: FiveStageLesson = {
           '// items = "Ten"  <-- Error: Type mismatch',
           'println(items)'
         ],
+        output: ['10'],
         whatItMeans: [
           { label: 'Type mismatch', description: 'Cannot assign a String to an Int variable' }
         ],
@@ -1513,6 +1530,7 @@ export const INT_LONG_LESSON: FiveStageLesson = {
           'val b = 10',
           'println(a + b)'
         ],
+        output: ['30'],
         whatItMeans: [
           { label: 'a + b', description: 'Performs integer addition yielding 30' }
         ],
@@ -1528,6 +1546,7 @@ export const INT_LONG_LESSON: FiveStageLesson = {
           'val stars = 100_000_000_000L',
           'println(stars)'
         ],
+        output: ['100000000000'],
         whatItMeans: [
           { label: 'L suffix', description: 'Makes the Long type explicit for readability -- this literal already exceeds Int\'s range, so Kotlin would infer Long even without it' },
           { label: 'Underscores', description: 'Make large numbers easy for humans to read' }
@@ -1545,6 +1564,7 @@ export const INT_LONG_LESSON: FiveStageLesson = {
           'val big: Long = small.toLong()',
           'println(big)'
         ],
+        output: ['100'],
         whatItMeans: [
           { label: '.toLong()', description: 'Kotlin does not implicitly widen types; you must convert explicitly' }
         ],
@@ -1778,6 +1798,7 @@ export const FLOAT_DOUBLE_LESSON: FiveStageLesson = {
           'val hours = 4.0',
           'println(rate * hours)'
         ],
+        output: ['10.0'],
         whatItMeans: [
           { label: '2.5 * 4.0', description: 'Multiplies two Doubles, producing 10.0' }
         ],
@@ -1793,6 +1814,7 @@ export const FLOAT_DOUBLE_LESSON: FiveStageLesson = {
           'val weight: Float = 68.5f',
           'println(weight)'
         ],
+        output: ['68.5'],
         whatItMeans: [
           { label: '68.5f', description: 'The f suffix marks it as Float' }
         ],
@@ -1809,6 +1831,7 @@ export const FLOAT_DOUBLE_LESSON: FiveStageLesson = {
           'val x: Float = 3.14f',
           'println(x)'
         ],
+        output: ['3.14'],
         whatItMeans: [
           { label: 'No auto-conversion', description: 'Kotlin will not silently downgrade Double to Float' }
         ],
@@ -1825,6 +1848,7 @@ export const FLOAT_DOUBLE_LESSON: FiveStageLesson = {
           'val weightAsDouble: Double = weight.toDouble()',
           'println(weightAsDouble)'
         ],
+        output: ['68.5'],
         whatItMeans: [
           { label: '.toDouble()', description: 'Kotlin does not implicitly widen a Float to a Double; you must convert explicitly, just like Int to Long' }
         ],
@@ -2076,6 +2100,7 @@ export const BOOLEAN_LESSON: FiveStageLesson = {
           'val muted = false',
           'println(active)'
         ],
+        output: ['true'],
         whatItMeans: [
           { label: 'true / false', description: 'Kotlin reserved keywords for boolean literals' }
         ],
@@ -2092,6 +2117,7 @@ export const BOOLEAN_LESSON: FiveStageLesson = {
           'val passed = score >= 50',
           'println(passed)'
         ],
+        output: ['true'],
         whatItMeans: [
           { label: 'score >= 50', description: 'Evaluates to true because 85 is greater than or equal to 50' }
         ],
@@ -2108,6 +2134,7 @@ export const BOOLEAN_LESSON: FiveStageLesson = {
           'val isLight = !isDark',
           'println(isLight)'
         ],
+        output: ['false'],
         whatItMeans: [
           { label: '!isDark', description: 'Inverts true into false' }
         ],
@@ -2327,6 +2354,7 @@ export const CHAR_LESSON: FiveStageLesson = {
           'val digit = \'7\'',
           'println(letter)'
         ],
+        output: ['K'],
         whatItMeans: [
           { label: '\'K\'', description: 'The uppercase letter K as a Char' },
           { label: '\'7\'', description: 'The character 7 (not the integer 7)' }
@@ -2344,6 +2372,7 @@ export const CHAR_LESSON: FiveStageLesson = {
           'val s: String = "A"',
           'println(c)'
         ],
+        output: ['A'],
         whatItMeans: [
           { label: '\'A\'', description: 'A single 16-bit Unicode character' },
           { label: '"A"', description: 'A String object holding one character' }
@@ -2360,6 +2389,7 @@ export const CHAR_LESSON: FiveStageLesson = {
           'val tab = \'\\t\'',
           'println("A" + tab + "B")'
         ],
+        output: ['A	B'],
         whatItMeans: [
           { label: '\'\\t\'', description: 'Single character representing horizontal tab' }
         ],
@@ -2375,6 +2405,7 @@ export const CHAR_LESSON: FiveStageLesson = {
           'val newline = \'\\n\'',
           'println("Line1" + newline + "Line2")'
         ],
+        output: ['Line1', 'Line2'],
         whatItMeans: [
           { label: '\'\\n\'', description: 'Single character representing a line break' },
           { label: 'Result', description: 'Prints "Line1" and "Line2" on two separate lines, even though they were joined with +' }
@@ -2614,6 +2645,7 @@ export const STRING_LESSON: FiveStageLesson = {
           'val word = "Kotlin"',
           'println(word.length)'
         ],
+        output: ['6'],
         whatItMeans: [
           { label: 'word.length', description: 'Returns 6 (the number of letters in "Kotlin")' }
         ],
@@ -2630,6 +2662,7 @@ export const STRING_LESSON: FiveStageLesson = {
           'val second = "Do"',
           'println(first + second)'
         ],
+        output: ['CodeDo'],
         whatItMeans: [
           { label: 'first + second', description: 'Produces "CodeDo"' }
         ],
@@ -2648,6 +2681,7 @@ export const STRING_LESSON: FiveStageLesson = {
           '""".trimIndent()',
           'println(banner)'
         ],
+        output: ['LINE 1', 'LINE 2'],
         whatItMeans: [
           { label: '"""', description: 'Starts and ends a multi-line raw string' },
           { label: '.trimIndent()', description: 'Strips the common leading whitespace and the leading/trailing blank lines the raw string would otherwise keep' }
@@ -2870,6 +2904,7 @@ export const STRING_TEMPLATES_LESSON: FiveStageLesson = {
           'val language = "Kotlin"',
           'println("We are learning $language!")'
         ],
+        output: ['We are learning Kotlin!'],
         whatItMeans: [
           { label: '$language', description: 'Replaced with "Kotlin" yielding "We are learning Kotlin!"' }
         ],
@@ -2886,6 +2921,7 @@ export const STRING_TEMPLATES_LESSON: FiveStageLesson = {
           'val price = 10',
           'println("Total: \${count * price}")'
         ],
+        output: ['Total: 30'],
         whatItMeans: [
           { label: '${count * price}', description: 'Evaluates 3 * 10 = 30 and places 30 into the string' }
         ],
@@ -2901,6 +2937,7 @@ export const STRING_TEMPLATES_LESSON: FiveStageLesson = {
           'val name = "Sam"',
           'println("Length of $name is ${name.length}")'
         ],
+        output: ['Length of Sam is 3'],
         whatItMeans: [
           { label: '$name', description: 'Embeds "Sam"' },
           { label: '${name.length}', description: 'Requires curly braces to access the .length property' }
@@ -2917,6 +2954,7 @@ export const STRING_TEMPLATES_LESSON: FiveStageLesson = {
           'val price = 25',
           'println("Price: \\$price")'
         ],
+        output: ['Price: $price'],
         whatItMeans: [
           { label: '\\$price', description: 'The backslash escapes the dollar sign, so it prints as a literal $ followed by the plain text "price" -- not the variable\'s value' }
         ],
@@ -3165,6 +3203,7 @@ export const WORLD_1_BOSS_LESSON: FiveStageLesson = {
           'val level = 10',
           'println("$name $badge (Lvl $level)")'
         ],
+        output: ['Kora ★ (Lvl 10)'],
         whatItMeans: [
           { label: 'String + Char + Int', description: 'Combined seamlessly via string templates' }
         ],
@@ -3181,6 +3220,7 @@ export const WORLD_1_BOSS_LESSON: FiveStageLesson = {
           'xp += 250',
           'println("XP: $xp")'
         ],
+        output: ['XP: 1250'],
         whatItMeans: [
           { label: 'xp += 250', description: 'Updates mutable var state' }
         ],
@@ -3197,6 +3237,7 @@ export const WORLD_1_BOSS_LESSON: FiveStageLesson = {
           'println("PROFILE COMPLETE")',
           'println("=================")'
         ],
+        output: ['=================', 'PROFILE COMPLETE', '================='],
         whatItMeans: [
           { label: 'Banners', description: 'Creates clean visual terminal interfaces' }
         ],

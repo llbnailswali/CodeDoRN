@@ -2771,7 +2771,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // so it never lingers as stray leftover text in front of the generated
   // `function getValue(...)`.
   kotlinCode = kotlinCode.replace(/KProperty<[^>]*>/g, 'KProperty').replace(/\boperator\s+(?=fun\b)/g, '');
-  // World 16: `async<Int> { ... }` (an explicit type argument on a
+  // World 16: `async<Int> { ... }` / `runBlocking<Unit> { ... }` (an explicit type argument on a
   // coroutine builder call whose block is a trailing LAMBDA, not a call
   // with parens) is real, common Kotlin used to pin a Deferred's result
   // type -- but `eraseGenericConstructorArguments` (below) only strips a
@@ -2780,10 +2780,10 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // `__kt_async<Int> { ... }`, which is not valid JavaScript at all
   // (confirmed directly: `new Function(...)` rejects it with `Unexpected
   // token 'new'`, a confusing error with no visible connection to the
-  // real cause). Scoped to `async`/`launch` specifically -- the only
-  // coroutine builders any lesson gives an explicit type argument -- so
+  // real cause). Scoped to the coroutine builder names (`runBlocking<Unit>`
+  // keeps `fun main() = runBlocking<Unit> { ... }` a valid Unit main) so
   // this can never misfire on an unrelated `x < Type > y` comparison chain.
-  kotlinCode = kotlinCode.replace(/\b(async|launch)\s*<\s*[A-Za-z_][A-Za-z0-9_]*\s*>\s*(?=[({])/g, '$1 ');
+  kotlinCode = kotlinCode.replace(/\b(async|launch|runBlocking|coroutineScope|supervisorScope|withContext)\s*<\s*[A-Za-z_][A-Za-z0-9_]*\s*>\s*(?=[({])/g, '$1 ');
   // World 15: `e::class.simpleName` (a caught exception's runtime type
   // name, e.g. printed as "NumberFormatException") -> `e.constructor.name`.
   // Every built-in and user-declared exception class is named exactly like

@@ -1,0 +1,479 @@
+{
+  "world-11-boss/world-11-boss-explore-3": {
+    "output": [
+      "₹5"
+    ],
+    "note": "SIM GAP (Runtime error: cents is not defined)"
+  },
+  "world-11-boss/world-11-boss-explore-5": {
+    "output": [
+      "AB"
+    ],
+    "note": "SIM BUG (sim=\"[object Object][object Object]\")"
+  },
+  "world-11-data-classes-in-domain-modeling-enum-classes/world-11-data-classes-in-domain-modeling-enum-classes-explore-2": {
+    "output": [
+      "true"
+    ],
+    "note": "SIM GAP (Runtime error: a.hashCode is not a function)"
+  },
+  "world-11-delegated-properties/world-11-delegated-properties-explore-4": {
+    "output": [
+      "5"
+    ],
+    "note": "SIM GAP (Runtime error: Unexpected identifier 'by')"
+  },
+  "world-11-inheritance-abstract-classes/world-11-inheritance-abstract-classes-explore-7": {
+    "output": [
+      "B"
+    ],
+    "note": "SIM GAP (Runtime error: Unexpected token 'function')"
+  },
+  "world-11-inner-classes/world-11-inner-classes-explore-5": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: Unexpected token 'class')"
+  },
+  "world-11-interfaces-multiple-interface-implementation/world-11-interfaces-multiple-interface-implementation-explore-2": {
+    "output": [
+      "log:app"
+    ],
+    "note": "SIM GAP (Runtime error: Invalid or unexpected token)"
+  },
+  "world-11-object-declarations/world-11-object-declarations-explore-5": {
+    "output": [
+      "A"
+    ],
+    "note": "SIM GAP (Runtime error: Unexpected token ':')"
+  },
+  "world-12-generic-classes/generic-classes-explore-1": {
+    "output": [
+      "7"
+    ],
+    "note": "SIM GAP (Compilation error: Type mismatch: expected Box<Int>, got Boolean)"
+  },
+  "world-12-generic-data-toolkit-boss/world-12-generic-data-toolkit-boss-explore-8": {
+    "output": [
+      "K"
+    ],
+    "note": "SIM GAP (Compilation error: filterIsInstance supports String, Boolean, Number and declared classes; primitive numeric distinctions are not supported)"
+  },
+  "world-12-generic-functions/generic-functions-explore-2": {
+    "output": [
+      "8"
+    ],
+    "note": "SIM GAP (Runtime error: Int is not defined)"
+  },
+  "world-12-generic-functions/world-12-generic-functions-explore-6": {
+    "output": [
+      "(1, one)"
+    ],
+    "note": "SIM GAP (Runtime error: Unexpected identifier 'pair')"
+  },
+  "world-12-reified-type-parameters/world-12-reified-type-parameters-explore-6": {
+    "output": [
+      "Int"
+    ],
+    "note": "SIM BUG (sim=\"String\")"
+  },
+  "world-12-star-projections/world-12-star-projections-explore-5": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: Unexpected identifier 'unknown')"
+  },
+  "world-12-star-projections/world-12-star-projections-explore-6": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: Unexpected identifier 'xs')"
+  },
+  "world-12-type-parameters/world-12-type-parameters-explore-4": {
+    "output": [
+      "K"
+    ],
+    "note": "SIM BUG (sim=\"false\")"
+  },
+  "world-12-type-safe-generic-apis/world-12-type-safe-generic-apis-explore-5": {
+    "output": [
+      "1"
+    ],
+    "note": "SIM GAP (Compilation error: Wrong argument count for firstOrNull: expected 1)"
+  },
+  "world-12-use-site-variance/world-12-use-site-variance-explore-5": {
+    "output": [],
+    "note": "SIM GAP (Compilation error: Type mismatch: expected MutableList, got Int)"
+  },
+  "world-15-runcatching/world-15-runcatching-explore-4": {
+    "output": [
+      "25"
+    ],
+    "note": "SIM BUG (sim=\"null\")"
+  },
+  "world-16-dispatchers-jobs/world-16-dispatchers-jobs-explore-5": {
+    "output": [],
+    "note": "SIM GAP (Suspend function 'label' can be called only from a coroutine or another suspend function)"
+  },
+  "world-17-boss/boss-explore-1": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-boss/boss-explore-3": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-boss/boss-explore-5": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableSharedFlow is not defined)"
+  },
+  "world-17-collect-intermediate-flow-operators/collect-intermediate-flow-operators-explore-1": {
+    "output": [
+      "ready"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-collect-intermediate-flow-operators/collect-intermediate-flow-operators-explore-2": {
+    "output": [
+      "2",
+      "3"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-collect-intermediate-flow-operators/collect-intermediate-flow-operators-explore-3": {
+    "output": [
+      "20",
+      "40"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-collect-intermediate-flow-operators/collect-intermediate-flow-operators-explore-4": {
+    "output": [
+      "40"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-collect-intermediate-flow-operators/collect-intermediate-flow-operators-explore-5": {
+    "output": [
+      "[2, 3]"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-flow-cancellation-combining-flows/flow-cancellation-combining-flows-explore-1": {
+    "output": [
+      "1A",
+      "2B"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-flow-cancellation-combining-flows/flow-cancellation-combining-flows-explore-2": {
+    "output": [
+      "1",
+      "2"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-flow-cancellation-combining-flows/flow-cancellation-combining-flows-explore-3": {
+    "output": [
+      "1-a",
+      "1-b",
+      "2-a",
+      "2-b"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-flow-cancellation-combining-flows/flow-cancellation-combining-flows-explore-8": {
+    "output": [
+      "1A",
+      "2B"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-flow-fundamentals-cold-flow/flow-fundamentals-cold-flow-explore-1": {
+    "output": [
+      "ready"
+    ],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-17-flow-fundamentals-cold-flow/flow-fundamentals-cold-flow-explore-2": {
+    "output": [
+      "A",
+      "B"
+    ],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-17-flow-fundamentals-cold-flow/flow-fundamentals-cold-flow-explore-3": {
+    "output": [
+      "start",
+      "A1",
+      "start",
+      "B1"
+    ],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-17-flow-fundamentals-cold-flow/flow-fundamentals-cold-flow-explore-4": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-17-flow-fundamentals-cold-flow/flow-fundamentals-cold-flow-explore-5": {
+    "output": [
+      "A",
+      "B"
+    ],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-17-flow-lifecycle-backpressure-conflation-c/flow-lifecycle-backpressure-conflation-c-explore-1": {
+    "output": [
+      "1",
+      "2",
+      "3"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-flow-lifecycle-backpressure-conflation-c/flow-lifecycle-backpressure-conflation-c-explore-4": {
+    "output": [
+      "1",
+      "2"
+    ],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-17-hot-streams-flow/hot-streams-flow-explore-1": {
+    "output": [
+      "2"
+    ],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-hot-streams-flow/hot-streams-flow-explore-2": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableSharedFlow is not defined)"
+  },
+  "world-17-hot-streams-flow/hot-streams-flow-explore-3": {
+    "output": [
+      "load",
+      "load"
+    ],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-17-map-filter/map-filter-explore-1": {
+    "output": [
+      "30",
+      "40"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-map-filter/map-filter-explore-2": {
+    "output": [
+      "#2",
+      "#3"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-map-filter/map-filter-explore-3": {
+    "output": [
+      "map 2",
+      "map 3"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-map-filter/map-filter-explore-4": {
+    "output": [
+      "1",
+      "2"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-map-filter/map-filter-explore-5": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-oneach-stateflow/oneach-stateflow-explore-1": {
+    "output": [
+      "seen=1",
+      "out=10",
+      "seen=2",
+      "out=20"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-oneach-stateflow/oneach-stateflow-explore-2": {
+    "output": [
+      "ready"
+    ],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-oneach-stateflow/oneach-stateflow-explore-3": {
+    "output": [
+      "1"
+    ],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-oneach-stateflow/oneach-stateflow-explore-4": {
+    "output": [
+      "1"
+    ],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-oneach-stateflow/oneach-stateflow-explore-6": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-sharedflow-state-vs-events/sharedflow-state-vs-events-explore-1": {
+    "output": [
+      "Loading"
+    ],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-sharedflow-state-vs-events/sharedflow-state-vs-events-explore-2": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableSharedFlow is not defined)"
+  },
+  "world-17-sharedflow-state-vs-events/sharedflow-state-vs-events-explore-3": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableSharedFlow is not defined)"
+  },
+  "world-17-sharedflow-state-vs-events/sharedflow-state-vs-events-explore-4": {
+    "output": [
+      "[2, 3]"
+    ],
+    "note": "SIM GAP (Runtime error: MutableSharedFlow is not defined)"
+  },
+  "world-17-sharedflow-state-vs-events/sharedflow-state-vs-events-explore-6": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableSharedFlow is not defined)"
+  },
+  "world-17-sharedflow-state-vs-events/sharedflow-state-vs-events-explore-7": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: MutableStateFlow is not defined)"
+  },
+  "world-17-transform-catch/transform-catch-explore-1": {
+    "output": [
+      "2",
+      "20"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-transform-catch/transform-catch-explore-2": {
+    "output": [
+      "1",
+      "-1"
+    ],
+    "note": "SIM GAP (Runtime error: Unexpected number)"
+  },
+  "world-17-transform-catch/transform-catch-explore-3": {
+    "output": [
+      "outside"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-transform-catch/transform-catch-explore-4": {
+    "output": [
+      "200"
+    ],
+    "note": "SIM GAP (Runtime error: flowOf is not defined)"
+  },
+  "world-17-transform-catch/transform-catch-explore-6": {
+    "output": [],
+    "note": "SIM GAP (Runtime error: flow is not defined)"
+  },
+  "world-13-choosing-the-appropriate-scope-function/choosing-the-appropriate-scope-function-explore-5": {
+    "output": [
+      "4:Code"
+    ],
+    "note": "SIM BUG (sim=\"4:null\")"
+  },
+  "world-12-in-variance/in-variance-explore-3": {
+    "output": [
+      "error: type parameter 'T' is declared as 'in' but occurs in 'out' position in type 'T'."
+    ],
+    "note": "ERROR DEMO (compile)",
+    "kind": "compileError"
+  },
+  "world-12-out-variance/out-variance-explore-3": {
+    "output": [
+      "error: type parameter 'T' is declared as 'out' but occurs in 'in' position in type 'T'."
+    ],
+    "note": "ERROR DEMO (compile)",
+    "kind": "compileError"
+  },
+  "world-12-reified-type-parameters/reified-type-parameters-explore-1": {
+    "output": [
+      "error: cannot check for instance of erased type 'T'."
+    ],
+    "note": "ERROR DEMO (compile)",
+    "kind": "compileError"
+  },
+  "world-15-avoiding-swallowed-errors/world-15-avoiding-swallowed-errors-explore-6": {
+    "output": [
+      "boom",
+      "Exception in thread \"main\" java.lang.IllegalStateException: boom"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-15-catch/world-15-catch-explore-2": {
+    "output": [
+      "Exception in thread \"main\" java.lang.IllegalStateException: closed"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-15-catch/world-15-catch-explore-5": {
+    "output": [
+      "Exception in thread \"main\" java.lang.IllegalStateException: boom"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-15-custom-exceptions/world-15-custom-exceptions-explore-1": {
+    "output": [
+      "Exception in thread \"main\" InvalidCouponException: Invalid coupon"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-15-designing-meaningful-failure-paths/world-15-designing-meaningful-failure-paths-explore-4": {
+    "output": [
+      "Exception in thread \"main\" java.lang.IllegalArgumentException: quantity must be > 0; was -2"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-15-error-handling-patterns/world-15-error-handling-patterns-explore-7": {
+    "output": [
+      "logged",
+      "Exception in thread \"main\" java.lang.IllegalStateException: x"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-15-throw/world-15-throw-explore-2": {
+    "output": [
+      "Exception in thread \"main\" java.lang.IllegalStateException: token missing"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-15-throw/world-15-throw-explore-4": {
+    "output": [
+      "Exception in thread \"main\" java.lang.IllegalArgumentException: required"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-16-exception-handling-in-coroutines/world-16-exception-handling-in-coroutines-explore-1": {
+    "output": [
+      "bad",
+      "Exception in thread \"main\" java.lang.IllegalArgumentException: bad"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-7-non-null-assertion/nonnull-explore-2": {
+    "output": [
+      "Exception in thread \"main\" java.lang.NullPointerException"
+    ],
+    "note": "ERROR DEMO (runtime)",
+    "kind": "runtimeError"
+  },
+  "world-11-visibility-and-api-design/world-11-visibility-and-api-design-explore-6": {
+    "output": [
+      "error: cannot access 'n': it is private in 'A'."
+    ],
+    "note": "ERROR DEMO (compile)",
+    "kind": "compileError"
+  }
+}

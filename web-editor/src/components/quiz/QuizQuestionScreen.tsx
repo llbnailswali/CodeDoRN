@@ -135,8 +135,8 @@ export const QuizQuestionScreen: React.FC<QuizQuestionScreenProps> = ({ theme, q
         {!checked && q.hint && (
           <div className="flex">
             {hintOpen ? (
-              <div className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-[13px] leading-snug ${isDark ? 'border-amber-300/30 bg-amber-300/10 text-amber-100' : 'border-amber-300 bg-amber-50 text-amber-900'}`}>
-                <span className="material-symbols-outlined !text-[18px] mt-0.5">lightbulb</span>
+              <div className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[12px] leading-snug ${isDark ? 'border-amber-300/30 bg-amber-300/10 text-amber-100' : 'border-amber-300 bg-amber-50 text-amber-900'}`}>
+                <span className="material-symbols-outlined !text-[15px] mt-0.5">lightbulb</span>
                 <span>{q.hint}</span>
               </div>
             ) : (
@@ -146,9 +146,9 @@ export const QuizQuestionScreen: React.FC<QuizQuestionScreenProps> = ({ theme, q
                   soundFX.playClick();
                   setHintOpen(true);
                 }}
-                className={`self-start inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl border text-[13px] font-semibold transition-colors ${isDark ? 'border-indigo-400/40 bg-indigo-400/10 text-indigo-200' : 'border-indigo-300 bg-indigo-50 text-indigo-700'}`}
+                className={`self-start inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border text-[12px] font-semibold transition-colors ${isDark ? 'border-indigo-400/40 bg-indigo-400/10 text-indigo-200' : 'border-indigo-300 bg-indigo-50 text-indigo-700'}`}
               >
-                <span className="material-symbols-outlined !text-[18px]">lightbulb</span>
+                <span className="material-symbols-outlined !text-[15px]">lightbulb</span>
                 Need a hint?
               </button>
             )}

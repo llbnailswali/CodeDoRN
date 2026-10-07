@@ -38,6 +38,7 @@ export const IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The block runs because the condition evaluates to true.',
         code: ['val temperature = 35', 'if (temperature > 30) {', '  println("It\'s hot today")', '}'],
+        output: ['It\'s hot today'],
         whatItMeans: [
           { label: 'temperature > 30', description: '35 > 30 evaluates to true' },
           { label: 'Result', description: 'Because the condition is true, the block runs and prints "It\'s hot today"' }
@@ -51,6 +52,7 @@ export const IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The block is skipped entirely -- execution just continues.',
         code: ['val temperature = 20', 'if (temperature > 30) {', '  println("It\'s hot today")', '}', 'println("Done checking")'],
+        output: ['Done checking'],
         whatItMeans: [
           { label: 'temperature > 30', description: '20 > 30 evaluates to false' },
           { label: 'Result', description: 'The if block is skipped completely -- only "Done checking" prints' }
@@ -64,6 +66,7 @@ export const IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The condition does not have to be a comparison -- a Boolean on its own works too.',
         code: ['val isLoggedIn = true', 'if (isLoggedIn) {', '  println("Welcome back")', '}'],
+        output: ['Welcome back'],
         whatItMeans: [
           { label: 'isLoggedIn', description: 'Already holds a Boolean value, so it can be used directly as the condition' },
           { label: 'Result', description: 'Since isLoggedIn is true, the block runs and prints "Welcome back"' }
@@ -77,6 +80,7 @@ export const IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Build a richer condition using && from World 2.',
         code: ['val score = 85', 'val hasSubmitted = true', 'if (score >= 60 && hasSubmitted) {', '  println("You passed")', '}'],
+        output: ['You passed'],
         whatItMeans: [
           { label: 'score >= 60', description: '85 >= 60 evaluates to true' },
           { label: 'score >= 60 && hasSubmitted', description: 'true && true evaluates to true' },
@@ -91,6 +95,7 @@ export const IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Kotlin allows a brace-free body when it is exactly one statement.',
         code: ['val stock = 0', 'if (stock == 0) println("Out of stock")'],
+        output: ['Out of stock'],
         whatItMeans: [
           { label: 'stock == 0', description: '0 == 0 evaluates to true' },
           { label: 'No braces', description: 'With only one statement in the body, the { } can be left out entirely' }
@@ -325,6 +330,7 @@ export const IF_ELSE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The true branch runs when the condition holds.',
         code: ['val temperature = 15', 'if (temperature < 20) {', '  println("Wear a jacket")', '} else {', '  println("No jacket needed")', '}'],
+        output: ['Wear a jacket'],
         whatItMeans: [
           { label: 'temperature < 20', description: '15 is less than 20, so the condition is true' },
           { label: 'Result', description: 'The if branch runs, printing "Wear a jacket" -- the else branch is skipped entirely' }
@@ -338,6 +344,7 @@ export const IF_ELSE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'When the condition is false, the else block runs instead.',
         code: ['val score = 85', 'if (score >= 90) {', '  println("Grade: A")', '} else {', '  println("Grade: B or lower")', '}'],
+        output: ['Grade: B or lower'],
         whatItMeans: [
           { label: 'score >= 90', description: '85 is not greater than or equal to 90, so the condition is false' },
           { label: 'Result', description: 'The else branch runs instead, printing "Grade: B or lower"' }
@@ -351,6 +358,7 @@ export const IF_ELSE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: "Kotlin's replacement for the ternary operator.",
         code: ['val a = 7', 'val b = 12', 'val larger = if (a > b) a else b', 'println(larger)'],
+        output: ['12'],
         whatItMeans: [
           { label: 'if (a > b) a else b', description: 'a > b is false (7 is not greater than 12), so the whole expression evaluates to b' },
           { label: 'larger', description: 'Holds the value 12 directly -- no println() was needed inside the if/else itself' }
@@ -364,6 +372,7 @@ export const IF_ELSE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: "An if/else expression's value can be used just like any other value.",
         code: ['val hour = 14', 'val greeting = if (hour < 12) "Good morning" else "Good afternoon"', 'println("Message: $greeting")'],
+        output: ['Message: Good afternoon'],
         whatItMeans: [
           { label: 'hour < 12', description: '14 is not less than 12, so the condition is false' },
           { label: 'greeting', description: 'Evaluates to "Good afternoon", which is then interpolated into the template string' }
@@ -377,6 +386,7 @@ export const IF_ELSE_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'if/else expressions work for any type, not just numbers.',
         code: ['val stock = 0', 'val status = if (stock > 0) "In stock" else "Out of stock"', 'println(status)'],
+        output: ['Out of stock'],
         whatItMeans: [
           { label: 'stock > 0', description: '0 is not greater than 0, so the condition is false' },
           { label: 'status', description: 'Evaluates to "Out of stock", the else branch\'s value' }
@@ -635,6 +645,7 @@ export const ELSE_IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Chain else if to test more than two possibilities.',
         code: ['val age = 15', '', 'if (age < 13) {', '  println("Child ticket")', '} else if (age < 18) {', '  println("Teen ticket")', '} else {', '  println("Adult ticket")', '}'],
+        output: ['Teen ticket'],
         whatItMeans: [
           { label: 'age < 13', description: 'checked first -- false, since age is 15' },
           { label: 'age < 18', description: 'checked next -- true, since 15 is less than 18' },
@@ -649,6 +660,7 @@ export const ELSE_IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A later condition is never even checked once an earlier one matches.',
         code: ['val temp = 35', '', 'if (temp > 30) {', '  println("Hot")', '} else if (temp > 20) {', '  println("Warm")', '}'],
+        output: ['Hot'],
         whatItMeans: [
           { label: 'temp > 30', description: 'true, since temp is 35 -- prints "Hot" immediately' },
           { label: 'temp > 20', description: 'also true on paper, but never evaluated -- the chain already stopped' }
@@ -662,6 +674,7 @@ export const ELSE_IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Without a final else, it is possible for nothing to match.',
         code: ['val hour = 23', '', 'if (hour < 6) {', '  println("Night")', '} else if (hour < 12) {', '  println("Morning")', '} else if (hour < 18) {', '  println("Afternoon")', '}'],
+        output: [],
         whatItMeans: [
           { label: 'hour < 6, < 12, < 18', description: 'all false when hour is 23 -- none of the three conditions match' },
           { label: 'No else', description: 'there is no catch-all branch, so this program prints nothing' }
@@ -675,6 +688,7 @@ export const ELSE_IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A longer chain testing several score bands in order.',
         code: ['val score = 82', '', 'if (score >= 90) {', '  println("Grade: A")', '} else if (score >= 80) {', '  println("Grade: B")', '} else if (score >= 70) {', '  println("Grade: C")', '} else {', '  println("Grade: F")', '}'],
+        output: ['Grade: B'],
         whatItMeans: [
           { label: 'score >= 90', description: 'false, since score is 82' },
           { label: 'score >= 80', description: 'true -- prints "Grade: B" and stops the chain' }
@@ -688,6 +702,7 @@ export const ELSE_IF_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'else if works with any Boolean expression, not just numeric ranges.',
         code: ['val isAdmin = false', 'val isMember = true', '', 'if (isAdmin) {', '  println("Full access")', '} else if (isMember) {', '  println("Member access")', '} else {', '  println("Guest access")', '}'],
+        output: ['Member access'],
         whatItMeans: [
           { label: 'isAdmin', description: 'false, so the first branch is skipped' },
           { label: 'isMember', description: 'true -- prints "Member access" and stops the chain' }
@@ -936,6 +951,7 @@ export const WHEN_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Each branch matches exactly one value.',
         code: ['val rating = 2', 'when (rating) {', '  1 -> println("Poor")', '  2 -> println("Average")', '  3 -> println("Good")', '}'],
+        output: ['Average'],
         whatItMeans: [
           { label: 'when (rating)', description: 'rating is the subject -- every branch compares against it' },
           { label: '2 -> println("Average")', description: 'rating equals 2, so this branch runs and nothing else is checked' }
@@ -949,6 +965,7 @@ export const WHEN_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A single branch can match several different values.',
         code: ['val day = 6', 'when (day) {', '  1, 2, 3, 4, 5 -> println("Weekday")', '  6, 7 -> println("Weekend")', '}'],
+        output: ['Weekend'],
         whatItMeans: [
           { label: '1, 2, 3, 4, 5 -> ...', description: 'Matches if day equals any one of those five values' },
           { label: '6, 7 -> ...', description: 'day is 6, which is in this list, so "Weekend" prints' }
@@ -962,6 +979,7 @@ export const WHEN_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Handling values that no branch explicitly lists.',
         code: ['val day = 9', 'when (day) {', '  1, 2, 3, 4, 5 -> println("Weekday")', '  6, 7 -> println("Weekend")', '  else -> println("Invalid day")', '}'],
+        output: ['Invalid day'],
         whatItMeans: [
           { label: 'day = 9', description: '9 does not appear in either the weekday or weekend list' },
           { label: 'else -> ...', description: 'Since nothing else matched, this branch runs and prints "Invalid day"' }
@@ -975,6 +993,7 @@ export const WHEN_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The subject does not have to be a number.',
         code: ['val command = "start"', 'when (command) {', '  "start" -> println("Starting...")', '  "stop" -> println("Stopping...")', '  else -> println("Unknown command")', '}'],
+        output: ['Starting...'],
         whatItMeans: [
           { label: 'when (command)', description: 'command is a String, so each branch compares against a String literal' },
           { label: '"start" -> ...', description: 'command equals "start", so this branch runs and prints "Starting..."' }
@@ -988,6 +1007,7 @@ export const WHEN_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A value not listed in any branch always falls through to else.',
         code: ['val grade = 90', 'when (grade) {', '  100 -> println("Perfect")', '  90, 91, 92 -> println("Excellent")', '  else -> println("Keep trying")', '}'],
+        output: ['Excellent'],
         whatItMeans: [
           { label: '100 -> ...', description: 'grade is 90, not 100, so this branch does not match' },
           { label: '90, 91, 92 -> ...', description: 'grade equals 90, which is in this list, so "Excellent" prints' }
@@ -1230,6 +1250,7 @@ export const WHEN_WITH_RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Matching a whole span of values with one branch.',
         code: ['val score = 95', 'when (score) {', '  in 90..100 -> println("Grade: A")', '  else -> println("Grade: Other")', '}'],
+        output: ['Grade: A'],
         whatItMeans: [
           { label: 'in 90..100', description: 'Matches score if it falls anywhere between 90 and 100' },
           { label: 'Result', description: '"Grade: A" prints, because 95 is inside that range' }
@@ -1243,6 +1264,7 @@ export const WHEN_WITH_RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The first matching range wins, just like an else-if chain.',
         code: ['val score = 72', 'when (score) {', '  in 90..100 -> println("A")', '  in 80..89 -> println("B")', '  in 70..79 -> println("C")', '  else -> println("F")', '}'],
+        output: ['C'],
         whatItMeans: [
           { label: 'in 90..100, in 80..89', description: 'Both fail, since 72 is not inside either range' },
           { label: 'in 70..79', description: 'Matches -- 72 is between 70 and 79 -- so "C" prints and the rest are skipped' }
@@ -1256,6 +1278,7 @@ export const WHEN_WITH_RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The exact boundary values 80 and 89 both belong to the range.',
         code: ['val score = 80', 'when (score) {', '  in 90..100 -> println("A")', '  in 80..89 -> println("B")', '  else -> println("Below B")', '}'],
+        output: ['B'],
         whatItMeans: [
           { label: 'in 80..89', description: 'score is exactly 80, the lower boundary -- and 80..89 includes it' },
           { label: 'Result', description: '"B" prints, since inclusive ranges never exclude their own endpoints' }
@@ -1269,6 +1292,7 @@ export const WHEN_WITH_RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Negating a range check with !in.',
         code: ['val age = 25', 'when (age) {', '  !in 13..19 -> println("Not a teenager")', '  else -> println("Teenager")', '}'],
+        output: ['Not a teenager'],
         whatItMeans: [
           { label: '!in 13..19', description: 'Matches whenever age is NOT between 13 and 19' },
           { label: 'Result', description: '"Not a teenager" prints, since 25 falls outside that range' }
@@ -1282,6 +1306,7 @@ export const WHEN_WITH_RANGES_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A single when can combine comma-separated values, ranges, and a final else.',
         code: ['val age = 70', 'when (age) {', '  0, 1 -> println("Infant")', '  in 2..12 -> println("Child")', '  in 13..19 -> println("Teenager")', '  in 20..64 -> println("Adult")', '  else -> println("Senior")', '}'],
+        output: ['Senior'],
         whatItMeans: [
           { label: '0, 1', description: 'A comma-separated value branch -- matches only exactly 0 or exactly 1' },
           { label: 'in 2..12, in 13..19, in 20..64', description: 'Three range branches, checked in order -- none of them cover 70' },
@@ -1514,6 +1539,7 @@ export const WHEN_AS_EXPRESSION_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Assign the result of a when block directly to a val.',
         code: ['val score = 95', 'val grade = when (score) {', '  in 90..100 -> "A"', '  in 80..89 -> "B"', '  in 70..79 -> "C"', '  else -> "F"', '}', 'println(grade)'],
+        output: ['A'],
         whatItMeans: [
           { label: 'val grade = when (score) { ... }', description: 'Whichever branch matches, its result becomes the value assigned to grade' },
           { label: 'in 90..100 -> "A"', description: '95 falls in this range, so grade is assigned "A"' },
@@ -1528,6 +1554,7 @@ export const WHEN_AS_EXPRESSION_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Equality branches work in expression form too, not just ranges.',
         code: ['val day = 6', 'val dayType = when (day) {', '  1, 2, 3, 4, 5 -> "Weekday"', '  6, 7 -> "Weekend"', '  else -> "Invalid day"', '}', 'println(dayType)'],
+        output: ['Weekend'],
         whatItMeans: [
           { label: '1, 2, 3, 4, 5 -> "Weekday"', description: 'Matches if day equals any of these listed values' },
           { label: '6, 7 -> "Weekend"', description: 'day is 6, which matches this branch' },
@@ -1542,6 +1569,7 @@ export const WHEN_AS_EXPRESSION_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Branches are checked top to bottom -- the first match wins.',
         code: ['val rating = 3', 'val description = when (rating) {', '  in 4..5 -> "Great"', '  in 2..3 -> "Okay"', '  in 0..1 -> "Poor"', '  else -> "Invalid rating"', '}', 'println(description)'],
+        output: ['Okay'],
         whatItMeans: [
           { label: 'in 4..5 -> "Great"', description: 'rating is 3, so this branch does not match -- skip it' },
           { label: 'in 2..3 -> "Okay"', description: 'rating is 3, this branch matches -- description becomes "Okay"' },
@@ -1556,6 +1584,7 @@ export const WHEN_AS_EXPRESSION_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Without else, a value outside every range would have nothing to assign.',
         code: ['val score = 45', 'val grade = when (score) {', '  in 90..100 -> "A"', '  in 80..89 -> "B"', '  in 70..79 -> "C"', '  in 60..69 -> "D"', '  else -> "F"', '}', 'println("Score $score -> Grade $grade")'],
+        output: ['Score 45 -> Grade F'],
         whatItMeans: [
           { label: 'score = 45', description: 'Does not fall inside any of the listed ranges' },
           { label: 'else -> "F"', description: 'Guarantees the when-expression always produces a value, even below 60' },
@@ -1570,6 +1599,7 @@ export const WHEN_AS_EXPRESSION_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The assigned value does not have to be a String -- it can feed into further math.',
         code: ['val quantity = 25', 'val discountPercent = when (quantity) {', '  in 10..19 -> 10', '  in 20..29 -> 20', '  else -> 0', '}', 'val finalPrice = 100 - discountPercent', 'println("Discount: $discountPercent%, Final price: $finalPrice")'],
+        output: ['Discount: 20%, Final price: 80'],
         whatItMeans: [
           { label: 'discountPercent = when (quantity) { ... }', description: 'quantity is 25, which falls in 20..29, so discountPercent is assigned 20' },
           { label: 'finalPrice = 100 - discountPercent', description: 'Uses the assigned number in an ordinary calculation afterward' },
@@ -1815,6 +1845,7 @@ export const MULTIPLE_NESTED_CONDITIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Both conditions must hold for entry to be allowed.',
         code: ['val age = 20', 'val hasId = true', 'if (age >= 18 && hasId) {', '  println("Entry allowed")', '} else {', '  println("Entry denied")', '}'],
+        output: ['Entry allowed'],
         whatItMeans: [
           { label: 'age >= 18 && hasId', description: 'A single combined condition -- both sides must be true' },
           { label: 'Entry allowed', description: '20 >= 18 is true and hasId is true, so the combined condition is true' }
@@ -1828,6 +1859,7 @@ export const MULTIPLE_NESTED_CONDITIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Only one of two conditions needs to hold.',
         code: ['val isMember = false', 'val hasPass = true', 'if (isMember || hasPass) {', '  println("Welcome!")', '} else {', '  println("Access denied")', '}'],
+        output: ['Welcome!'],
         whatItMeans: [
           { label: 'isMember || hasPass', description: 'true if at least one side is true' },
           { label: 'Welcome!', description: 'isMember is false, but hasPass is true, so the combined condition is still true' }
@@ -1841,6 +1873,7 @@ export const MULTIPLE_NESTED_CONDITIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Only check admin status after confirming the user is logged in.',
         code: ['val isLoggedIn = true', 'val isAdmin = true', 'if (isLoggedIn) {', '  if (isAdmin) {', '    println("Welcome, Admin!")', '  } else {', '    println("Welcome, User!")', '  }', '} else {', '  println("Please log in")', '}'],
+        output: ['Welcome, Admin!'],
         whatItMeans: [
           { label: 'if (isLoggedIn) { ... }', description: 'The outer gate -- everything inside only runs if this is true' },
           { label: 'if (isAdmin) { ... }', description: 'The nested, dependent check -- only reached once isLoggedIn is true' },
@@ -1855,6 +1888,7 @@ export const MULTIPLE_NESTED_CONDITIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'The exact same structure, but the outer condition now fails.',
         code: ['val isLoggedIn = false', 'val isAdmin = true', 'if (isLoggedIn) {', '  if (isAdmin) {', '    println("Welcome, Admin!")', '  } else {', '    println("Welcome, User!")', '  }', '} else {', '  println("Please log in")', '}'],
+        output: ['Please log in'],
         whatItMeans: [
           { label: 'isLoggedIn: false', description: 'The outer condition is false, so its if-body is skipped entirely' },
           { label: 'isAdmin is never checked', description: 'Even though isAdmin is true, the nested if is inside the outer if’s body -- it only runs when isLoggedIn is true' },
@@ -1869,6 +1903,7 @@ export const MULTIPLE_NESTED_CONDITIONS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A nested outer check, with a combined condition inside it.',
         code: ['val accountExists = true', 'val balance = 500', 'val withdrawAmount = 300', 'if (accountExists) {', '  if (balance >= withdrawAmount && withdrawAmount > 0) {', '    println("Withdrawal approved")', '  } else {', '    println("Withdrawal denied")', '  }', '} else {', '  println("No such account")', '}'],
+        output: ['Withdrawal approved'],
         whatItMeans: [
           { label: 'if (accountExists) { ... }', description: 'A nested outer check -- only look at withdrawal rules if the account is real' },
           { label: 'balance >= withdrawAmount && withdrawAmount > 0', description: 'A combined condition inside the nested if -- both parts must be true' },
@@ -2119,6 +2154,7 @@ export const TYPE_CHECKS_IS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Use is to test whether an Any value holds a number.',
         code: ['val value: Any = 42', 'if (value is Int) {', '  println("It\'s a number")', '}'],
+        output: ['It\'s a number'],
         whatItMeans: [
           { label: 'val value: Any', description: 'value could hold any type -- the compiler does not restrict it up front' },
           { label: 'value is Int', description: 'checks, at runtime, whether value actually holds a number' },
@@ -2133,6 +2169,7 @@ export const TYPE_CHECKS_IS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'is also works for String, with an else branch for the opposite case.',
         code: ['val value: Any = "hello"', 'if (value is String) {', '  println("It\'s text")', '} else {', '  println("It\'s not text")', '}'],
+        output: ['It\'s text'],
         whatItMeans: [
           { label: 'value is String', description: 'checks whether value actually holds a String' },
           { label: 'Result', description: '"hello" is a String, so the if branch runs and prints "It\'s text"' }
@@ -2146,6 +2183,7 @@ export const TYPE_CHECKS_IS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: '!is asks whether a value does NOT match a type.',
         code: ['val value: Any = true', 'if (value !is String) {', '  println("Definitely not text")', '}'],
+        output: ['Definitely not text'],
         whatItMeans: [
           { label: 'value !is String', description: 'true only when value does NOT hold a String' },
           { label: 'Result', description: 'true holds a Boolean, not a String, so the condition is true and the message prints' }
@@ -2159,6 +2197,7 @@ export const TYPE_CHECKS_IS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A type check can be one part of a larger condition.',
         code: ['val input: Any = "Kotlin"', 'if (input is String && input.length > 3) {', '  println("Long text value")', '} else {', '  println("Short or not text")', '}'],
+        output: ['Long text value'],
         whatItMeans: [
           { label: 'input is String', description: 'confirms input is actually text before it is safe to check its length' },
           { label: '&& input.length > 3', description: 'a second condition, only meaningful once we know input is text' },
@@ -2411,6 +2450,7 @@ export const WORLD_3_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'A when block assigned straight to a val.',
         code: ['val score = 73', 'val grade = when (score) {', '  in 90..100 -> "A"', '  in 70..79 -> "C"', '  else -> "F"', '}', 'println("Grade: $grade")'],
+        output: ['Grade: C'],
         whatItMeans: [
           { label: 'val grade = when (score)', description: 'The when block itself produces the value stored in grade' },
           { label: 'in 70..79 -> "C"', description: '73 falls in this range, so "C" is the result' }
@@ -2424,6 +2464,7 @@ export const WORLD_3_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Two boolean values joined with &&.',
         code: ['val attendance = 96', 'val hasNoInfractions = true', 'val isEligible = attendance >= 95 && hasNoInfractions', 'println("Eligible: $isEligible")'],
+        output: ['Eligible: true'],
         whatItMeans: [{ label: 'attendance >= 95 && hasNoInfractions', description: 'Both conditions must be true for isEligible to be true' }],
         whatChanged: 'Combined two independent boolean checks into one decision.'
       },
@@ -2434,6 +2475,7 @@ export const WORLD_3_BOSS_LESSON: FiveStageLesson = {
         language: 'Kotlin',
         subtitle: 'Parentheses control which conditions combine first.',
         code: ['val score = 91', 'val attendance = 70', 'val hasNoInfractions = true', 'val isEligible = (score >= 90 || attendance >= 95) && hasNoInfractions', 'println("Eligible: $isEligible")'],
+        output: ['Eligible: true'],
         whatItMeans: [
           { label: '(score >= 90 || attendance >= 95)', description: 'Either alternative alone can satisfy this group' },
           { label: '&& hasNoInfractions', description: 'The group result still needs this final condition to be true' }
@@ -2459,6 +2501,7 @@ export const WORLD_3_BOSS_LESSON: FiveStageLesson = {
           'val isEligible = (score >= 90 || attendance >= 95) && hasNoInfractions',
           'println("Grade: $grade | Eligible: $isEligible")'
         ],
+        output: ['Grade: D | Eligible: false'],
         whatItMeans: [
           { label: 'grade', description: 'Computed independently from the when-expression' },
           { label: 'isEligible', description: 'Computed independently from the combined condition' }
