@@ -12,7 +12,7 @@ import { FONT, Palette } from './theme';
 
 type Mode = 'writeRun' | 'debug';
 type Status = 'not_started' | 'in_progress' | 'completed';
-type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: Mode, dark: boolean, practice: boolean) => Promise<'continue' | 'back'> };
+type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: Mode, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null) => Promise<'continue' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
 const practiceLessonKey = (worldOrder: number, mode: Mode, title: string) => {
@@ -117,8 +117,10 @@ function Details({ task, mode, dark, helpLevel }: { task: PracticeTask; mode: Mo
 }
 
 export function TaskListScreen({
-  p, worldOrder, mode: startMode, helpLevel, topInset, onBack, onToggleTheme,
+  p, worldOrder, mode: startMode, helpLevel, topInset, onBack, onToggleTheme, showTabs = true,
 }: {
+  /** False when opened from one Home chip: only that mode is shown, so the Write & Run / Debug switch is hidden. */
+  showTabs?: boolean;
   p: Palette;
   worldOrder: number;
   mode: Mode;
@@ -181,7 +183,7 @@ export function TaskListScreen({
       </View>
 
       {/* Write & Run / Debug switch: a recessed track with one raised chip */}
-      <View style={s.tabsWrap}>
+      {showTabs && <View style={s.tabsWrap}>
         <View
           style={[
             s.track,
@@ -202,7 +204,7 @@ export function TaskListScreen({
             );
           })}
         </View>
-      </View>
+      </View>}
 
       <FlatList
         data={tasks}
@@ -291,7 +293,7 @@ export function TaskListScreen({
                           onPress={(event) => {
                             event.stopPropagation();
                             if (!WebStage) return;
-                            WebStage.open(practiceLessonKey(worldOrder, mode, task.title), mode, dark, true).catch(() => {});
+                            WebStage.open(practiceLessonKey(worldOrder, mode, task.title), mode, dark, true, false, null).catch(() => {});
                           }}
                           style={[s.action, actionStyle]}
                           accessibilityRole="button"

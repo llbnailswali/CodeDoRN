@@ -1,9 +1,10 @@
 import React from 'react';
 import { Animated, BackHandler, LayoutChangeEvent, Modal, NativeModules, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { BW, Icon, MAIN, fz, raisedShadows } from './shell';
 import { KotlinLines } from './kotlinCode';
 import { HorizontalCodeScroll } from './HorizontalCodeScroll';
+import { makeKotlinExampleRunnable } from './utils/kotlinExample';
 import { LESSONS, LessonData } from './lessonData';
 import { lh } from './parts';
 import { ShadowStack } from './shadows';
@@ -22,7 +23,7 @@ const CONTINUE_LABELS: Record<StageKey, string> = {
   learn: 'Learn', explore: 'Explore', predict: 'Predict', writeRun: 'Write & Run', debug: 'Debug', mastered: 'Mastered',
 };
 
-type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: string, dark: boolean, practice?: boolean) => Promise<'continue' | 'continue_debug' | 'back'> };
+type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: string, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null) => Promise<'continue' | 'continue_debug' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
 const px = (n: number) => fz(n * MAIN);
@@ -99,17 +100,38 @@ const heading = (dark: boolean, size: number, extra?: object) => ({
 const CodeScroll = HorizontalCodeScroll;
 
 type ExploreCardData = NonNullable<LessonData['explore']>['cards'][number];
-const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, active }: { card: ExploreCardData; dark: boolean; active: boolean }) {
+/** The small "Play" pill that opens an example in the editor (Learn's example and every Explore card). */
+function PlayButton({ dark, onPress }: { dark: boolean; onPress: () => void }) {
+  return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel="Play this example in the editor"
+        android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false, foreground: true }}
+        style={({ pressed }) => ({
+          flexDirection: 'row', alignItems: 'center', gap: 4, height: 32, paddingLeft: 9, paddingRight: 14, borderRadius: 16, overflow: 'hidden', flexShrink: 0,
+          backgroundColor: dark ? '#4338CA' : '#4F46E5', borderWidth: BW, borderColor: dark ? 'rgba(165,180,252,0.45)' : 'rgba(67,56,202,0.5)',
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        {/* Drawn (Material's play_arrow path) because the app's icon font is a small subset without this glyph. */}
+        <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
+        <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(13), lineHeight: lh(13, 1.2), color: '#FFFFFF', includeFontPadding: false }}>Play</Text>
+      </Pressable>
+  );
+}
+
+const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, active, onTry }: { card: ExploreCardData; dark: boolean; active: boolean; onTry: (card: ExploreCardData) => void }) {
   const t = tk(dark);
   return (
     <View>
-      <Card dark={dark} active={active} shadow={false} style={{ padding: 14 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <Card dark={dark} active={active} style={{ padding: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
             <NumberTag text={card.number} dark={dark} />
             <Text style={{ flexShrink: 1, fontFamily: FONT.outfit.b, fontSize: px(16), lineHeight: lh(16, 1.5), color: t.title, includeFontPadding: false }}>{card.title}</Text>
           </View>
-          <LangPill text={card.language} dark={dark} />
+          {!card.noTryIt && <PlayButton dark={dark} onPress={() => onTry(card)} />}
         </View>
         <Text style={{ fontFamily: FONT.body, fontSize: px(14), lineHeight: lh(14, 1.4286), marginBottom: 12, color: dark ? '#CBD5E1' : '#475569', includeFontPadding: false }}>{card.subtitle}</Text>
         <View style={{ marginHorizontal: -14, paddingVertical: 8, marginBottom: 12, backgroundColor: t.codeBg2, borderWidth: BW, borderColor: t.codeBorder2 }}>
@@ -155,14 +177,18 @@ const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, 
 // Header, progress strip, bottom bar
 // ---------------------------------------------------------------------------------------------------------------------
 
+/** Height of the toolbar row (LessonHeader's headerInner 56 + its bottom border). */
+const TOOLBAR_H = 57;
+/** Space the bottom button bar covers at the bottom of Explore and Predict. */
+const BOTTOM_BAR_H = 90;
+
 function LessonHeader({ dark, title, topInset, onBack, onToggleTheme, showBook }: { dark: boolean; title: string; topInset: number; onBack: () => void; onToggleTheme: () => void; showBook: boolean }) {
   const t = tk(dark);
   return (
     <View style={{ paddingTop: topInset, backgroundColor: dark ? 'rgba(15,19,29,0.95)' : 'rgba(255,255,255,0.95)', borderBottomWidth: BW, borderBottomColor: dark ? '#262C3D' : 'rgba(226,232,240,0.9)', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: dark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
       <View style={s.headerInner}>
         <View>
-          <ShadowStack r={12} shadows={raisedShadows(dark)} />
-          <Pressable onPress={onBack} style={[s.hBtn, { backgroundColor: dark ? '#151B28' : '#E8EAF0', borderColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(226,232,240,0.9)' }]}>
+          <Pressable onPress={onBack} style={[s.hBtn, { elevation: 2, backgroundColor: dark ? '#151B28' : '#E8EAF0', borderColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(226,232,240,0.9)' }]}>
             <Icon name="arrow_back" color={dark ? '#E2E8F0' : '#1E2433'} />
           </Pressable>
         </View>
@@ -326,9 +352,14 @@ function SkipButton({ dark, onPress, tall }: { dark: boolean; onPress: () => voi
 // Indicator rail (Explore / Predict): the numbered buttons that stick under the header
 // ---------------------------------------------------------------------------------------------------------------------
 
+/** Sideways padding of the strip's scroll content; the chips' centre positions are measured from it. */
+const RAIL_PAD = 24;
+
 function IndicatorRail({
-  dark, labels, active, onPress, status, onLayoutBar,
+  dark, labels, active, onPress, status, onLayoutBar, shift,
 }: {
+  /** Sideways shift (px, native-driven) that makes room for a floating back button once the strip is at the top. */
+  shift?: Animated.AnimatedInterpolation<number>;
   dark: boolean;
   labels: string[];
   active: number;
@@ -342,24 +373,23 @@ function IndicatorRail({
   React.useEffect(() => {
     const x = xs.current[active];
     if (x === undefined) return;
-    const id = setTimeout(() => ref.current?.scrollTo({ x: Math.max(0, x - width.current / 2 + 21), animated: true }), 30);
+    const id = setTimeout(() => ref.current?.scrollTo({ x: Math.max(0, x - width.current / 2), animated: true }), 30);
     return () => clearTimeout(id);
   }, [active]);
   return (
-    <View onLayout={(e) => onLayoutBar?.(e.nativeEvent.layout.height)} style={{ paddingVertical: 2, marginBottom: 10 }}>
+    <View onLayout={(e) => onLayoutBar?.(e.nativeEvent.layout.height)} style={{ paddingTop: 6, paddingBottom: 10, marginHorizontal: -6, paddingHorizontal: 6, backgroundColor: dark ? '#0F131D' : '#F1F4F9' }}>
       <ScrollView
         ref={ref}
         horizontal
         showsHorizontalScrollIndicator={false}
         onLayout={(e) => (width.current = e.nativeEvent.layout.width)}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 2, paddingVertical: 4 }}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: RAIL_PAD, paddingVertical: 4 }}
       >
-        <View>
-          <ShadowStack r={12} shadows={[{ dy: 4, blur: 6, rgb: '0,0,0', alpha: dark ? 0.4 : 0.1 }]} />
+        <Animated.View style={shift ? { transform: [{ translateX: shift }] } : undefined}>
           <View
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, borderRadius: 12, borderWidth: BW,
-              backgroundColor: dark ? 'rgba(23,27,38,0.95)' : 'rgba(255,255,255,0.95)', borderColor: dark ? '#262C3D' : 'rgba(226,232,240,0.9)',
+              elevation: 3, flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, borderRadius: 12, borderWidth: BW,
+              backgroundColor: dark ? '#171B26' : '#FFFFFF', borderColor: dark ? '#262C3D' : 'rgba(226,232,240,0.9)',
             }}
           >
             {labels.map((label, idx) => {
@@ -369,7 +399,7 @@ function IndicatorRail({
               return (
                 <Pressable
                   key={idx}
-                  onLayout={(e: LayoutChangeEvent) => (xs.current[idx] = e.nativeEvent.layout.x + 6)}
+                  onLayout={(e: LayoutChangeEvent) => (xs.current[idx] = RAIL_PAD + e.nativeEvent.layout.x + e.nativeEvent.layout.width / 2)}
                   onPress={() => onPress(idx)}
                   style={[
                     s.railBtn,
@@ -390,7 +420,7 @@ function IndicatorRail({
               );
             })}
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -439,10 +469,57 @@ export function LessonScreen({
   const scrollRef = React.useRef<ScrollView>(null);
   const stageOpacity = React.useRef(new Animated.Value(1)).current;
   const scrollY = React.useRef(0);
+  // Explore and Predict: the toolbar overlaps the content. Scrolling down hides it, scrolling up shows it again at once.
+  // The number strip is drawn as an overlay that follows the toolbar's bottom edge: it stays in the content flow until it would pass that
+  // edge, then pins just below the toolbar (or to the top when the toolbar is hidden). All of it is native-driven from the scroll offset,
+  // so the toolbar, the strip and the content move in the same frame (no JS per frame, no React state while scrolling).
+  const scrollAnim = React.useRef(new Animated.Value(0)).current;
+  const [railTop, setRailTop] = React.useState(1e6);
+  const [railH, setRailH] = React.useState(44);
+  const onHeadLayout = React.useCallback((e: LayoutChangeEvent) => {
+    // Measured on the strip's placeholder, so its y is the strip's exact place in the content (below the title and description).
+    const next = Math.round(e.nativeEvent.layout.y);
+    setRailTop((prev) => (prev === next ? prev : next));
+  }, []);
+  const { hideTranslate, railY, backOpacity, railShift } = React.useMemo(() => {
+    const hide = Animated.diffClamp(scrollAnim, 0, TOOLBAR_H);
+    const pinned = Animated.subtract(TOOLBAR_H, hide); // the toolbar's bottom edge, relative to the list's top
+    const natural = Animated.subtract(railTop, scrollAnim); // where the strip is in the content flow
+    const gap = Animated.subtract(pinned, natural).interpolate({ inputRange: [-1e5, 0, 1e5], outputRange: [1e5, 0, 1e5] });
+    // max(pinned, natural) = (pinned + natural + |pinned - natural|) / 2
+    // The floating back button fades in as the toolbar leaves (the strip is then at the top).
+    const backOpacity = hide.interpolate({ inputRange: [TOOLBAR_H * 0.5, TOOLBAR_H], outputRange: [0, 1], extrapolate: 'clamp' });
+    const railShift = Animated.multiply(backOpacity, 22);
+    return { backOpacity, railShift, hideTranslate: Animated.multiply(hide, -1), railY: Animated.divide(Animated.add(Animated.add(pinned, natural), gap), 2) };
+  }, [scrollAnim, railTop]);
+  // The scroll offset drives the toolbar/strip natively; the JS listener only updates which number chip is current (a state update
+  // happens only when the current card actually changes). Memoized so the native event is attached once, not on every render.
+  const liveScroll = React.useRef<((e: NativeSyntheticEvent<NativeScrollEvent>) => void) | undefined>(undefined);
+  // JS copy of the native toolbar offset (same diffClamp rule), so a programmatic scroll can tell where the strip will end up.
+  const jsHide = React.useRef(0);
+  const jsLastY = React.useRef(0);
+  // The current chip follows the scroll only while the learner is scrolling. A scroll the app starts itself (tapping a chip, revealing
+  // a card) keeps the chip it chose, otherwise the end of that scroll would re-pick a neighbour (e.g. the last card for chip 8).
+  const userScroll = React.useRef(false);
+  const onStickyScroll = React.useMemo(
+    () => Animated.event([{ nativeEvent: { contentOffset: { y: scrollAnim } } }], { useNativeDriver: true, listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = Math.max(0, e.nativeEvent.contentOffset.y);
+      jsHide.current = Math.min(TOOLBAR_H, Math.max(0, jsHide.current + (y - jsLastY.current)));
+      jsLastY.current = y;
+      liveScroll.current?.(e);
+    } }),
+    [scrollAnim],
+  );
+  React.useEffect(() => {
+    scrollAnim.setValue(0);
+    jsHide.current = 0;
+    jsLastY.current = 0;
+  }, [current, scrollAnim]);
   const viewH = React.useRef(0);
   const contentH = React.useRef(0);
   const savedScroll = React.useRef<Partial<Record<StageKey, number>>>({});
   const cardTops = React.useRef<number[]>([]);
+  const cardHeights = React.useRef<number[]>([]);
   const cardRefs = React.useRef<Array<View | null>>([]);
   const settleTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardsY = React.useRef(0);
@@ -459,6 +536,7 @@ export function LessonScreen({
 
   const lock = (ms = 750) => {
     locked.current = true;
+    userScroll.current = false;
     if (lockTimer.current) clearTimeout(lockTimer.current);
     lockTimer.current = setTimeout(() => (locked.current = false), ms);
   };
@@ -560,15 +638,17 @@ export function LessonScreen({
     if (hasEditorStage) WebStage?.warmUp?.();
   }, [hasEditorStage]);
 
-  const openWebStage = React.useCallback((requestedStage: 'writeRun' | 'debug') => {
+  const openWebStage = React.useCallback((requestedStage: 'writeRun' | 'debug', tryItCode?: string) => {
     if (!lesson || !WebStage || launching.current) return;
     launching.current = true;
     setWebOpen(true);
     const stage = requestedStage;
-    WebStage.open(lesson.key, stage, dark, false)
+    const isTryIt = tryItCode !== undefined;
+    WebStage.open(lesson.key, stage, dark, false, isTryIt, tryItCode ?? null)
       .then((action) => {
         launching.current = false;
         setWebOpen(false);
+        if (isTryIt) return;
         const completedStage = action === 'continue_debug' ? 'debug' : stage;
         if (action !== 'continue' && action !== 'continue_debug') return;
 
@@ -587,6 +667,11 @@ export function LessonScreen({
         setWebOpen(false);
       });
   }, [lesson, dark, stages, onExit]);
+  // One stable function for every Explore card, so React.memo on the cards really skips re-renders.
+  const playLearnExample = React.useCallback(() => {
+    if (lesson) openWebStage('writeRun', lesson.learn.tryItCode ?? makeKotlinExampleRunnable(lesson.learn.codeSnippet));
+  }, [lesson, openWebStage]);
+  const tryExample = React.useCallback((card: ExploreCardData) => openWebStage('writeRun', card.tryItCode ?? makeKotlinExampleRunnable(card.code)), [openWebStage]);
 
   // Back to a stage: restore where it was scrolled. A first visit starts at the top.
   React.useEffect(() => {
@@ -641,7 +726,15 @@ export function LessonScreen({
         // A newly revealed card scrolls toward the end of the content (so a short card shows whole), but never past the point
         // where its own top would slide under the sticky bar: a tall card keeps its top visible and the rest scrolls.
         const targetFor = (y: number) => {
-          const top = y - barH.current - 8;
+          // Put the card's top just below the number strip. The strip sits under the toolbar when the toolbar is showing, and the
+          // toolbar shows after scrolling up (the same rule as the native offset), so leave room for it in that case.
+          const hiddenTop = y - barH.current - 8;
+          // Two places work: toolbar hidden (strip at the top) or toolbar shown (strip below it). Each is valid only if scrolling there
+          // leaves the toolbar in that state; take the valid one nearest to the current position (no needless jump when settling).
+          const hideAfter = (t: number) => Math.min(TOOLBAR_H, Math.max(0, jsHide.current + (t - scrollY.current)));
+          const shownTop = hiddenTop - TOOLBAR_H;
+          const valid = [hideAfter(hiddenTop) >= TOOLBAR_H ? hiddenTop : null, hideAfter(shownTop) <= 0 ? shownTop : null].filter((t): t is number => t !== null);
+          const top = valid.length === 0 ? hiddenTop : valid.reduce((p, q) => (Math.abs(q - scrollY.current) < Math.abs(p - scrollY.current) ? q : p));
           return fitEnd ? Math.min(top, contentH.current - viewH.current) : top;
         };
         measureCardTop(idx, (y) => {
@@ -698,15 +791,26 @@ export function LessonScreen({
     scrollY.current = contentOffset.y;
     viewH.current = layoutMeasurement.height;
     contentH.current = contentSize.height;
-    if (locked.current || visible <= 0) return;
-    if (contentSize.height - contentOffset.y - layoutMeasurement.height < 50) return set(visible - 1);
-    const line = contentOffset.y + barH.current + 60;
+    if (locked.current || !userScroll.current || visible <= 0) return;
+    // The current card is the one that fills most of the readable area (below the number strip, above the bottom button). The very top
+    // always means the first card and the very end the last one, so short cards at either end are never skipped.
+    const y = contentOffset.y;
+    const remaining = contentSize.height - layoutMeasurement.height - y;
+    if (y <= 4) return set(0);
+    if (remaining <= 4) return set(visible - 1);
+    const viewTop = y + barH.current;
+    const viewBottom = y + layoutMeasurement.height - BOTTOM_BAR_H;
     let match = 0;
-    for (let i = visible - 1; i >= 0; i--) {
-      const top = cardTops.current[i];
-      if (top !== undefined && cardsY.current + top <= line) {
+    let best = -1;
+    for (let i = 0; i < visible; i++) {
+      const cardTop = cardTops.current[i];
+      const height = cardHeights.current[i];
+      if (cardTop === undefined || height === undefined) continue;
+      const top = cardsY.current + cardTop;
+      const shown = Math.min(viewBottom, top + height) - Math.max(viewTop, top);
+      if (shown > best) {
+        best = shown;
         match = i;
-        break;
       }
     }
     set(match);
@@ -801,15 +905,20 @@ export function LessonScreen({
     requestAnimationFrame(scrollToEnd);
   };
 
-  // ---- the stage's scroll children (a sticky one is the indicator bar) ----
+  // ---- the stage's scroll children (the number strip is an overlay, see railNode) ----
   const strip = <ProgressStrip key="strip" dark={dark} topic={lesson.topicTitle} stages={stages} index={index} onJump={jump} />;
   // Continuing is done only from the bottom "Tap to continue" strip (TapHint); tapping the content itself does nothing.
-  const tap = (key: string, node: React.ReactNode, _onPress?: () => void) => <View key={key}>{node}</View>;
+  // The cards' offset must be measured on this wrapper (a direct child of the scroll content): measured on the inner View it was always 0,
+  // which made the "current card" detection and the scroll-to-card fallback use the wrong positions.
+  const tap = (key: string, node: React.ReactNode, _onPress?: () => void) => (
+    <View key={key} onLayout={key === 'cards' ? (e) => (cardsY.current = e.nativeEvent.layout.y) : undefined}>{node}</View>
+  );
 
   let children: React.ReactNode[] = [];
-  let sticky: number[] = [];
   let bottom: React.ReactNode = null;
+  let railNode: React.ReactNode = null;
   const scrollProps: { onScrollEnd?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void } = {};
+  liveScroll.current = undefined;
 
   if (current === 'learn') {
     const reveal = learnFull ? undefined : revealLearn;
@@ -832,7 +941,10 @@ export function LessonScreen({
             <RevealedItem animate={learnReveal === 2} onLayout={() => onLearnItemLayout(2)}>
               <View style={{ marginTop: 4, marginBottom: 16 }}>
               <Card dark={dark} shadow={false}>
-                <Text style={heading(dark, 14, { lineHeight: lh(14, 1.4286), marginBottom: 10, color: dark ? '#F8FAFC' : '#1E293B' })}>{learn.exampleTitle}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 10 }}>
+                  <Text style={heading(dark, 14, { lineHeight: lh(14, 1.4286), flex: 1, color: dark ? '#F8FAFC' : '#1E293B' })}>{learn.exampleTitle}</Text>
+                  {!learn.noTryIt && <PlayButton dark={dark} onPress={playLearnExample} />}
+                </View>
                 <View style={{ borderRadius: 12, paddingVertical: 12, overflow: 'hidden', backgroundColor: t.codeBg, borderWidth: BW, borderColor: t.codeBorder }}>
                   <CodeScroll inset={12}>
                     <KotlinLines lines={learn.codeSnippet} dark={dark} size={13} />
@@ -914,25 +1026,26 @@ export function LessonScreen({
     );
     children = [strip, tap('head', head, reveal)];
     if (exploreReveal >= 1) {
-      sticky = [2];
-      children.push(
+      railNode = (
         <IndicatorRail
           key="rail"
           dark={dark}
           labels={ex.cards.map((c, i) => c.number || (i < 9 ? `0${i + 1}` : `${i + 1}`))}
           active={exploreIdx}
           onPress={exploreIndicator}
-          onLayoutBar={(h) => (barH.current = h)}
+          onLayoutBar={(h) => { barH.current = h; setRailH(h); }}
+          shift={railShift}
         />
       );
+      children.push(<View key="rail-spacer" onLayout={onHeadLayout} style={{ height: railH }} />);
       children.push(
         tap(
           'cards',
-          <View onLayout={(e) => (cardsY.current = e.nativeEvent.layout.y)} style={{ gap: 16, marginBottom: 24 }}>
+          <View style={{ gap: 16, marginBottom: 24 }}>
             {ex.cards.map((card, i) =>
               exploreReveal < 1 + i ? null : (
-                <RevealedItem key={card.id} animate={exploreReveal === i + 1} itemRef={(n) => { cardRefs.current[i] = n; }} onLayout={(e) => onCardLayout(i, e.nativeEvent.layout.y)}>
-                  <ExploreExampleCard card={card} dark={dark} active={exploreIdx === i} />
+                <RevealedItem key={card.id} animate={exploreReveal === i + 1} itemRef={(n) => { cardRefs.current[i] = n; }} onLayout={(e) => { cardHeights.current[i] = e.nativeEvent.layout.height; onCardLayout(i, e.nativeEvent.layout.y); }}>
+                  <ExploreExampleCard card={card} dark={dark} active={exploreIdx === i} onTry={tryExample} />
                 </RevealedItem>
               )
             )}
@@ -941,6 +1054,7 @@ export function LessonScreen({
       );
     }
     scrollProps.onScrollEnd = (e) => onScroll(e, Math.min(exploreReveal, exMax), setExploreIdx);
+    liveScroll.current = scrollProps.onScrollEnd;
     bottom = !exFull ? <TapHint dark={dark} onPress={revealExplore} /> : <PrimaryButton dark={dark} label={`Continue to ${nextLabel ?? ''}`} onPress={goNext} />;
   } else if (current === 'predict' && pr) {
     const reveal = !prFull && allRevealedCorrect ? revealPredict : undefined;
@@ -959,8 +1073,7 @@ export function LessonScreen({
     );
     children = [strip, tap('head', head, reveal)];
     if (predictReveal >= 1) {
-      sticky = [2];
-      children.push(
+      railNode = (
         <IndicatorRail
           key="rail"
           dark={dark}
@@ -973,20 +1086,22 @@ export function LessonScreen({
             const revealed = predictReveal > i;
             return !revealed && (!allRevealedCorrect || i > predictReveal) ? 'locked' : null;
           }}
-          onLayoutBar={(h) => (barH.current = h)}
+          onLayoutBar={(h) => { barH.current = h; setRailH(h); }}
+          shift={railShift}
         />
       );
+      children.push(<View key="rail-spacer" onLayout={onHeadLayout} style={{ height: railH }} />);
       children.push(
         tap(
           'cards',
-          <View onLayout={(e) => (cardsY.current = e.nativeEvent.layout.y)} style={{ gap: 16, marginBottom: 0 }}>
+          <View style={{ gap: 16, marginBottom: 0 }}>
             {pr.questions.map((q, qi) => {
               if (predictReveal < 1 + qi) return null;
               const selected = answers[qi];
               const hasAnswer = selected !== undefined;
               const isOk = correct(qi);
               return (
-                <RevealedItem key={q.id} animate={predictReveal === qi + 1} itemRef={(n) => { cardRefs.current[qi] = n; }} onLayout={(e) => onCardLayout(qi, e.nativeEvent.layout.y)}>
+                <RevealedItem key={q.id} animate={predictReveal === qi + 1} itemRef={(n) => { cardRefs.current[qi] = n; }} onLayout={(e) => { cardHeights.current[qi] = e.nativeEvent.layout.height; onCardLayout(qi, e.nativeEvent.layout.y); }}>
                   <Pressable onPress={() => setPredictIdx(qi)}>
                     <Card dark={dark} active={predictIdx === qi} shadow={false} style={{ gap: 14 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -1068,6 +1183,7 @@ export function LessonScreen({
       );
     }
     scrollProps.onScrollEnd = (e) => onScroll(e, Math.min(predictReveal, prMax), setPredictIdx);
+    liveScroll.current = scrollProps.onScrollEnd;
     bottom = !prFull ? (
       <TapHint
         dark={dark}
@@ -1136,21 +1252,43 @@ export function LessonScreen({
       : null;
   }
 
+  // By stage, not by whether the strip exists yet, so the layout never changes when the strip appears.
+  const stickyStage = current === 'explore' || current === 'predict';
+
   return (
     <View style={{ flex: 1, backgroundColor: t.page }}>
-      <LessonHeader dark={dark} title={`Stage ${index + 1} - ${STAGE_LABELS[current]}`} topInset={topInset} onBack={goBack} onToggleTheme={onToggleTheme} showBook={index === 0} />
+      {stickyStage ? (
+        <>
+          {/* Toolbar: overlaps the content (the list is padded by its height), so showing or hiding it never resizes anything. It slides up inside a
+              box clipped to its own height; the status-bar area above stays solid. */}
+          <View pointerEvents="box-none" style={{ position: 'absolute', top: topInset, left: 0, right: 0, height: TOOLBAR_H, overflow: 'hidden', zIndex: 15 }}>
+            <Animated.View style={{ transform: [{ translateY: hideTranslate }], backgroundColor: dark ? '#0F131D' : '#FFFFFF' }}>
+              <LessonHeader dark={dark} title={`Stage ${index + 1} - ${STAGE_LABELS[current]}`} topInset={0} onBack={goBack} onToggleTheme={onToggleTheme} showBook={index === 0} />
+            </Animated.View>
+          </View>
+          {/* While the toolbar is away and the strip is at the top, a small back button floats over the strip's left end. */}
+          <Animated.View renderToHardwareTextureAndroid style={{ position: 'absolute', left: 8, top: topInset + 16, zIndex: 10, opacity: backOpacity }}>
+            <Pressable onPress={goBack} accessibilityLabel="Back" style={[s.hBtn, { elevation: 2, backgroundColor: dark ? '#151B28' : '#E8EAF0', borderColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(226,232,240,0.9)' }]}>
+              <Icon name="arrow_back" color={dark ? '#E2E8F0' : '#1E2433'} />
+            </Pressable>
+          </Animated.View>
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: topInset, zIndex: 20, backgroundColor: dark ? '#0F131D' : '#FFFFFF' }} />
+        </>
+      ) : <LessonHeader dark={dark} title={`Stage ${index + 1} - ${STAGE_LABELS[current]}`} topInset={topInset} onBack={goBack} onToggleTheme={onToggleTheme} showBook={index === 0} />}
+      <View style={{ flex: 1, marginTop: stickyStage ? topInset : 0 }}>
       <Animated.ScrollView
         ref={scrollRef}
         nestedScrollEnabled
         directionalLockEnabled
         style={[{ flex: 1 }, { opacity: stageOpacity }]}
-        contentContainerStyle={{ paddingHorizontal: 6, paddingBottom: current === 'predict' ? 84 : 110 }}
-        stickyHeaderIndices={sticky}
-        scrollEventThrottle={32}
+        contentContainerStyle={{ paddingHorizontal: 6, paddingTop: stickyStage ? TOOLBAR_H : 0, paddingBottom: current === 'predict' ? 84 : 110 }}
+        scrollEventThrottle={16}
+        onScroll={onStickyScroll}
         onLayout={(e) => { viewH.current = e.nativeEvent.layout.height; }}
         onContentSizeChange={(_, height) => { contentH.current = height; }}
         onScrollBeginDrag={() => {
           locked.current = false;
+          userScroll.current = true;
           cancelSmoothScroll();
         }}
         onScrollEndDrag={(e) => {
@@ -1164,6 +1302,12 @@ export function LessonScreen({
       >
         {children}
       </Animated.ScrollView>
+      {stickyStage && railNode && (
+        <Animated.View pointerEvents="box-none" style={{ position: 'absolute', left: 6, right: 6, top: 0, zIndex: 5, transform: [{ translateY: railY }] }}>
+          {railNode}
+        </Animated.View>
+      )}
+      </View>
       <BottomBar dark={dark}>{bottom}</BottomBar>
 
       <Modal transparent visible={skipOpen} animationType="fade" onRequestClose={() => setSkipOpen(false)}>

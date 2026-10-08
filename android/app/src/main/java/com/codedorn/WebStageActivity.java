@@ -134,13 +134,15 @@ public class WebStageActivity extends BridgeActivity {
 
     /** Called by the Capacitor plugin when the web stage asks to close/continue. */
     public void handleStageAction(String action) {
-        if ("continue".equals(action) && "writeRun".equals(getIntent().getStringExtra("stage"))) {
+        if ("continue".equals(action) && "writeRun".equals(getIntent().getStringExtra("stage")) && !getIntent().getBooleanExtra("tryIt", false)) {
             boolean dark = getIntent().getBooleanExtra("dark", true);
             Intent next = new Intent(this, dark ? WebStageDarkActivity.class : WebStageLightActivity.class)
                     .putExtra("stageLessonKey", getIntent().getStringExtra("stageLessonKey"))
                     .putExtra("stage", "debug")
                     .putExtra("dark", getIntent().getBooleanExtra("dark", true))
-                    .putExtra("practice", getIntent().getBooleanExtra("practice", false));
+                    .putExtra("practice", getIntent().getBooleanExtra("practice", false))
+                    .putExtra("tryIt", getIntent().getBooleanExtra("tryIt", false))
+                    .putExtra("prefillCode", getIntent().getStringExtra("prefillCode"));
             startActivityForResult(next, DEBUG_REQUEST);
             return;
         }

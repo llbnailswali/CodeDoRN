@@ -2740,3 +2740,19 @@ kotlinx-coroutines into the git-ignored `web-editor/tools/`), `scripts/minikotli
    wrong lesson; always scope the match to the owning lesson id. `audit:explore-output` is what caught it.
 6. **Concurrent coroutine output can differ between runs** (two Explore cards printed different values on different JVM runs). The real
    runner runs each program three times and skips any whose output differs; known cases are in `excluded-cards.json`.
+
+## Explore "Try it": a card is only shown a button if it really runs (`EXPLORE_TRY_IT`)
+
+The Explore stage's "Try it" button opens the card's code in the web editor. The code is wrapped in `fun main() { ... }` by
+`src/utils/kotlinExample.ts`, which is enough for most cards but not for every one: of 988 cards, 84 did not run (63 are World 17 Flow
+code, which the simulator cannot run at all; the rest are fragments that assume values from elsewhere, simulator gaps such as `hashCode`,
+`by` delegation or `final override`, and cards that teach a compile error the simulator cannot reproduce, so Try it would wrongly succeed).
+The Learn stage's example has the same Play button and the same rules (override key `<lesson id>/learn`; `expectError: true` marks an example that is meant to crash). A broken button shows a confusing runtime error ("flowOf is not defined"), and a card that teaches a compile error but runs fine teaches
+the wrong thing.
+
+Fix: `web-editor/src/data/exploreTryIt.ts` holds per-card overrides keyed `<lesson id>/<card id>` (`setup` lines prepended, a full `code`
+replacement, or `disabled` with a reason). `npm run generate:native-data` copies them into the app's `lessonData.ts` (`tryItCode`,
+`noTryIt`), and the Explore card hides the button when `noTryIt` is set. `npm run audit:explore-tryit` runs every card exactly as the app
+would and fails when one neither runs (and prints its stored `output`) nor has an override, so a broken Try it cannot ship. Run it after
+adding or editing Explore cards; use `-- --list` to see the code of the failing ones. When the simulator gains a feature (for example Flow),
+delete the matching `disabled` entries and let the audit prove the cards run.

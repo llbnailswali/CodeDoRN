@@ -16,6 +16,7 @@ import {
   EDITOR_INDENT,
   toEditorIndent,
   loadExternalDocument,
+  loadExternalDocumentAtEnd,
   moveCaretByVisibleLines,
   snapCaretOutOfFolds,
   foldPreviewDisplay,
@@ -48,6 +49,10 @@ export interface KotlinCodeEditorHandle {
 }
 
 interface KotlinCodeEditorProps {
+  /** A small control floating over the top-right corner of the code (e.g. Try it's Copy code button). */
+  floatingAction?: React.ReactNode;
+  /** Free coding ("Try it"): open with the caret on a free line after the last statement, inside the final `}`, instead of at a starter's TODO comment. */
+  cursorAtEnd?: boolean;
   code: string;
   onCodeChange: (code: string) => void;
   // Ctrl/Cmd+Enter shortcut. What "running" means (graded vs. freeform) is
@@ -71,6 +76,8 @@ interface KotlinCodeEditorProps {
   // Called when the learner opens or closes a folded helper comment by tapping it (key like "// 1.#0"). Not called for
   // opens made through `expandHelperComment`, so a consumer that syncs the two never loops.
   onHelperToggle?: (key: string, open: boolean) => void;
+  /** Rendered between the code surface and the keyboard (e.g. the Try it output window). */
+  outputPanel?: React.ReactNode;
 }
 
 const LONG_PRESS_MS = 450;
@@ -89,6 +96,9 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       isDark = true,
       collapseHelperComments = false,
       onHelperToggle,
+      outputPanel,
+      cursorAtEnd,
+      floatingAction,
     },
     ref
   ) => {
@@ -134,14 +144,19 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
     // starter after mount is converted again here. The editor's own edits are never re-indented (they echo back
     // through `lastEmittedRef`), so code the learner types is left exactly as typed. A layout effect runs before
     // paint, so the 4-space version is never seen.
+    // Set when a document was just loaded: the next caret reveal first scrolls the view back to column 0 (see the effect that keeps the caret visible).
+    const justLoadedCursor = useRef<number | null>(null);
     const codePropRef = useRef(code);
     codePropRef.current = code;
     const onCodeChangeRef = useRef(onCodeChange);
     onCodeChangeRef.current = onCodeChange;
     useLayoutEffect(() => {
-      const loaded = loadExternalDocument(code, lastEmittedRef.current);
+      const loaded = (cursorAtEnd ? loadExternalDocumentAtEnd : loadExternalDocument)(code, lastEmittedRef.current);
       if (!loaded) return; // the editor's own edit echoing back
       lastEmittedRef.current = loaded.code;
+      justLoadedCursor.current = loaded.cursorPosition;
+      // Safety net: if no re-render follows (caret unchanged), do not leave the flag set.
+      setTimeout(() => { justLoadedCursor.current = null; }, 400);
       if (loaded.code !== code) {
         onCodeChange(loaded.code);
       }
@@ -539,6 +554,12 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
     // unrelated global max (handleSmartReturn's explicit scrollLeft reset
     // handles putting a new line's start in view).
     useEffect(() => {
+      if (justLoadedCursor.current !== null) {
+        // The render before the load settled still has the caret at its old spot; revealing that would scroll the view sideways.
+        if (cursorPosition !== justLoadedCursor.current) return;
+        justLoadedCursor.current = null;
+        if (editorScrollRef.current) editorScrollRef.current.scrollLeft = 0;
+      }
       cursorSpanRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }, [cursorPosition, code]);
 
@@ -1222,6 +1243,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
 
     return (
       <div className={`flex-1 flex flex-col min-h-0 relative overflow-hidden ${className}`} data-purpose="kotlin-code-editor">
+        {floatingAction && <div className="absolute top-2 right-2 z-20">{floatingAction}</div>}
         {/* ================= BEGIN: Code Editor Surface ================= */}
         <div
           ref={editorScrollRef}
@@ -1242,7 +1264,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
           {/* Each logical line is one row: [gutter cell][code cell] together,
               so the gutter number naturally stays aligned with its line even
               when that line wraps across multiple visual rows (default mode). */}
-          <div className={`relative flex flex-col ${horizontalScrollEnabled ? 'min-w-max' : ''}`}>
+          <div className={`relative flex flex-col min-h-full ${horizontalScrollEnabled ? 'min-w-max' : ''}`}>
             {/* Read-only sync textarea with inputMode="none" ensuring native device keyboard is NEVER triggered.
                 Sized to this wrapper (which grows with all the lines) rather than the outer
                 scrollable viewport, so it covers the full document, not just what's on-screen. */}
@@ -1467,6 +1489,15 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
                 <div className="flex-1" />
               </div>
             ))}
+            {/* Takes up whatever height is left so the gutter runs all the way down to the output window / keyboard. */}
+            <div className="flex items-stretch flex-1 min-h-0">
+              <span
+                className={`sticky left-0 z-10 ${collapseHelperComments ? 'w-[38px]' : 'w-[22px]'} shrink-0 border-r ${
+                  isDark ? 'bg-[#090d15]/90 border-ide-border' : 'bg-slate-100 border-slate-300'
+                }`}
+              />
+              <div className="flex-1" />
+            </div>
           </div>
         </div>
         {/* ================= END: Code Editor Surface ================= */}
@@ -1633,9 +1664,11 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
         )}
         {/* ================= END: Identifier Autocomplete Suggestions ================= */}
 
+        {outputPanel}
+
         {/* ================= BEGIN: Sticky Bottom Keyboard & Accessories ================= */}
         <div
-          className={`sticky bottom-0 z-30 w-full shrink-0 mt-auto pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.5)] border-t ${
+          className={`sticky bottom-0 z-30 w-full shrink-0 mt-auto pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-2px_8px_rgba(0,0,0,0.15)] border-t ${
             isDark ? 'bg-[#121622] border-slate-800/80' : 'bg-[#e8eaf0] border-slate-300'
           }`}
           data-purpose="sticky-bottom-keyboard-panel"

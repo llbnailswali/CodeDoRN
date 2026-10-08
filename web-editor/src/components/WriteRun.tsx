@@ -6,6 +6,8 @@ import { deriveTaskSymbols } from '../utils/editorLogic';
 import { runKotlinCode, KotlinExecutionResult } from '../utils/kotlinRunner';
 import { applySolutionPreservingComments } from '../utils/applySolution';
 import { renderVisibleWhitespace, renderTaskText, stripTaskMarkup } from '../utils/outputDisplay';
+import { TryItOutput } from './ide/TryItOutput';
+import { copyText } from '../utils/clipboard';
 import { KotlinCodeEditor, KotlinCodeEditorHandle } from './ide/KotlinCodeEditor';
 import { renderKotlinCodeLines } from '../utils/codeHighlighter';
 import { useLongPress } from '../utils/useLongPress';
@@ -49,6 +51,7 @@ interface WriteRunStageProps {
   nextStageLabel?: string;
   onProblemPassed?: () => void;
   isPracticeMode?: boolean;
+  tryItMode?: boolean;
   isRandomPractice?: boolean;
   practicePosition?: { current: number; total: number };
   onPracticeNextTask?: () => void;
@@ -69,12 +72,14 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   nextStageLabel,
   onProblemPassed,
   isPracticeMode = false,
+  tryItMode = false,
   isRandomPractice = false,
   practicePosition,
   onPracticeNextTask,
   onPracticeGoBack,
 }) => {
   const [executionResult, setExecutionResult] = useState<KotlinExecutionResult | null>(null);
+  const [codeCopied, setCodeCopied] = useState<boolean>(false);
   const [showOutputPanel, setShowOutputPanel] = useState<boolean>(false);
   const [showSolutionModal, setShowSolutionModal] = useState<boolean>(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState<boolean>(false);
@@ -201,7 +206,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
 
   // Android Back closes the topmost open overlay before it navigates (see utils/overlayBack.ts).
   useBackClosesOverlay(showSolutionModal, () => setShowSolutionModal(false));
-  useBackClosesOverlay(showOutputPanel, () => setShowOutputPanel(false));
+  useBackClosesOverlay(!tryItMode && showOutputPanel, () => setShowOutputPanel(false));
   useBackClosesOverlay(showOverflowMenu, () => setShowOverflowMenu(false));
   useBackClosesOverlay(showTaskModal && modalAnimState !== 'closing', () => handleCloseTaskModal());
 
@@ -274,6 +279,11 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   // The delay counts from the moment the stage is on screen: in the Android app that is when the native loading overlay has gone.
   const stageVisible = useStageVisible();
   useEffect(() => {
+    if (tryItMode) {
+      setIsPreparing(false);
+      setShowTaskModal(false);
+      return;
+    }
     if (!stageVisible) return;
     prepTimersRef.current.forEach(clearTimeout);
     prepTimersRef.current = [];
@@ -307,7 +317,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       prepTimersRef.current = [];
       if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
     };
-  }, [data, stageVisible]);
+  }, [data, stageVisible, tryItMode]);
 
   // Clean up animation timeouts on unmount
   useEffect(() => {
@@ -400,7 +410,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
     // Compare ignoring ALL whitespace: the editor adds blank lines / indentation when it loads the starter.
     const trimmedUser = userCode.replace(/\s+/g, '');
     const trimmedInitial = (data.initialCode || '').replace(/\s+/g, '');
-    if (trimmedUser === trimmedInitial) {
+    if (!tryItMode && trimmedUser === trimmedInitial) {
       soundFX.playError();
       const uneditedResult: KotlinExecutionResult = {
         success: false,
@@ -420,7 +430,9 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       return;
     }
 
-    const res = await runKotlinCode(userCode, data.expectedOutput, data.testCase, data.hardcodeCheck);
+    const res = tryItMode
+      ? await runKotlinCode(userCode)
+      : await runKotlinCode(userCode, data.expectedOutput, data.testCase, data.hardcodeCheck);
     setExecutionResult(res);
     setShowOutputPanel(true);
     setHasRunCode(true);
@@ -521,6 +533,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           </button>
 
           {/* Short & meaningful Task Button with Hero animation */}
+          {!tryItMode && (
           <button
             ref={taskButtonRef}
             type="button"
@@ -558,6 +571,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
               <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+          )}
         </div>
 
         {/* Center: Practice-mode task position, e.g. "2 / 12" */}
@@ -611,24 +625,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
                 isDark ? 'bg-[#141926] border-slate-700/80' : 'bg-white border-slate-300'
               }`}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOverflowMenu(false);
-                  handleExecute();
-                }}
-                className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer ${
-                  isDark ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-100 text-slate-700'
-                }`}
-              >
-                <svg className="w-3.5 h-3.5 text-indigo-400 fill-current" viewBox="0 0 24 24">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-                <span>Run (Ctrl+Enter)</span>
-              </button>
-
-
-              {data.solutionCode && (
+              {!tryItMode && data.solutionCode && (
                 <button
                   type="button"
                   onClick={() => {
@@ -644,6 +641,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
                 </button>
               )}
 
+              {!tryItMode && (
               <button
                 type="button"
                 onClick={() => {
@@ -657,6 +655,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
                 <span className="material-symbols-outlined text-[15px] text-amber-400">auto_fix_high</span>
                 <span>Auto-Complete</span>
               </button>
+              )}
 
 
               <button
@@ -676,6 +675,8 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
                 <span>{horizontalScrollEnabled ? 'Disable' : 'Enable'} Horizontal Scroll</span>
               </button>
 
+              {!tryItMode && (
+              <>
               <div className={`h-[1px] my-1 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
 
               <button
@@ -692,6 +693,8 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
                 <span className="material-symbols-outlined text-[15px]">restart_alt</span>
                 <span>Reset to Starter</span>
               </button>
+              </>
+              )}
             </div>
           )}
         </div>
@@ -711,7 +714,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           (dot header row + green monospace value row) instead of a single
           inline line, so the
           label and the value are never visually ambiguous with each other. */}
-      {data.expectedOutput && (
+      {!tryItMode && data.expectedOutput && (
         <div className={`shrink-0 border-b ${isDark ? 'border-ide-border' : 'border-slate-300'}`}>
           <div className={`text-xs font-mono ${isDark ? 'bg-[#0a0e17]' : 'bg-white'}`}>
             <button
@@ -759,6 +762,27 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
         isDark={isDark}
         collapseHelperComments={isPracticeMode}
         onHelperToggle={handleHelperToggle}
+        cursorAtEnd={tryItMode}
+        floatingAction={
+          tryItMode ? (
+            <button
+              type="button"
+              aria-label="Copy code"
+              onClick={async () => {
+                if (await copyText(userCode)) {
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 1500);
+                }
+              }}
+              className={`w-9 h-9 rounded-lg border flex items-center justify-center cursor-pointer active:scale-95 transition-colors ${
+                isDark ? 'bg-slate-800/90 border-slate-700 text-slate-300' : 'bg-white/90 border-slate-300 text-slate-600'
+              }`}
+            >
+              <span className="material-symbols-outlined !text-[18px]">{codeCopied ? 'check' : 'content_copy'}</span>
+            </button>
+          ) : undefined
+        }
+        outputPanel={tryItMode ? <TryItOutput result={executionResult} isDark={isDark} onClear={() => setExecutionResult(null)} /> : undefined}
       />
 
       {/* ================= BEGIN: Preparing Exercise Progress Animation ================= */}
@@ -818,7 +842,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       {/* ================= END: Preparing Exercise Progress Animation ================= */}
 
       {/* ================= BEGIN: Task Details Modal (Hero Scale Animation) ================= */}
-      {showTaskModal && (
+      {!tryItMode && showTaskModal && (
         <div
           className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center px-4 py-2 sm:px-6 sm:py-3 select-text ${
             modalAnimState === 'closing'
@@ -1050,7 +1074,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       {/* ================= END: Real Kotlin Verify Modal ================= */}
 
       {/* ================= BEGIN: Run Result Dialog (bottom sheet) ================= */}
-      {showOutputPanel && executionResult && (
+      {!tryItMode && showOutputPanel && executionResult && (
         <div
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end justify-center animate-fadeIn"
           onClick={() => setShowOutputPanel(false)}

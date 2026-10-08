@@ -12,6 +12,8 @@ import { CODEDO_MASTER_WORLDS } from '../src/data/curriculum/masterCurriculumCat
 import { PRACTICE_WRITE_RUN_BANK, PRACTICE_DEBUG_BANK } from '../src/data/practiceBank';
 import { AVAILABLE_FIVE_STAGE_LESSONS } from '../src/data/lessonStagesData';
 import { WORLD_1_QUIZ } from '../src/data/quizBank/world1Quiz';
+import { EXPLORE_TRY_IT, tryItLines } from '../src/data/exploreTryIt';
+import { makeKotlinExampleRunnable } from '../../src/utils/kotlinExample';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(here, '../../src');
@@ -105,8 +107,8 @@ export const PRACTICE_TASKS: Record<number, { writeRun: PracticeTask[]; debug: P
 // keyed "worldOrder:lessonTitle" (the title the Curriculum list shows). Write & Run and Debug are not included here: they run in the web editor (web-editor/). Do not edit by hand.
 export interface LessonData {
   id: string; key: string; worldName: string; topicTitle: string;
-  learn: { title: string; subtitle: string; exampleTitle: string; codeSnippet: string[]; explanation: string; keyIdeas: { number: number; title: string; description: string }[]; keyTakeaway: string };
-  explore?: { title: string; subtitle: string; cards: { id: string; number: string; title: string; language: string; subtitle: string; code: string[]; output?: string[]; outputKind?: 'runtimeError' | 'compileError'; whatItMeans: { label: string; description: string }[]; whatChanged: string }[] };
+  learn: { title: string; subtitle: string; exampleTitle: string; codeSnippet: string[]; tryItCode?: string; noTryIt?: true; explanation: string; keyIdeas: { number: number; title: string; description: string }[]; keyTakeaway: string };
+  explore?: { title: string; subtitle: string; cards: { id: string; number: string; title: string; language: string; subtitle: string; code: string[]; output?: string[]; outputKind?: 'runtimeError' | 'compileError'; tryItCode?: string; noTryIt?: true; whatItMeans: { label: string; description: string }[]; whatChanged: string }[] };
   predict?: { title: string; subtitle?: string; questions: { id: string; topicMeta: string; title?: string; language: string; code?: string[]; prompt: string; options: { id: string; label: string; isCorrect: boolean }[]; explanation: { codeRef: string; detail: string } }[] };
   mastered: { topicTitle: string; summary: string; passedCount: string; verificationItems: { title: string; subtitle: string }[]; xpEarned: number; streakDays: number; accuracy: string };
   hasWriteRun: boolean; hasDebug: boolean; boss: boolean;
@@ -122,8 +124,22 @@ export const LESSONS: Record<string, LessonData> = `;
         key: l.fiveStageLessonKey,
         worldName: f.worldName,
         topicTitle: f.topicTitle,
-        learn: f.learn,
-        explore: f.explore,
+        learn: (() => {
+          // Same rule as the Explore cards below, for the Learn example (override key `<lesson id>/learn`).
+          if (!EXPLORE_TRY_IT[`${f.id}/learn`]) return f.learn;
+          const lines = tryItLines(f.id, 'learn', f.learn.codeSnippet);
+          return lines === null ? { ...f.learn, noTryIt: true } : { ...f.learn, tryItCode: makeKotlinExampleRunnable(lines) };
+        })(),
+        // "Try it": a card needing setup carries its finished program (tryItCode); a card the simulator cannot run has noTryIt. Every other
+        // card runs its own code wrapped in main() by the app (src/utils/kotlinExample.ts). Overrides live in src/data/exploreTryIt.ts.
+        explore: f.explore && {
+          ...f.explore,
+          cards: f.explore.cards.map((c) => {
+            if (!EXPLORE_TRY_IT[`${f.id}/${c.id}`]) return c;
+            const lines = tryItLines(f.id, c.id, c.code);
+            return lines === null ? { ...c, noTryIt: true } : { ...c, tryItCode: makeKotlinExampleRunnable(lines) };
+          }),
+        },
         predict: f.predict,
         mastered: f.mastered,
         hasWriteRun: !!f.writeRun,

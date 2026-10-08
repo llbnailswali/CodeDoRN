@@ -17,6 +17,9 @@ import { ProfileScreen } from './ProfileScreen';
 import { StatsScreen } from './StatsScreen';
 import { QuizPass, QuizProgress, buildSession, getQuizBoss, getQuizSets, getQuizWorldBank, getQuizWorlds, quizPassStatus } from './quizData';
 import { QuizQuestion } from './quizQuestions';
+import { PRACTICE_TASKS } from './practiceTasks';
+
+export type JourneyVariant = 'milestones' | 'milestonesCircle' | 'milestonesDiamond' | 'milestonesPill';
 
 // The React Native app: ONE shell (top bar + bottom tab bar) that every tab shares, with each tab's content inside it. Tapping a tab
 // swaps the content; the shell, the theme and the Learn tab's GAP setting stay put. UI only, with sample data.
@@ -47,6 +50,8 @@ export function App({ dark = true }: { dark?: boolean }) {
   const [tab, setTab] = React.useState<TabId>('learn');
   const [visitedTabs, setVisitedTabs] = React.useState<Set<TabId>>(() => new Set(['learn']));
   const [gap, setGap] = React.useState(12);
+  const [journeyVariant, setJourneyVariant] = React.useState<JourneyVariant>('milestones');
+  const [showAccentBorder, setShowAccentBorder] = React.useState(true);
   const [helpLevel, setHelpLevel] = React.useState<HelpLevel>('beginner');
   const [helpOpen, setHelpOpen] = React.useState(false);
   // The help level is the learner's default for Practice, saved on the device (set from the Practice sheet or the Profile tab).
@@ -60,7 +65,7 @@ export function App({ dark = true }: { dark?: boolean }) {
     AsyncStorage.setItem(HELP_LEVEL_KEY, level).catch(() => {});
   }, []);
   // The World whose task list is open (it is a full screen over the shell, like the web's separate route).
-  const [taskWorld, setTaskWorld] = React.useState<number | null>(null);
+  const [taskWorld, setTaskWorld] = React.useState<{ order: number; mode: 'writeRun' | 'debug'; single?: boolean } | null>(null);
   // A quiz being played (full screen over the shell). `world` is absent for the Quick quiz.
   const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[]; label?: string; /** Counts toward the current pass (sets and the full quiz), unlike a review or a quick quiz. */ track?: boolean; /** Practice on a finished set: nothing is saved, so it stays finished. */ explore?: boolean; /** Questions already answered before this session, and the whole quiz's length, for the position shown. */ offset?: number; total?: number } | null>(null);
   const [quizHub, setQuizHub] = React.useState<{ order: number; title: string } | null>(null);
@@ -159,7 +164,7 @@ export function App({ dark = true }: { dark?: boolean }) {
     setTab(nextTab);
   }, []);
   const openHelp = React.useCallback(() => setHelpOpen(true), []);
-  const openTaskWorld = React.useCallback((order: number) => setTaskWorld(order), []);
+  const openTaskWorld = React.useCallback((order: number) => setTaskWorld({ order, mode: 'writeRun' }), []);
   const openCurriculumWorld = React.useCallback((order: number) => setCurriculumWorld(order), []);
   const resetQuizProgress = React.useCallback(() => { setQuizProgress({}); setQuizPass({}); }, []);
   // Clears every answer, stat and pass mark of one World (all of its questions, including lessons the review filter hides).
@@ -219,17 +224,44 @@ export function App({ dark = true }: { dark?: boolean }) {
     }
     else openQuiz(world, review);
   }, [openQuiz]);
+  const quizActivityCounts = React.useMemo(
+    () => Object.fromEntries(getQuizWorlds().map((world) => [world.order, world.questions.length])),
+    []
+  );
+  const writeRunActivityCounts = React.useMemo(
+    () => Object.fromEntries(Object.entries(PRACTICE_TASKS).map(([order, modes]) => [Number(order), modes.writeRun.length])),
+    []
+  );
+  const debugActivityCounts = React.useMemo(
+    () => Object.fromEntries(Object.entries(PRACTICE_TASKS).map(([order, modes]) => [Number(order), modes.debug.length])),
+    []
+  );
+  const openHomeActivity = React.useCallback((order: number, activity: 'quiz' | 'writeRun' | 'debug') => {
+    if (activity === 'quiz') {
+      const world = getQuizWorlds().find((candidate) => candidate.order === order);
+      if (world) openQuizCard({ order: world.order, title: world.title });
+      return;
+    }
+    setTaskWorld({ order, mode: activity, single: true });
+  }, [openQuizCard]);
   const show = (id: TabId) => visitedTabs.has(id)
     ? { ...StyleSheet.absoluteFillObject, opacity: tab === id ? 1 : 0, zIndex: tab === id ? 1 : 0 }
     : { ...StyleSheet.absoluteFillObject, opacity: 0, zIndex: -1 };
 
+  // Full-screen screens sit on top of the ones below them. A covered screen is switched to display: none, so Android neither lays it out
+  // nor draws it on every frame (the Home journey alone is hundreds of views plus a large SVG), while its state and scroll position stay.
+  const baseCovered = statsOpen || curriculumWorld !== null || lesson !== null || taskWorld !== null || quiz !== null || quizHub !== null;
+  const curriculumCovered = lesson !== null || taskWorld !== null || quiz !== null;
+  const quizHubCovered = quiz !== null;
+
   return (
     <View style={{ flex: 1, backgroundColor: p.page }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+      <View style={{ flex: 1, display: baseCovered ? 'none' : 'flex' }}>
       <Header
         p={p}
         badge={BADGES[tab]}
-        showGap={false}
+        showGap={tab === 'learn'}
         gap={gap}
         onGap={setGap}
         onToggleTheme={toggleTheme}
@@ -237,26 +269,36 @@ export function App({ dark = true }: { dark?: boolean }) {
       />
       <View style={{ flex: 1 }}>
         <View pointerEvents={tab === 'learn' ? 'auto' : 'none'} style={show('learn')}>
-          <HomeContent p={p} gap={gap} onOpenWorld={openCurriculumWorld} />
+          {<HomeContent
+            p={p}
+            gap={gap}
+            journeyVariant={journeyVariant}
+            onOpenWorld={openCurriculumWorld}
+            onOpenActivity={openHomeActivity}
+            quizActivityCounts={quizActivityCounts}
+            writeRunActivityCounts={writeRunActivityCounts}
+            debugActivityCounts={debugActivityCounts}
+          />}
         </View>
         <View pointerEvents={tab === 'quiz' ? 'auto' : 'none'} style={show('quiz')}>
-          <QuizContent p={p} progress={quizProgress} onOpenQuiz={openQuizCard} />
+          <QuizContent p={p} progress={quizProgress} onOpenQuiz={openQuizCard} showAccentBorder={showAccentBorder} />
         </View>
         <View pointerEvents={tab === 'practice' ? 'auto' : 'none'} style={show('practice')}>
-          <PracticeContent p={p} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} />
+          <PracticeContent p={p} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} showAccentBorder={showAccentBorder} />
         </View>
         <View pointerEvents={tab === 'profile' ? 'auto' : 'none'} style={show('profile')}>
-          <ProfileScreen p={p} quizProgress={quizProgress} onToggleTheme={toggleTheme} onOpenStats={() => setStatsOpen(true)} />
+          <ProfileScreen p={p} quizProgress={quizProgress} journeyVariant={journeyVariant} onJourneyVariant={setJourneyVariant} onToggleTheme={toggleTheme} onOpenStats={() => setStatsOpen(true)} showAccentBorder={showAccentBorder} onAccentBorder={setShowAccentBorder} />
         </View>
       </View>
       <BottomNav p={p} active={tab} onSelect={selectTab} />
+      </View>
       {statsOpen && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
           <StatsScreen p={p} topInset={topInset} onBack={() => setStatsOpen(false)} onToggleTheme={toggleTheme} />
         </View>
       )}
       {curriculumWorld !== null && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page, display: curriculumCovered ? 'none' : 'flex' }]}>
           <CurriculumScreen
             p={p}
             worldOrder={curriculumWorld}
@@ -289,9 +331,11 @@ export function App({ dark = true }: { dark?: boolean }) {
       {taskWorld !== null && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
           <TaskListScreen
+            key={`${taskWorld.order}-${taskWorld.mode}`}
             p={p}
-            worldOrder={taskWorld}
-            mode="writeRun"
+            worldOrder={taskWorld.order}
+            mode={taskWorld.mode}
+            showTabs={!taskWorld.single}
             helpLevel={helpLevel}
             topInset={topInset}
             onBack={() => setTaskWorld(null)}
@@ -305,7 +349,7 @@ export function App({ dark = true }: { dark?: boolean }) {
         </View>
       )}
       {quizHub !== null && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}> 
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page, display: quizHubCovered ? 'none' : 'flex' }]}> 
           <QuizHubScreen
             p={p}
             world={quizHub}

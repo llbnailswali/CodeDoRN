@@ -527,23 +527,6 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
                   type="button"
                   onClick={() => {
                     setShowOverflowMenu(false);
-                    handleExecuteFix();
-                  }}
-                  className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer ${
-                    isDark ? 'hover:bg-rose-950/50 text-rose-200' : 'hover:bg-rose-50 text-slate-700'
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5 text-rose-400 fill-current" viewBox="0 0 24 24">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                  <span>Run (Ctrl+Enter)</span>
-                </button>
-
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowOverflowMenu(false);
                     setShowSolutionModal(true);
                   }}
                   className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer ${

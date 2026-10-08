@@ -6,6 +6,7 @@ import { BW, Icon, MAIN, fz, pressedShadows, raisedShadows } from './shell';
 import { HOME_WORLDS } from './homeData';
 import { EdgeGlow, InsetShadow, ShadowStack } from './shadows';
 import { DEVICE_PATH_STYLE, buildTrail, getPathStyle, nodeDrift, nodeInset } from './pathStyles';
+import type { JourneyVariant } from './App';
 import {
   DARK, FAMILIES, FONT, INDIGO_400, INDIGO_500, LIGHT, Palette, VIOLET_500, WORLD_FAMILY, WORLD_ICONS,
   grayscale, mix, withAlpha,
@@ -197,10 +198,105 @@ function Band({ p, chapter, label, active, topBorder, blurred, onLayout }: { p: 
 // World nodes
 // ---------------------------------------------------------------------------------------------------------------------
 
+type WorldActivity = 'quiz' | 'writeRun' | 'debug';
+type ActivityPosition = 'midLeft' | 'center' | 'midRight';
+
 type Anchors = {
   box: (order: number) => (el: View | null) => void;
   top: (order: number) => (el: View | null) => void;
+  activity: (order: number, activity: WorldActivity) => (el: View | null) => void;
 };
+
+const WORLD_ACTIVITIES: Array<{ id: WorldActivity; label: string; icon: string; dark: string; light: string }> = [
+  { id: 'quiz', label: 'Quiz', icon: 'psychology', dark: '#C4B5FD', light: '#6D28D9' },
+  { id: 'writeRun', label: 'Write & Run', icon: 'code', dark: '#7DD3FC', light: '#0369A1' },
+  { id: 'debug', label: 'Debug Problems', icon: 'bug_report', dark: '#FDBA74', light: '#C2410C' },
+];
+
+/** A small illustrated brain, used instead of a Material-symbol glyph for Quiz. */
+function BrainArtwork({ size }: { size: number }) {
+  return <Svg width={size} height={size} viewBox="0 0 32 32">
+    <Defs><LinearGradient id="brainFill" x1="4" y1="3" x2="27" y2="29"><Stop offset="0" stopColor="#A78BFA" /><Stop offset="1" stopColor="#5141B8" /></LinearGradient></Defs>
+    <Path d="M15.7 5.1C12 3.1 7.4 4.8 6.4 8.5c-2.2 1.1-3.3 3.8-2.3 6.1-1.3 2.6-.1 5.9 2.6 7 1.1 3.8 5.9 5.1 9 2.6V5.1Zm.6 0c3.7-2 8.3-.3 9.3 3.4 2.2 1.1 3.3 3.8 2.3 6.1 1.3 2.6.1 5.9-2.6 7-1.1 3.8-5.9 5.1-9 2.6V5.1Z" fill="url(#brainFill)" />
+    <Path d="M15.9 8v16M10.1 9.4c2.1-.8 3.7.2 3.8 2.1M7.9 14.1c2.6-1.1 4.8.2 4.5 2.4M9.5 19.1c2.5-1.1 4.5.2 4.2 2.4M21.9 9.4c-2.1-.8-3.7.2-3.8 2.1M24.1 14.1c-2.6-1.1-4.8.2-4.5 2.4M22.5 19.1c-2.5-1.1-4.5.2-4.2 2.4" stroke="#F5F3FF" strokeWidth="1.45" strokeLinecap="round" fill="none" opacity=".9" />
+  </Svg>;
+}
+
+const ActivityArtwork = ({ activity, locked, size, color }: { activity: WorldActivity; locked: boolean; size: number; color: string }) =>
+  locked ? <Icon name="lock" size={size} exact color={color} /> : activity === 'quiz' ? <BrainArtwork size={size} /> : <Icon name={WORLD_ACTIVITIES.find((item) => item.id === activity)!.icon} size={size} exact color={color} />;
+
+// Every activity is a true milestone: the same curved ribbon runs from a World
+// through Quiz, Write & Run, and Debug before continuing to the next World.
+const worldPointIndex = (order: number) => 1 + (order - 1) * (WORLD_ACTIVITIES.length + 1);
+const activityPointIndex = (order: number, activityIndex: number) => worldPointIndex(order) + activityIndex + 1;
+const TOTAL_PATH_POINTS = 1 + TOTAL_WORLDS * (WORLD_ACTIVITIES.length + 1);
+
+function ActivityNode({ p, order, activity, position, locked, count, anchors, onOpen, shape = 'square' }: {
+  shape?: 'square' | 'circle' | 'diamond' | 'pill';
+  p: Palette;
+  order: number;
+  activity: (typeof WORLD_ACTIVITIES)[number];
+  position: ActivityPosition;
+  locked: boolean;
+  count: number;
+  anchors: Anchors;
+  onOpen?: (order: number, activity: WorldActivity) => void;
+}) {
+  // Chips follow their world: only a locked world disables them (an empty count does not).
+  const enabled = !locked;
+  const accent = p.isDark ? activity.dark : activity.light;
+  const placement = position === 'midLeft'
+    ? { justifyContent: 'flex-start' as const, paddingLeft: 96 }
+    : position === 'midRight'
+      ? { justifyContent: 'flex-end' as const, paddingRight: 96 }
+      : { justifyContent: 'center' as const };
+  const box = enabled
+    ? {
+        backgroundColor: p.isDark ? '#161D2C' : 'rgba(238,242,255,0.9)',
+        borderColor: p.isDark ? withAlpha(accent, 0.5) : accent,
+        icon: accent,
+      }
+    : {
+        backgroundColor: p.isDark ? '#161D2C' : 'rgba(238,242,255,0.9)',
+        borderColor: p.isDark ? 'rgba(148,163,184,0.22)' : 'rgba(148,163,184,0.38)',
+        icon: p.muted,
+      };
+
+  return (
+    <View style={[s.activityNodeRow, placement]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${activity.label}, ${count} activities, World ${order}${enabled ? '' : locked ? ', locked' : ', coming soon'}`}
+        accessibilityState={{ disabled: !enabled }}
+        disabled={!enabled}
+        onPress={() => onOpen?.(order, activity.id)}
+        android_ripple={{ color: withAlpha(accent, 0.22), foreground: true }}
+        style={[s.activityNodePressable, { opacity: locked ? 0.58 : 1 }]}
+      >
+        <View
+          ref={anchors.activity(order, activity.id)}
+          collapsable={false}
+          style={[
+            shape === 'diamond'
+              ? s.activityDiamondBox
+              : [s.activityNodeBox, { backgroundColor: box.backgroundColor, borderColor: box.borderColor }],
+            shape === 'circle' && { borderRadius: 19 },
+            shape === 'pill' && { width: 'auto', minWidth: 92, paddingHorizontal: 12, borderRadius: 19, flexDirection: 'row', gap: 5 },
+          ]}
+        >
+          {shape === 'diamond' && (
+            <View style={[s.activityDiamondShape, { backgroundColor: box.backgroundColor, borderColor: box.borderColor }]} />
+          )}
+          <ActivityArtwork activity={activity.id} locked={locked} size={shape === 'diamond' ? 21 : 24} color={box.icon} />
+          {shape === 'pill' && <Text style={{ color: box.icon, fontFamily: FONT.jakarta.b, fontSize: fz(11), includeFontPadding: false }}>{activity.id === 'quiz' ? 'Quiz' : activity.id === 'writeRun' ? 'Write' : 'Debug'}</Text>}
+          <View style={[s.activityCountBadge, { backgroundColor: enabled ? accent : p.muted }]}>
+            <Text style={[s.activityCountText, { color: p.isDark ? '#0F172A' : '#FFFFFF' }]}>{count}</Text>
+          </View>
+        </View>
+      </Pressable>
+    </View>
+  );
+}
 
 function WorldChip({ p, text, state, family }: { p: Palette; text: string; state: 'done' | 'locked' | 'current' | 'available'; family?: string }) {
   void family;
@@ -651,7 +747,7 @@ function Streaks({
  */
 
 function Trail({
-  p, trail, activeIndex, startY, fadeEndY, width, height,
+  p, trail, activeIndex, startY, fadeEndY, width, height, animateStreaks,
 }: {
   p: Palette;
   trail: { path: (n?: number) => string };
@@ -660,21 +756,23 @@ function Trail({
   fadeEndY: number;
   width: number;
   height: number;
+  animateStreaks: boolean;
 }) {
   const d = p.isDark;
   const fullPath = React.useMemo(() => trail.path(), [trail]);
   const activePath = React.useMemo(() => (activeIndex > 0 ? trail.path(activeIndex) : ''), [trail, activeIndex]);
-  const fullPts = React.useMemo(() => resample(trailToPolyline(fullPath), 4), [fullPath]);
-  const activePts = React.useMemo(() => (activePath ? resample(trailToPolyline(activePath), 4) : []), [activePath]);
+  const fullPts = React.useMemo(() => animateStreaks ? resample(trailToPolyline(fullPath), 8) : [], [fullPath, animateStreaks]);
+  const activePts = React.useMemo(() => animateStreaks && activePath ? resample(trailToPolyline(activePath), 8) : [], [activePath, animateStreaks]);
 
   // The moving light (the web animates stroke-dashoffset 0 -> -396 every 7s). One native-driven value moves every streak, so no
   // JavaScript runs per frame and nothing is redrawn: the streaks are tiny Views transformed on the UI thread.
   const progress = React.useRef(new Animated.Value(0)).current;
   React.useEffect(() => {
+    if (!animateStreaks) return;
     const loop = Animated.loop(Animated.timing(progress, { toValue: 1, duration: 7000, easing: Easing.linear, useNativeDriver: true }));
     loop.start();
     return () => loop.stop();
-  }, [progress]);
+  }, [progress, animateStreaks]);
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -711,8 +809,8 @@ function Trail({
         )}
         {fadeEndY > startY && <Rect x={0} y={startY} width={width} height={fadeEndY - startY} fill="url(#startFade)" />}
       </Svg>
-      <Streaks pts={fullPts} startY={startY} fadeEndY={fadeEndY} color={d ? '#94A3B8' : '#FFFFFF'} opacity={d ? 0.5 : 0.7} progress={progress} />
-      {activePts.length > 1 && (
+      {animateStreaks && <Streaks pts={fullPts} startY={startY} fadeEndY={fadeEndY} color={d ? '#94A3B8' : '#FFFFFF'} opacity={d ? 0.5 : 0.7} progress={progress} />}
+      {animateStreaks && activePts.length > 1 && (
         <Streaks pts={activePts} startY={startY} fadeEndY={fadeEndY} color={d ? '#C7D2FE' : '#FFFFFF'} opacity={d ? 0.95 : 1} progress={progress} />
       )}
     </View>
@@ -724,10 +822,21 @@ function Trail({
 // ---------------------------------------------------------------------------------------------------------------------
 
 /** The Learn tab's content (the shared top bar and tab bar live in App.tsx). `gap` is the extra space between world nodes. */
-export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld }: { p: Palette; gap: number; onOpenWorld?: (order: number) => void }) {
-  const isDark = p.isDark;
+export const HomeContent = React.memo(function HomeContent({
+  p, gap, journeyVariant = 'milestones', onOpenWorld, onOpenActivity, quizActivityCounts = {}, writeRunActivityCounts = {}, debugActivityCounts = {},
+}: {
+  p: Palette;
+  gap: number;
+  journeyVariant?: JourneyVariant;
+  onOpenWorld?: (order: number) => void;
+  onOpenActivity?: (order: number, activity: WorldActivity) => void;
+  quizActivityCounts?: Record<number, number>;
+  writeRunActivityCounts?: Record<number, number>;
+  debugActivityCounts?: Record<number, number>;
+}) {
   const { width } = useWindowDimensions();
   const pathStyle = React.useMemo(() => getPathStyle(DEVICE_PATH_STYLE), []);
+  const expectedPointCount = TOTAL_PATH_POINTS;
   const completed = COMPLETED_WORLDS;
   // The large current-world card belongs on the furthest unlocked world.
   const currentOrder = Math.min(TOTAL_WORLDS, Math.max(completed + 1, UNLOCK_THROUGH));
@@ -740,6 +849,7 @@ export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld
   const scrolledToCurrent = React.useRef(false);
   const boxRefs = React.useRef(new Map<number, View | null>());
   const topRefs = React.useRef(new Map<number, View | null>());
+  const activityRefs = React.useRef(new Map<string, View | null>());
   const startRef = React.useRef<View>(null);
   const [points, setPoints] = React.useState<Pt[] | null>(null);
   const [contentHeight, setContentHeight] = React.useState(0);
@@ -762,6 +872,7 @@ export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld
     () => ({
       box: (order) => (el) => { boxRefs.current.set(order, el); },
       top: (order) => (el) => { topRefs.current.set(order, el); },
+      activity: (order, activity) => (el) => { activityRefs.current.set(`${order}:${activity}`, el); },
     }),
     []
   );
@@ -773,16 +884,20 @@ export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld
     for (let order = 1; order <= TOTAL_WORLDS; order++) {
       const box = boxRefs.current.get(order);
       const top = topRefs.current.get(order);
-      if (box) jobs.push({ index: order, el: box, mode: 'center' });
-      else if (top) jobs.push({ index: order, el: top, mode: 'center' });
+      const worldIndex = worldPointIndex(order);
+      if (box) jobs.push({ index: worldIndex, el: box, mode: 'center' });
+      else if (top) jobs.push({ index: worldIndex, el: top, mode: 'center' });
+      WORLD_ACTIVITIES.forEach((activity, activityIndex) => {
+        jobs.push({ index: activityPointIndex(order, activityIndex), el: activityRefs.current.get(`${order}:${activity.id}`) ?? null, mode: 'center' });
+      });
     }
-    const result: Array<Pt | undefined> = new Array(TOTAL_WORLDS + 1);
+    const result: Array<Pt | undefined> = new Array(expectedPointCount);
     let pending = jobs.length;
     const done = () => {
       if (--pending > 0) return;
-      // Keep the array indexed by world order. Filtering missing measurements
-      // shifts every later point and makes the snake connect to the wrong node.
-      if (result.slice(0, TOTAL_WORLDS + 1).every((point): point is Pt => Boolean(point))) {
+      // Keep every World and activity at its fixed path index. Filtering a
+      // missing measurement would shift every later milestone on the trail.
+      if (result.every((point): point is Pt => Boolean(point))) {
         setPoints(result as Pt[]);
       }
     };
@@ -797,47 +912,70 @@ export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld
         () => done()
       );
     });
-  }, []);
+  }, [expectedPointCount]);
 
   // Re-measure whenever the layout can change (gap, width). Layout events fire child-first, so wait a frame.
   React.useEffect(() => {
     const t = setTimeout(measure, 60);
     return () => clearTimeout(t);
-  }, [gap, width, p.isDark, measure]);
+  }, [gap, width, p.isDark, measure, pathStyle]);
 
   // Open on the current world's card instead of the top of the journey (once, after the first measurement).
   React.useEffect(() => {
-    if (!points || scrolledToCurrent.current || points.length <= currentOrder) return;
+    const currentIndex = worldPointIndex(currentOrder);
+    if (!points || points.length !== expectedPointCount || scrolledToCurrent.current || points.length <= currentIndex) return;
     scrolledToCurrent.current = true;
-    const y = Math.max(0, points[currentOrder].y - 150);
+    const y = Math.max(0, points[currentIndex].y - 150);
     // Not cancelled on re-render: the layout is re-measured a moment later, which would otherwise drop this scroll.
     const scrollTimer = setTimeout(() => scrollRef.current?.scrollTo({ y, animated: false }), 80);
     return () => clearTimeout(scrollTimer);
-  }, [points, currentOrder]);
+  }, [points, currentOrder, expectedPointCount]);
 
   const trailData = React.useMemo(() => {
-    if (!points || points.length < 2) return null;
+    if (!points || points.length !== expectedPointCount || points.length < 2) return null;
     const pts = points.map((q) => ({ ...q }));
     // Keep the lead-in as part of the same curved trail. Forcing segment 0
     // straight makes the RN path visibly collapse into a vertical line.
     const trail = buildTrail(pts, [], width, pathStyle);
-    return { trail, startY: pts[0].y, fadeEndY: pts[0].y + Math.min(Math.max(30, pts[1].y - pts[0].y) * 0.75, 55), activeIndex: Math.min(pts.length - 1, currentOrder) };
-  }, [points, width, pathStyle, completed, currentOrder]);
+    return { trail, startY: pts[0].y, fadeEndY: pts[0].y + Math.min(Math.max(30, pts[1].y - pts[0].y) * 0.75, 55), activeIndex: Math.min(pts.length - 1, worldPointIndex(currentOrder)) };
+  }, [points, width, pathStyle, currentOrder, expectedPointCount]);
 
-  const nodeCommon = { p, gap, pathStyle, completed, anchors, onOpenWorld };
+  const nodeCommon = { p, gap: gap + 14, pathStyle, completed, anchors, onOpenWorld };
   const w = (order: number) => HOME_WORLDS[order - 1];
   const sec = (extra: object) => [s.section, { width: sectionWidth }, extra];
+  const alignmentFor = (order: number): 'left' | 'right' => ((order <= 15 ? order % 2 === 1 : order % 2 === 0) ? 'left' : 'right');
 
   const standard = (order: number, paddingTop: number) => (
-    <StandardNode key={order} {...nodeCommon} world={w(order)} align={(order <= 15 ? order % 2 === 1 : order % 2 === 0) ? 'left' : 'right'} paddingTop={paddingTop} />
+    <StandardNode {...nodeCommon} world={w(order)} align={alignmentFor(order)} paddingTop={paddingTop} />
   );
-  const worldNode = (order: number, paddingTop: number) =>
-    order === currentOrder ? (
-      <CurrentCard key={order} p={p} world={w(order)} paddingTop={paddingTop} gap={gap} anchors={anchors} onOpenWorld={onOpenWorld} />
-    ) : (
-      standard(order, paddingTop)
-    );
-
+  const activities = (order: number) => {
+    const movesRight = alignmentFor(order) === 'left';
+    const positions: ActivityPosition[] = movesRight ? ['midLeft', 'center', 'midRight'] : ['midRight', 'center', 'midLeft'];
+    return WORLD_ACTIVITIES.map((activity, index) => (
+      <ActivityNode
+        key={`${order}-${activity.id}`}
+        p={p}
+        order={order}
+        activity={activity}
+        position={positions[index]}
+        locked={!UNLOCK_ALL && order > UNLOCK_THROUGH}
+        count={activity.id === 'quiz' ? (quizActivityCounts[order] ?? 0) : activity.id === 'writeRun' ? (writeRunActivityCounts[order] ?? 0) : (debugActivityCounts[order] ?? 0)}
+        anchors={anchors}
+        onOpen={onOpenActivity}
+        shape={journeyVariant === 'milestonesCircle' ? 'circle' : journeyVariant === 'milestonesDiamond' ? 'diamond' : journeyVariant === 'milestonesPill' ? 'pill' : 'square'}
+      />
+    ));
+  };
+  const worldNode = (order: number, paddingTop: number) => (
+    <React.Fragment key={order}>
+      {order === currentOrder ? (
+        <CurrentCard p={p} world={w(order)} paddingTop={paddingTop} gap={gap + 14} anchors={anchors} onOpenWorld={onOpenWorld} />
+      ) : (
+        standard(order, paddingTop)
+      )}
+      {activities(order)}
+    </React.Fragment>
+  );
   return (
     <View style={{ flex: 1, backgroundColor: p.page }}>
       {/* The three chapter bands are the ScrollView's sticky headers (children 2, 4 and 6): the system pins the current one under
@@ -860,9 +998,11 @@ export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld
         <JourneyCard p={p} current={current} completed={completed} />
 
         {/* The trail fills the whole scroll content, behind everything else */}
-        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: contentHeight }}>
+        <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: contentHeight }}>
           {trailData && contentHeight > 0 && (
-            <Trail p={p} trail={trailData.trail} activeIndex={trailData.activeIndex} startY={trailData.startY} fadeEndY={trailData.fadeEndY} width={width} height={contentHeight} />
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+              <Trail p={p} trail={trailData.trail} activeIndex={trailData.activeIndex} startY={trailData.startY} fadeEndY={trailData.fadeEndY} width={width} height={contentHeight} animateStreaks />
+            </View>
           )}
         </View>
 
@@ -880,6 +1020,7 @@ export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld
         <View style={sec({ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 + 24 })}>
           {[9, 10, 11, 12, 13, 14].map((order) => worldNode(order, order === 9 ? 40 : 60))}
           <BossNode p={p} world={w(15)} completed={completed} anchors={anchors} onOpenWorld={onOpenWorld} />
+          {activities(15)}
         </View>
 
         {/* Section 3: Experienced */}
@@ -887,6 +1028,7 @@ export const HomeContent = React.memo(function HomeContent({ p, gap, onOpenWorld
         <View style={sec({ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 })}>
           {[16, 17, 18, 19, 20, 21].map((order) => worldNode(order, order === 16 ? 40 : 60))}
           <FinalCard p={p} world={w(22)} completed={completed} anchors={anchors} />
+          {activities(22)}
         </View>
       </ScrollView>
     </View>
@@ -922,6 +1064,15 @@ const s = StyleSheet.create({
   availableBadgeText: { fontFamily: FONT.mono.b, fontSize: fz(8 * MAIN), lineHeight: 12 * MAIN, includeFontPadding: false },
   lessonTag: { alignSelf: 'flex-start', marginTop: 2, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: BW },
   lessonTagText: { fontFamily: FONT.mono.md, fontSize: fz(10 * MAIN), lineHeight: 15 * MAIN, letterSpacing: 0.25 * MAIN, includeFontPadding: false },
+  // Activity milestones are individual nodes on the same trail as each World.
+  activityNodeRow: { width: '100%', height: 52, alignItems: 'center', marginTop: 4 },
+  activityNodePressable: { borderRadius: 999, padding: 3 },
+  activityDiamondBox: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  activityDiamondShape: { position: 'absolute', width: 31, height: 31, borderRadius: 7, borderWidth: 1.4, transform: [{ rotate: '45deg' }] },
+  activityNodeBox: { width: 38, height: 38, borderRadius: 12, borderWidth: 1.82, alignItems: 'center', justifyContent: 'center' },
+  activityCountBadge: { position: 'absolute', right: -6, top: -6, minWidth: 15, height: 15, borderRadius: 7.5, paddingHorizontal: 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0F172A' },
+  activityCountText: { fontFamily: FONT.mono.b, fontSize: fz(7 * MAIN), lineHeight: 9 * MAIN, includeFontPadding: false },
+  ribbonCountBadge: { position: 'absolute', right: -5, top: -5, minWidth: 15, height: 15, borderRadius: 7.5, paddingHorizontal: 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0F172A' },
   // current-world card
   currentCard: { width: '100%', maxWidth: 320, minHeight: CURRENT_CARD_HEIGHT, borderRadius: 16, borderWidth: BW, padding: 16, gap: 10 },
   currentTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

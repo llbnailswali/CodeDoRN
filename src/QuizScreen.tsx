@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BW, Icon, MAIN, fz, raisedShadows } from './shell';
 import { EditorPanel, WorldsDivider, accentFor, hexAlpha, lh } from './parts';
 import { ShadowStack } from './shadows';
@@ -44,7 +44,7 @@ function QuickQuizPanel() {
   );
 }
 
-function WorldCard({ world, dark, onOpen, onReview }: { world: { order: number; title: string; total: number; correct: number; missed: number }; dark: boolean; onOpen: (world: { order: number; title: string }) => void; onReview: (world: { order: number; title: string }) => void }) {
+function WorldCard({ world, dark, onOpen, onReview, showAccentBorder }: { world: { order: number; title: string; total: number; correct: number; missed: number }; dark: boolean; onOpen: (world: { order: number; title: string }) => void; onReview: (world: { order: number; title: string }) => void; showAccentBorder: boolean }) {
   const [darkAccent, lightAccent] = accentFor(world.order);
   const accentText = dark ? darkAccent : lightAccent;
   const muted = dark ? '#94A3B8' : '#585A68';
@@ -63,10 +63,11 @@ function WorldCard({ world, dark, onOpen, onReview }: { world: { order: number; 
         style={[
           s.card,
           dark
-            ? { backgroundColor: '#0F1420', borderColor: hexAlpha(darkAccent, 0.4) }
-            : { backgroundColor: '#F6F7FA', borderColor: 'rgba(203,213,225,0.7)' },
-          { borderLeftColor: darkAccent },
-          { overflow: 'hidden' },
+            ? { backgroundColor: '#1A2133', borderWidth: 0 }
+            : { backgroundColor: '#F6F7FA', borderWidth: 0 },
+          dark ? Platform.select({ ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 14 }, android: { elevation: 10, shadowColor: '#000000' } }) : { elevation: 3, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.16, shadowRadius: 5 },
+          { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0 },
+          { overflow: 'visible' },
         ]}
       >
         <View>
@@ -120,7 +121,7 @@ function WorldCard({ world, dark, onOpen, onReview }: { world: { order: number; 
 }
 
 /** The Quiz tab's content (the shared top bar and tab bar live in App.tsx). */
-export const QuizContent = React.memo(function QuizContent({ p, progress, onOpenQuiz }: { p: Palette; progress: QuizProgress; onOpenQuiz: (world?: { order: number; title: string }, review?: boolean) => void }) {
+export const QuizContent = React.memo(function QuizContent({ p, progress, onOpenQuiz, showAccentBorder = true }: { p: Palette; progress: QuizProgress; onOpenQuiz: (world?: { order: number; title: string }, review?: boolean) => void; showAccentBorder?: boolean }) {
   const isDark = p.isDark;
   const title = isDark ? '#E2E8F0' : '#2E3040';
   const muted = isDark ? '#94A3B8' : '#585A68';
@@ -144,7 +145,7 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
         renderItem={({ item: row }) => (
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
             {row.map((w) => (
-              <WorldCard key={w.order} world={w} dark={isDark} onOpen={onOpenQuiz} onReview={(world) => onOpenQuiz(world, true)} />
+              <WorldCard key={w.order} world={w} dark={isDark} onOpen={onOpenQuiz} onReview={(world) => onOpenQuiz(world, true)} showAccentBorder={showAccentBorder} />
             ))}
             {row.length === 1 && <View style={{ flex: 1 }} />}
           </View>
@@ -212,7 +213,7 @@ const s = StyleSheet.create({
   dividerLine: { height: 1, flex: 1 },
   dividerLabel: { fontFamily: FONT.mono.r, fontSize: fz(10 * MAIN), lineHeight: lh(10, 1.5), letterSpacing: 0.05 * 10 * MAIN, includeFontPadding: false },
   // world card
-  card: { flex: 1, borderRadius: 12, padding: 14, borderWidth: BW, borderLeftWidth: 2.91, justifyContent: 'space-between', overflow: 'hidden' },
+  card: { flex: 1, borderRadius: 12, padding: 14, borderWidth: 0, borderLeftWidth: 2.91, justifyContent: 'space-between', overflow: 'hidden' },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   worldLabel: { fontFamily: FONT.mono.b, fontSize: fz(10 * MAIN), lineHeight: lh(10, 1.5), letterSpacing: 0.05 * 10 * MAIN, includeFontPadding: false },
   cardTitle: { fontFamily: FONT.outfit.b, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.375), marginBottom: 6, includeFontPadding: false },

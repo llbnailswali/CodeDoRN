@@ -1,7 +1,7 @@
 import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { BW, Header, Icon, MAIN, fz } from './shell';
+import { BW, Header, Icon, MAIN, fz, raisedShadows } from './shell';
 import { hexAlpha, lh } from './parts';
 import { CURRICULUM_WORLDS, CurriculumWorld } from './curriculumData';
 import { ShadowStack } from './shadows';
@@ -248,6 +248,17 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
   const total = Math.max(1, world.lessons.length);
   const completed = completedFor(world.order, total);
 
+  // Once the world strip has stuck to the top, the full toolbar collapses to just the back and theme buttons.
+  const [stuck, setStuck] = React.useState(false);
+  const onScroll = React.useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const next = e.nativeEvent.contentOffset.y > 12;
+    setStuck((prev) => {
+      if (prev === next) return prev;
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      return next;
+    });
+  }, []);
+
   const stripRef = React.useRef<FlatList<CurriculumWorld>>(null);
   const pillX = React.useRef<Record<number, number>>({});
   const scrollRef = React.useRef<FlatList<string>>(null);
@@ -259,13 +270,34 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
 
   return (
     <View style={{ flex: 1, backgroundColor: t.page }}>
-      <Header p={{ ...p, page: t.page }} title="Curriculumm" onBack={onBack} onToggleTheme={onToggleTheme} topInset={topInset} showGap={false} />
+      {stuck ? (
+        <View style={{ paddingTop: topInset, backgroundColor: t.page, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 6, zIndex: 10 }}>
+          <View style={{ paddingTop: 6 }}>
+            <ShadowStack r={10} shadows={raisedShadows(dark)} />
+            <Pressable onPress={onBack} accessibilityLabel="Back" style={[s.compactBtn, { backgroundColor: p.card, borderColor: p.cardBorder }]}>
+              <Icon name="arrow_back" size={20} color={dark ? '#E2E8F0' : '#1E2433'} />
+            </Pressable>
+          </View>
+          <View style={{ paddingTop: 6 }}>
+            <ShadowStack r={10} shadows={raisedShadows(dark)} />
+            <Pressable onPress={onToggleTheme} accessibilityLabel="Toggle theme" style={[s.compactBtn, { backgroundColor: p.card, borderColor: p.cardBorder }]}>
+              <Icon name={dark ? 'light_mode' : 'dark_mode'} size={17} color={dark ? '#FBBF24' : '#475569'} />
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <Header p={{ ...p, page: t.page }} title="Curriculumm" onBack={onBack} onToggleTheme={onToggleTheme} topInset={topInset} showGap={false} />
+      )}
       <FlatList
         ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        stickyHeaderIndices={[0]}
         data={world.lessons}
         keyExtractor={(title, index) => `${world.order}-${index}-${title}`}
         renderItem={({ item: title, index }) => (
           <View style={{ paddingHorizontal: 16 }}>
+            {index === 0 && <View style={{ marginBottom: 16 }}><Hero world={world} completed={completed} total={total} dark={dark} /></View>}
             <LessonRow
               title={title}
               index={index}
@@ -279,7 +311,7 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListHeaderComponent={
           <>
-            <View style={{ paddingTop: 4, marginBottom: 8 }}>
+            <View style={{ paddingTop: 4, paddingBottom: 4, backgroundColor: t.page }}>
               <FlatList
                 ref={stripRef}
                 horizontal
@@ -296,9 +328,6 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
                 windowSize={3}
                 removeClippedSubviews
               />
-            </View>
-            <View style={{ paddingHorizontal: 16 }}>
-              <Hero world={world} completed={completed} total={total} dark={dark} />
             </View>
           </>
         }
@@ -332,6 +361,7 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
 });
 
 const s = StyleSheet.create({
+  compactBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: BW },
   pillNum: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   pillNumText: { fontFamily: FONT.outfit.b, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.3333), color: '#FFFFFF', includeFontPadding: false },

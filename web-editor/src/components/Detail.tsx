@@ -10,8 +10,6 @@ import { DetailedTutorialView } from './DetailedTutorialView';
 
 // 6 Lesson Stage Components (1: Learn, 2: Explore, 3: Predict, 4: Write & Run, 5: Debug, 6: Mastered)
 import { Learn } from './Learn';
-import { Explore } from './Explore';
-import { Predict } from './Predict';
 import { WriteRun } from './WriteRun';
 import { DebugIde } from './DebugIde';
 import { Mastered } from './Mastered';
@@ -31,6 +29,9 @@ interface DetailProps {
   // completion/XP the normal 5-stage flow would. Purely additive: the normal
   // flow (isPracticeMode falsy) is completely unaffected.
   isPracticeMode?: boolean;
+  /** Stage 2 example playground: use the selected example code and omit task UI/completion semantics. */
+  tryItMode?: boolean;
+  prefillCode?: string;
   // A "Surprise Me"-launched problem rather than one opened from
   // TaskListScreen's ordered per-World list -- hides the list-relative task
   // position/badge and swaps "Next Task" for "Next Random Task" (which picks
@@ -97,6 +98,8 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
   initialLessonKey = '',
   initialStageKey,
   isPracticeMode = false,
+  tryItMode = false,
+  prefillCode,
   isRandomPractice = false,
   onPracticeNextTask,
   onPracticeNextRandomTask,
@@ -108,18 +111,11 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
   tapToRevealEnabled = true,
 }, ref) => {
   const [currentLessonKey] = useState<string>(initialLessonKey);
-  const [exploreCardIndex, setExploreCardIndex] = useState<number>(0);
 
   // Preserve reveal steps across stage navigation (when user clicks back/forward)
   const [learnRevealStep, setLearnRevealStep] = useState<number>(0);
-  const [exploreRevealStep, setExploreRevealStep] = useState<number>(0);
-  const [predictRevealStep, setPredictRevealStep] = useState<number>(0);
   const [writeRunRevealStep, setWriteRunRevealStep] = useState<number>(0);
   const [debugRevealStep, setDebugRevealStep] = useState<number>(0);
-
-  // Predict state: support all questions, no default selected answer
-  const [predictAnswers, setPredictAnswers] = useState<Record<number, string>>({});
-  const [activePredictCardIdx, setActivePredictCardIdx] = useState<number>(0);
 
   // Temporary developer/tester tools
   const [showSkipMenu, setShowSkipMenu] = useState<boolean>(false);
@@ -139,6 +135,33 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
   // Practice tasks below Beginner start from an editor with no numbered step comments.
   const writeRunData = React.useMemo(() => {
     const wr = lessonData?.writeRun;
+    if (tryItMode && prefillCode !== undefined) {
+      return {
+        ...(wr ?? {
+          challengeNumber: 1,
+          totalChallenges: 1,
+          xpReward: 0,
+          title: 'Try this example',
+          description: '',
+          requirements: { name: '', params: '', returns: '' },
+          fileName: 'Example.kt',
+          solutionCode: prefillCode,
+          sampleInput: '',
+          expectedOutput: '',
+          testCase: { call: '', expected: '' },
+        }),
+        title: 'Try this example',
+        description: '',
+        goal: undefined,
+        fileName: 'Example.kt',
+        initialCode: prefillCode,
+        solutionCode: prefillCode,
+        expectedOutput: '',
+        sampleInput: '',
+        testCase: { call: '', expected: '' },
+        hardcodeCheck: undefined,
+      };
+    }
     if (!wr || !isPracticeMode || getPracticeHelpLevelOrDefault() === 'beginner') return wr;
     // A task with level hints keeps its numbered comments in the editor, collapsed, worded for this level. Tapping one
     // opens that hint (and unlocking a hint opens its comment), see WriteRun.
@@ -163,8 +186,8 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
       .filter((line) => /^\s*\/\/\s*\d+\./.test(line))
       .map((line) => line.trim());
     return { ...wr, initialCode: stripStepComments(wr.initialCode), helperComments };
-  }, [lessonData, isPracticeMode]);
-  const [userCode, setUserCode] = useState<string>(writeRunData?.initialCode ?? '');
+  }, [lessonData, isPracticeMode, tryItMode, prefillCode]);
+  const [userCode, setUserCode] = useState<string>(tryItMode && prefillCode !== undefined ? prefillCode : writeRunData?.initialCode ?? '');
   const [hasRunCode, setHasRunCode] = useState<boolean>(false);
   const [actualOutput, setActualOutput] = useState<string>('');
 
@@ -214,19 +237,17 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
   }, [showTutorialHint]);
 
   useEffect(() => {
-    setUserCode(writeRunData?.initialCode ?? '');
+    setUserCode(tryItMode && prefillCode !== undefined ? prefillCode : writeRunData?.initialCode ?? '');
     setHasRunCode(false);
     setActualOutput('');
-  }, [currentLessonKey]);
+  }, [currentLessonKey, tryItMode, prefillCode, writeRunData?.initialCode]);
 
   // Which stages this specific lesson actually uses, in order. Learn and
   // Mastered always run; explore/predict/writeRun/debug only run when the
   // lesson provides that stage's data (see the FiveStageLesson comment).
   const activeStages: StageKey[] = [
     'learn',
-    ...(lessonData?.explore ? (['explore'] as const) : []),
-    ...(lessonData?.predict ? (['predict'] as const) : []),
-    ...(lessonData?.writeRun ? (['writeRun'] as const) : []),
+    ...(lessonData?.writeRun || tryItMode ? (['writeRun'] as const) : []),
     ...(lessonData?.debug ? (['debug'] as const) : []),
     'mastered',
   ];
@@ -345,26 +366,6 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
     restoreCurrentStageScroll();
   }, [currentStageKey]);
 
-  const scrollToElement = (elementId: string, headerOffset = 120) => {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const rootEl = document.getElementById('root');
-    if (rootEl && rootEl.scrollHeight > rootEl.clientHeight) {
-      const rootRect = rootEl.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      const targetScroll = rootEl.scrollTop + (elRect.top - rootRect.top) - headerOffset;
-      rootEl.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
-    } else {
-      const elementPosition = el.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      window.scrollTo({ top: Math.max(0, offsetPosition), behavior: 'smooth' });
-    }
-  };
-
-  // Note: Stage 2 (Explore) and Stage 3 (Predict) indicator highlighting and scroll sync
-  // are managed directly inside their respective components to avoid fluctuation during
-  // tap-to-continue programmatic scrolls and only sync when user manually scrolls.
-
   const handleNextStage = () => {
     soundFX.playClick();
     if (onStageContinue) {
@@ -444,32 +445,6 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
     setHasRunCode(true);
   };
 
-  const handleSelectPredictOption = (qIdx: number, optId: string) => {
-    soundFX.playClick();
-    setPredictAnswers((prev) => ({ ...prev, [qIdx]: optId }));
-    const question = lessonData.predict?.questions[qIdx];
-    const opt = question?.options.find((o) => o.id === optId);
-    if (opt?.isCorrect) {
-      soundFX.playSuccess();
-    }
-  };
-
-  // Temp auto fill correct answers for Predict stage
-  const handleAutoFillPredictAnswers = () => {
-    if (!lessonData.predict) return;
-    soundFX.playSuccess();
-    const correctMap: Record<number, string> = {};
-    lessonData.predict.questions.forEach((q, idx) => {
-      const correctOpt = q.options.find((opt) => opt.isCorrect);
-      if (correctOpt) {
-        correctMap[idx] = correctOpt.id;
-      }
-    });
-    setPredictAnswers(correctMap);
-    // Reveal all questions so user can inspect or advance immediately
-    setPredictRevealStep(lessonData.predict.questions.length);
-  };
-
   const isDark = theme === 'dark';
 
   // The World Boss celebration overlay -- shown on top of whichever stage
@@ -503,7 +478,7 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
     );
   }
 
-  if (currentStageKey === 'writeRun' && lessonData.writeRun) {
+  if (currentStageKey === 'writeRun' && writeRunData) {
     return (
       <div
         className={`fixed inset-0 z-40 w-full h-full h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col items-center justify-center p-0 select-none ${
@@ -511,7 +486,7 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
         }`}
       >
         <WriteRun
-          data={writeRunData ?? lessonData.writeRun}
+          data={writeRunData}
           topicTitle={lessonData.topicTitle}
           isDark={isDark}
           revealStep={writeRunRevealStep}
@@ -527,6 +502,7 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
           onBack={handlePreviousStage}
           nextStageLabel={nextStageLabel}
           isPracticeMode={isPracticeMode}
+          tryItMode={tryItMode}
           isRandomPractice={isRandomPractice}
           practicePosition={practicePosition}
           onPracticeNextTask={handlePracticeNextTask}
@@ -757,23 +733,6 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
               </div>
             )}
 
-            {/* Temp: Auto Fill Answer Button on the Predict stage */}
-            {currentStageKey === 'predict' && (
-              <button
-                type="button"
-                onClick={handleAutoFillPredictAnswers}
-                className={`text-[11px] font-semibold font-mono px-2 py-1 rounded-lg border flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
-                  isDark
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
-                }`}
-                title="Temporary Tool: Auto fill correct answers for all predict questions"
-              >
-                <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
-                <span>Auto Fill</span>
-              </button>
-            )}
-
             {/* Theme Toggle Button */}
             {onToggleTheme && (
               <button
@@ -854,38 +813,6 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
             onSkip={() => setShowSkipMenu(true)}
             nextStageLabel={nextStageLabel}
             tapToRevealEnabled={tapToRevealEnabled}
-          />
-        )}
-
-        {/* ================= EXPLORE (only when this lesson uses it) ================= */}
-        {currentStageKey === 'explore' && lessonData.explore && (
-          <Explore
-            data={lessonData.explore}
-            isDark={isDark}
-            revealStep={exploreRevealStep}
-            setRevealStep={setExploreRevealStep}
-            exploreCardIndex={exploreCardIndex}
-            setExploreCardIndex={setExploreCardIndex}
-            scrollToElement={scrollToElement}
-            onContinue={handleNextStage}
-            nextStageLabel={nextStageLabel}
-          />
-        )}
-
-        {/* ================= PREDICT / MCQ (only when this lesson uses it) ================= */}
-        {currentStageKey === 'predict' && lessonData.predict && (
-          <Predict
-            data={lessonData.predict}
-            isDark={isDark}
-            revealStep={predictRevealStep}
-            setRevealStep={setPredictRevealStep}
-            predictAnswers={predictAnswers}
-            activePredictCardIdx={activePredictCardIdx}
-            setActivePredictCardIdx={setActivePredictCardIdx}
-            onSelectOption={handleSelectPredictOption}
-            scrollToElement={scrollToElement}
-            onContinue={handleNextStage}
-            nextStageLabel={nextStageLabel}
           />
         )}
 

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BW, Icon, fz } from './shell';
 import { FONT, Palette } from './theme';
 import { QuizProgress, getQuizWorlds, worldStats } from './quizData';
+import type { JourneyVariant } from './App';
 
 const AVATAR_COLOR = '#6366F1';
 const PROFILE_NAME = 'Alex Vance';
@@ -13,8 +14,8 @@ const initialsOf = (name: string) => {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
 };
 
-export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress, onToggleTheme, onOpenStats }: {
-  p: Palette; quizProgress: QuizProgress; onToggleTheme: () => void; onOpenStats: () => void;
+export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress, journeyVariant, onJourneyVariant, onToggleTheme, onOpenStats, showAccentBorder, onAccentBorder }: {
+  p: Palette; quizProgress: QuizProgress; journeyVariant: JourneyVariant; onJourneyVariant: (variant: JourneyVariant) => void; onToggleTheme: () => void; onOpenStats: () => void; showAccentBorder: boolean; onAccentBorder: (visible: boolean) => void;
 }) {
   const dark = p.isDark;
   const title = dark ? '#F1F5F9' : '#2E3040';
@@ -64,6 +65,17 @@ export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress
         <Text style={[s.sub, { color: muted }]}>{correct} answered correctly at least once</Text>
       </View>)}
     </Section>
+    <Section title="Card styling" titleColor={muted}>
+      <View style={[s.row, row]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.rowTitle, { color: title }]}>Coder accent border</Text>
+          <Text style={[s.sub, { color: muted }]}>Show the colored left edge on Quiz and Practice cards</Text>
+        </View>
+        <Pressable onPress={() => onAccentBorder(!showAccentBorder)} style={[s.variant, showAccentBorder && { backgroundColor: '#6366F1' }]}>
+          <Text style={[s.variantText, { color: showAccentBorder ? '#FFFFFF' : muted }]}>{showAccentBorder ? 'On' : 'Off'}</Text>
+        </Pressable>
+      </View>
+    </Section>
 
     {/* Theme */}
     <Section title="Appearance" titleColor={muted}>
@@ -71,6 +83,27 @@ export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress
         <Icon name={dark ? 'dark_mode' : 'light_mode'} size={20} exact color="#818CF8" />
         <View style={{ flex: 1 }}><Text style={[s.rowTitle, { color: title }]}>Theme</Text><Text style={[s.sub, { color: muted }]}>{dark ? 'Obsidian Night Mode' : 'Silk Neumorphic Light'}</Text></View>
         <View style={s.sizeGroup}>{(['Dark', 'Light'] as const).map((mode) => { const on = (mode === 'Dark') === dark; return <Pressable key={mode} onPress={() => { if (!on) onToggleTheme(); }} style={[s.mode, on && { backgroundColor: '#6366F1' }]}><Text style={{ color: on ? '#FFF' : muted, fontFamily: FONT.outfit.b, fontSize: fz(11) }}>{mode}</Text></Pressable>; })}</View>
+      </View>
+    </Section>
+    <Section title="Learning path" titleColor={muted}>
+      <View style={[s.pathPicker, row]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.rowTitle, { color: title }]}>Chip shape</Text>
+          <Text style={[s.sub, { color: muted }]}>Choose the shape of the Quiz, Write and Debug chips</Text>
+        </View>
+        <View style={s.variantGroup}>
+          {([
+            ['milestones', 'Square'],
+            ['milestonesCircle', 'Circle'],
+            ['milestonesDiamond', 'Diamond'],
+            ['milestonesPill', 'Pill'],
+          ] as const).map(([variant, label]) => {
+            const selected = journeyVariant === variant;
+            return <Pressable key={variant} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => onJourneyVariant(variant)} style={[s.variant, selected && { backgroundColor: '#6366F1' }]}>
+              <Text style={[s.variantText, { color: selected ? '#FFFFFF' : muted }]}>{label}</Text>
+            </Pressable>;
+          })}
+        </View>
       </View>
     </Section>
   </ScrollView>;
@@ -102,4 +135,8 @@ const s = StyleSheet.create({
   fill: { height: 8, borderRadius: 4, backgroundColor: '#6366F1' },
   sizeGroup: { flexDirection: 'row', gap: 3, padding: 3, borderRadius: 8, borderWidth: BW, borderColor: '#CBD5E1' },
   mode: { paddingHorizontal: 10, height: 26, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  pathPicker: { minHeight: 82, alignItems: 'flex-start' },
+  variantGroup: { width: '100%', flexDirection: 'row', gap: 6, marginTop: 8 },
+  variant: { flex: 1, minHeight: 30, borderRadius: 7, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  variantText: { fontFamily: FONT.outfit.b, fontSize: fz(10) },
 });

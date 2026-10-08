@@ -53,6 +53,7 @@
     "minikotlin:fetch": "node scripts/minikotlin/fetch.mjs",
     "kotlinc:fetch": "node scripts/minikotlin/fetch-kotlinc.mjs",
     "audit:explore-output": "tsx scripts/audit-explore-output.ts",
+    "audit:explore-tryit": "tsx scripts/audit-explore-tryit.ts",
     "explore-output": "tsx scripts/minikotlin/crosscheck-explore.ts",
     "generate:native-data": "tsx scripts/generate-native-data.ts",
     "check:native-data": "tsx scripts/generate-native-data.ts --check",

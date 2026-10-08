@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BW, Icon, MAIN, fz } from './shell';
 import { EditorPanel, WorldsDivider, accentFor, hexAlpha, lh } from './parts';
 import { HELP_OPTIONS, HelpLevel } from './HelpSheet';
@@ -40,14 +40,14 @@ const tokens = (dark: boolean) => ({
   codeIcon: dark ? '#569CD6' : '#1F6FB5',
   bugIcon: dark ? '#CE9178' : '#A8502F',
   panel: dark
-    ? { backgroundColor: '#0F1420', borderColor: 'rgba(255,255,255,0.10)' }
-    : { backgroundColor: '#F6F7FA', borderColor: 'rgba(203,213,225,0.7)' },
+    ? { backgroundColor: '#1A2133', borderWidth: 0 }
+    : { backgroundColor: '#F6F7FA', borderWidth: 0 },
   panelShadow: dark
     ? [{ dy: 4, blur: 6, rgb: '0,0,0', alpha: 0.3 }]
     : [{ dy: 1, blur: 3, rgb: '0,0,0', alpha: 0.1 }],
 });
 
-function WorldCard({ world, dark, onOpen }: { world: PracticeWorld; dark: boolean; onOpen: (order: number) => void }) {
+function WorldCard({ world, dark, onOpen, showAccentBorder }: { world: PracticeWorld; dark: boolean; onOpen: (order: number) => void; showAccentBorder: boolean }) {
   const t = tokens(dark);
   const [darkAccent, lightAccent] = accentFor(world.order);
   const accentText = dark ? darkAccent : lightAccent;
@@ -60,7 +60,7 @@ function WorldCard({ world, dark, onOpen }: { world: PracticeWorld; dark: boolea
   return (
     <View style={{ opacity: hasAny ? 1 : 0.6 }}>
       <ShadowStack r={12} shadows={t.panelShadow} />
-      <Pressable onPress={() => { if (hasAny) onOpen(world.order); }} android_ripple={{ color: dark ? 'rgba(129,140,248,0.55)' : 'rgba(79,70,229,0.45)', borderless: false, foreground: true }} style={[s.card, t.panel, { borderLeftColor: darkAccent, overflow: 'hidden' }]}>
+      <Pressable onPress={() => { if (hasAny) onOpen(world.order); }} android_ripple={{ color: dark ? 'rgba(129,140,248,0.55)' : 'rgba(79,70,229,0.45)', borderless: false, foreground: true }} style={[s.card, t.panel, dark ? Platform.select({ ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 14 }, android: { elevation: 10, shadowColor: '#000000' } }) : { elevation: 3, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.16, shadowRadius: 5 }, { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0, overflow: 'visible' }]}>
         {/* WORLD_NN label (+ "current" while in progress), check or chevron on the right */}
         <View style={s.cardTop}>
           <View style={s.cardTopLeft}>
@@ -117,7 +117,7 @@ function WorldCard({ world, dark, onOpen }: { world: PracticeWorld; dark: boolea
   );
 }
 
-export const PracticeContent = React.memo(function PracticeContent({ p, helpLevel, onOpenHelp, onOpenWorld }: { p: Palette; helpLevel: HelpLevel; onOpenHelp: () => void; onOpenWorld: (order: number) => void }) {
+export const PracticeContent = React.memo(function PracticeContent({ p, helpLevel, onOpenHelp, onOpenWorld, showAccentBorder = true }: { p: Palette; helpLevel: HelpLevel; onOpenHelp: () => void; onOpenWorld: (order: number) => void; showAccentBorder?: boolean }) {
   const dark = p.isDark;
   const t = tokens(dark);
   const helpLabel = HELP_OPTIONS.find((o) => o.level === helpLevel)?.label ?? 'Beginner';
@@ -127,7 +127,7 @@ export const PracticeContent = React.memo(function PracticeContent({ p, helpLeve
     <FlatList
       data={WORLDS}
       keyExtractor={(world) => String(world.order)}
-      renderItem={({ item: world }) => <WorldCard world={world} dark={dark} onOpen={onOpenWorld} />}
+      renderItem={({ item: world }) => <WorldCard world={world} dark={dark} onOpen={onOpenWorld} showAccentBorder={showAccentBorder} />}
       ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
       ListHeaderComponent={
         <>
@@ -200,13 +200,13 @@ const s = StyleSheet.create({
   mono12: { fontFamily: FONT.mono.r, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.625), includeFontPadding: false },
   mono13: { fontFamily: FONT.mono.b, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
   // recommended
-  recommended: { borderRadius: 12, padding: 16, borderWidth: BW, borderLeftWidth: 2.91, gap: 10 },
+  recommended: { borderRadius: 12, padding: 16, borderWidth: 0, gap: 10 },
   recTitle: { fontFamily: FONT.outfit.b, fontSize: fz(14 * MAIN), lineHeight: lh(14, 1.4286), letterSpacing: -0.025 * 14 * MAIN, includeFontPadding: false },
   recSub: { fontFamily: FONT.outfit.md, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.5), includeFontPadding: false },
   recGrid: { flexDirection: 'row', gap: 8, paddingTop: 2 },
-  recBtn: { flex: 1, padding: 10, borderRadius: 8, borderWidth: BW, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  recBtn: { flex: 1, padding: 10, borderRadius: 8, borderWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   // world card
-  card: { borderRadius: 12, padding: 16, borderWidth: BW, borderLeftWidth: 2.91, overflow: 'hidden' },
+  card: { borderRadius: 12, padding: 16, borderWidth: 0, borderLeftWidth: 2.91, overflow: 'hidden' },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 },
   cardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
   worldLabel: { fontFamily: FONT.mono.b, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.5), letterSpacing: 0.05 * 11 * MAIN, includeFontPadding: false },

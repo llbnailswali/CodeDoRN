@@ -614,3 +614,21 @@ export function loadExternalDocument(
   const normalized = ensureBlankLinesAfterFirstComment(toEditorIndent(code));
   return snapEmptyLineIndent(ensureBlankLineBeforeFinalBrace(normalized.code), normalized.cursorPosition);
 }
+
+// Like `loadExternalDocument`, for free coding ("Try it"): there is no starter comment to fill in, so the caret goes on a free line
+// at the end of the code, after the last statement but still inside the final closing brace (indented like the code above it).
+// A program without a final `}` just gets the caret at its very end.
+export function loadExternalDocumentAtEnd(
+  code: string,
+  lastEmitted: string | null
+): { code: string; cursorPosition: number } | null {
+  if (lastEmitted === code) return null;
+  const doc = ensureBlankLineBeforeFinalBrace(toEditorIndent(code));
+  const lines = doc.split('\n');
+  let last = lines.length - 1;
+  while (last >= 0 && lines[last].trim() === '') last--;
+  if (last < 1 || lines[last].trim() !== '}' || lines[last - 1].trim() !== '') return { code: doc, cursorPosition: doc.length };
+  let offset = 0;
+  for (let i = 0; i < last - 1; i++) offset += lines[i].length + 1;
+  return snapEmptyLineIndent(doc, offset);
+}

@@ -7,7 +7,7 @@ interface NativeScreensPlugin {
   /** The Home screen in React Native. */
   openReactHome(): Promise<void>;
   /** Set only inside the activity the React Native lesson screen opens for a web stage; empty in the normal app. */
-  getStageLaunch(): Promise<{ lessonKey?: string; stage?: string; dark?: boolean; practice?: boolean }>;
+  getStageLaunch(): Promise<{ lessonKey?: string; stage?: string; dark?: boolean; practice?: boolean; tryIt?: boolean; prefillCode?: string }>;
   /** Closes that activity and returns `action` to React Native. */
   closeStage(options: { action: 'continue' | 'back' }): Promise<void>;
   /** Tells the activity the stage has rendered, so it can remove its loading overlay. */
@@ -29,6 +29,8 @@ export interface NativeStageLaunch {
   stage: 'writeRun' | 'debug';
   dark: boolean;
   practice: boolean;
+  tryIt: boolean;
+  prefillCode?: string;
 }
 
 /** The stage the React Native lesson screen asked this web view to show, or null in the normal app. */
@@ -37,7 +39,7 @@ export const getNativeStageLaunch = async (): Promise<NativeStageLaunch | null> 
   try {
     const r = await NativeScreens.getStageLaunch();
     if (r.lessonKey && (r.stage === 'writeRun' || r.stage === 'debug')) {
-      return { lessonKey: r.lessonKey, stage: r.stage, dark: r.dark !== false, practice: r.practice === true };
+      return { lessonKey: r.lessonKey, stage: r.stage, dark: r.dark !== false, practice: r.practice === true, tryIt: r.tryIt === true, prefillCode: r.prefillCode };
     }
   } catch {
     // an older app build without the method: behave as the normal app
