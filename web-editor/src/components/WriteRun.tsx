@@ -7,7 +7,7 @@ import { runKotlinCode, KotlinExecutionResult } from '../utils/kotlinRunner';
 import { applySolutionPreservingComments } from '../utils/applySolution';
 import { renderVisibleWhitespace, renderTaskText, stripTaskMarkup } from '../utils/outputDisplay';
 import { TryItOutput } from './ide/TryItOutput';
-import { copyText } from '../utils/clipboard';
+import { CopyCodeButton } from './ide/CopyCodeButton';
 import { KotlinCodeEditor, KotlinCodeEditorHandle } from './ide/KotlinCodeEditor';
 import { renderKotlinCodeLines } from '../utils/codeHighlighter';
 import { useLongPress } from '../utils/useLongPress';
@@ -52,6 +52,8 @@ interface WriteRunStageProps {
   onProblemPassed?: () => void;
   isPracticeMode?: boolean;
   tryItMode?: boolean;
+  /** Switches the app theme; adds a Light/Dark theme item to the three-dot menu. */
+  onToggleTheme?: () => void;
   isRandomPractice?: boolean;
   practicePosition?: { current: number; total: number };
   onPracticeNextTask?: () => void;
@@ -73,13 +75,13 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   onProblemPassed,
   isPracticeMode = false,
   tryItMode = false,
+  onToggleTheme,
   isRandomPractice = false,
   practicePosition,
   onPracticeNextTask,
   onPracticeGoBack,
 }) => {
   const [executionResult, setExecutionResult] = useState<KotlinExecutionResult | null>(null);
-  const [codeCopied, setCodeCopied] = useState<boolean>(false);
   const [showOutputPanel, setShowOutputPanel] = useState<boolean>(false);
   const [showSolutionModal, setShowSolutionModal] = useState<boolean>(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState<boolean>(false);
@@ -510,7 +512,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           with a real status-bar inset -- invisible in browser preview,
           where the inset is always 0). */}
       <header
-        className={`sticky top-0 z-30 w-full border-b shrink-0 select-none pt-[env(safe-area-inset-top,0px)] ${
+        className={`sticky top-0 ${showOverflowMenu ? "z-[45]" : "z-30"} w-full border-b shrink-0 select-none pt-[env(safe-area-inset-top,0px)] ${
           isDark ? 'bg-[#0d121d] border-ide-border' : 'bg-[#e8eaf0] border-slate-300'
         }`}
       >
@@ -618,6 +620,8 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           </button>
 
           {/* Overflow Dropdown */}
+          {/* Dims and blurs everything behind the open menu, like the task dialog does; a tap on it just closes the menu (see the pointerdown listener). */}
+          {showOverflowMenu && <div aria-hidden className="fixed inset-0 z-40 bg-black/65 backdrop-blur-xs animate-fadeIn" />}
           {showOverflowMenu && (
             <div
               data-overflow-menu
@@ -657,6 +661,22 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
               </button>
               )}
 
+
+              {onToggleTheme && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowOverflowMenu(false);
+                    onToggleTheme();
+                  }}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer ${
+                    isDark ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-[15px] ${isDark ? 'text-amber-400' : 'text-slate-500'}`}>{isDark ? 'light_mode' : 'dark_mode'}</span>
+                  <span>{isDark ? 'Light theme' : 'Dark theme'}</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -763,25 +783,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
         collapseHelperComments={isPracticeMode}
         onHelperToggle={handleHelperToggle}
         cursorAtEnd={tryItMode}
-        floatingAction={
-          tryItMode ? (
-            <button
-              type="button"
-              aria-label="Copy code"
-              onClick={async () => {
-                if (await copyText(userCode)) {
-                  setCodeCopied(true);
-                  setTimeout(() => setCodeCopied(false), 1500);
-                }
-              }}
-              className={`w-9 h-9 rounded-lg border flex items-center justify-center cursor-pointer active:scale-95 transition-colors ${
-                isDark ? 'bg-slate-800/90 border-slate-700 text-slate-300' : 'bg-white/90 border-slate-300 text-slate-600'
-              }`}
-            >
-              <span className="material-symbols-outlined !text-[18px]">{codeCopied ? 'check' : 'content_copy'}</span>
-            </button>
-          ) : undefined
-        }
+        floatingAction={<CopyCodeButton code={userCode} isDark={isDark} />}
         outputPanel={tryItMode ? <TryItOutput result={executionResult} isDark={isDark} onClear={() => setExecutionResult(null)} /> : undefined}
       />
 

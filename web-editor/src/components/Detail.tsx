@@ -503,6 +503,7 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
           nextStageLabel={nextStageLabel}
           isPracticeMode={isPracticeMode}
           tryItMode={tryItMode}
+          onToggleTheme={onToggleTheme}
           isRandomPractice={isRandomPractice}
           practicePosition={practicePosition}
           onPracticeNextTask={handlePracticeNextTask}
@@ -526,6 +527,7 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
           data={lessonData.debug}
           topicTitle={lessonData.topicTitle}
           isDark={isDark}
+          onToggleTheme={onToggleTheme}
           onContinue={handleNextStage}
           onProblemPassed={() => StorageManager.setPracticeProblemStatus(lessonData.id, 'debug', 'completed')}
           onBack={handlePreviousStage}

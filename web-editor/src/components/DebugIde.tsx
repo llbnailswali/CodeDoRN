@@ -12,6 +12,7 @@ import { useBackClosesOverlay, useBackGuard } from '../utils/overlayBack';
 import { useStageVisible } from '../utils/stageVisibility';
 import { hasEditedCode } from '../utils/codeChanged';
 import { LeaveConfirmSheet } from './ide/LeaveConfirmSheet';
+import { CopyCodeButton } from './ide/CopyCodeButton';
 
 // The task details should appear shortly after the stage has rendered.
 const TEMP_SKIP_PREP_DIALOG = true;
@@ -26,6 +27,8 @@ interface DebugIdeProps {
   onProblemPassed?: () => void;
   isPracticeMode?: boolean;
   isRandomPractice?: boolean;
+  /** Switches the app theme; adds a Light/Dark theme item to the three-dot menu. */
+  onToggleTheme?: () => void;
   practicePosition?: { current: number; total: number };
   onPracticeNextTask?: () => void;
   onPracticeGoBack?: () => void;
@@ -41,6 +44,7 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
   onProblemPassed,
   isPracticeMode = false,
   isRandomPractice = false,
+  onToggleTheme,
   practicePosition,
   onPracticeNextTask,
   onPracticeGoBack,
@@ -391,7 +395,7 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
     >
       {/* ================= Minimal Top Toolbar (Stage 5 - Debug Theme) ================= */}
       <header
-        className={`sticky top-0 z-30 w-full border-b shrink-0 select-none pt-[env(safe-area-inset-top,0px)] relative ${
+        className={`sticky top-0 ${showOverflowMenu ? "z-[45]" : "z-30"} w-full border-b shrink-0 select-none pt-[env(safe-area-inset-top,0px)] relative ${
           isDark ? 'bg-[#140c15] border-rose-950/80' : 'bg-[#fdf2f4] border-rose-200/80'
         }`}
       >
@@ -516,6 +520,8 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
             </button>
 
             {/* Overflow Dropdown */}
+            {/* Dims and blurs everything behind the open menu, like the task dialog does; a tap on it just closes the menu (see the pointerdown listener). */}
+            {showOverflowMenu && <div aria-hidden className="fixed inset-0 z-40 bg-black/65 backdrop-blur-xs animate-fadeIn" />}
             {showOverflowMenu && (
               <div
                 data-overflow-menu
@@ -551,6 +557,22 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
                   <span>Auto-Complete</span>
                 </button>
 
+
+                {onToggleTheme && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOverflowMenu(false);
+                      onToggleTheme();
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer ${
+                      isDark ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <span className={`material-symbols-outlined text-[15px] ${isDark ? 'text-amber-400' : 'text-slate-500'}`}>{isDark ? 'light_mode' : 'dark_mode'}</span>
+                    <span>{isDark ? 'Light theme' : 'Dark theme'}</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -641,6 +663,7 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
         onCodeChange={handleCodeChange}
         onHorizontalScrollChange={setHorizontalScrollEnabled}
         onRunRequested={handleExecuteFix}
+        floatingAction={<CopyCodeButton code={userCode} isDark={isDark} />}
         customTokens={accessoryTokens}
         prioritySymbols={prioritySymbols}
         isDark={isDark}
