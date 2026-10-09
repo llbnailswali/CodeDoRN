@@ -2,7 +2,7 @@ import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, LayoutAnimation, Platform, StatusBar, StyleSheet, Text, UIManager, View } from 'react-native';
 import { CurriculumScreen } from './CurriculumScreen';
-import { HomeContent } from './HomeScreen';
+import { HomeListContent } from './HomeListScreen';
 import { LessonScreen } from './LessonScreen';
 import { LessonScreenPersistent } from './LessonScreenPersistent';
 import { HelpLevel, HelpSheet } from './HelpSheet';
@@ -269,7 +269,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       />
       <View style={{ flex: 1 }}>
         <View pointerEvents={tab === 'learn' ? 'auto' : 'none'} style={show('learn')}>
-          {<HomeContent
+          <HomeListContent
             p={p}
             gap={gap}
             journeyVariant={journeyVariant}
@@ -278,7 +278,7 @@ export function App({ dark = true }: { dark?: boolean }) {
             quizActivityCounts={quizActivityCounts}
             writeRunActivityCounts={writeRunActivityCounts}
             debugActivityCounts={debugActivityCounts}
-          />}
+          />
         </View>
         <View pointerEvents={tab === 'quiz' ? 'auto' : 'none'} style={show('quiz')}>
           <QuizContent p={p} progress={quizProgress} onOpenQuiz={openQuizCard} showAccentBorder={showAccentBorder} />

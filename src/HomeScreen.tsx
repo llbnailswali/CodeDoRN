@@ -1,29 +1,31 @@
 import React from 'react';
 import { BlurView } from '@react-native-community/blur';
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BW, Icon, MAIN, fz, pressedShadows, raisedShadows } from './shell';
 import { HOME_WORLDS } from './homeData';
 import { EdgeGlow, InsetShadow, ShadowStack } from './shadows';
-import { DEVICE_PATH_STYLE, buildTrail, getPathStyle, nodeDrift, nodeInset } from './pathStyles';
-import type { JourneyVariant } from './App';
+import { getPathStyle, nodeDrift, nodeInset } from './pathStyles';
 import {
   DARK, FAMILIES, FONT, INDIGO_400, INDIGO_500, LIGHT, Palette, VIOLET_500, WORLD_FAMILY, WORLD_ICONS,
   grayscale, mix, withAlpha,
 } from './theme';
 
-// The Learn tab's Home, rebuilt in React Native to look like the web Home (src/components/Home.tsx, Header.tsx,
+// The Learn tab's Home building blocks (world nodes, activity milestones, bands, cards) and the trail helpers. The screen itself is
+// HomeListScreen.tsx, which lays these out in a virtualized list. The Home was rebuilt in React Native to look like the web Home (src/components/Home.tsx, Header.tsx,
 // Navigation.tsx). Sizes are the web's CSS pixels (dp): Tailwind `p-3.5` is 14, `gap-2.5` is 10, and so on.
 // Progress starts at World 1 until real lesson completion state is recorded.
-const COMPLETED_WORLDS = 0;
-const TOTAL_WORLDS = 22;
+export const COMPLETED_WORLDS = 0;
+export const TOTAL_WORLDS = 22;
 // Match the web's progression rule: only the current world is available until earlier worlds are completed.
-const UNLOCK_ALL = false;
-const UNLOCK_THROUGH = 17;
+export const UNLOCK_ALL = false;
+export const UNLOCK_THROUGH = 17;
 const SHOW_LEVEL_STRIPS = true;
 // Height of a world node's text column in the web (chip 19.96 + title 19.35 + 2 + tag 19.96), so every row has the web's exact stride.
-const NODE_COLUMN = 61.27;
-const CURRENT_CARD_HEIGHT = 160.6;
+// TEMPORARY performance test: false hides the moving light streaks on the trail in both Homes (old and new).
+export const SHOW_STREAKS = true;
+export const NODE_COLUMN = 61.27;
+export const CURRENT_CARD_HEIGHT = 160.6;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Small building blocks
@@ -87,7 +89,7 @@ const INDIGO_VIOLET = rampColors(['#6366F1', '#8B5CF6'], 32);
 // Kotlin Journey card
 // ---------------------------------------------------------------------------------------------------------------------
 
-function JourneyCard({ p, current, completed }: { p: Palette; current: (typeof HOME_WORLDS)[number]; completed: number }) {
+export function JourneyCard({ p, current, completed }: { p: Palette; current: (typeof HOME_WORLDS)[number]; completed: number }) {
   const pct = ((completed / TOTAL_WORLDS) * 100).toFixed(1);
   return (
     <View style={s.journeyWrap}>
@@ -151,7 +153,7 @@ function bandColors(p: Palette, chapter: 1 | 2 | 3, active: boolean) {
   };
 }
 
-function Band({ p, chapter, label, active, topBorder, blurred, onLayout }: { p: Palette; chapter: 1 | 2 | 3; label: string; active: boolean; topBorder: boolean; blurred: boolean; onLayout?: (chapter: 1 | 2 | 3, y: number) => void }) {
+export function Band({ p, chapter, label, active, topBorder, blurred, onLayout }: { p: Palette; chapter: 1 | 2 | 3; label: string; active: boolean; topBorder: boolean; blurred: boolean; onLayout?: (chapter: 1 | 2 | 3, y: number) => void }) {
   if (!SHOW_LEVEL_STRIPS) return null;
   const c = bandColors(p, chapter, active);
   const rgb = chapter === 1 ? '99,102,241' : chapter === 2 ? '168,85,247' : '244,63,94';
@@ -198,16 +200,16 @@ function Band({ p, chapter, label, active, topBorder, blurred, onLayout }: { p: 
 // World nodes
 // ---------------------------------------------------------------------------------------------------------------------
 
-type WorldActivity = 'quiz' | 'writeRun' | 'debug';
-type ActivityPosition = 'midLeft' | 'center' | 'midRight';
+export type WorldActivity = 'quiz' | 'writeRun' | 'debug';
+export type ActivityPosition = 'midLeft' | 'center' | 'midRight';
 
-type Anchors = {
+export type Anchors = {
   box: (order: number) => (el: View | null) => void;
   top: (order: number) => (el: View | null) => void;
   activity: (order: number, activity: WorldActivity) => (el: View | null) => void;
 };
 
-const WORLD_ACTIVITIES: Array<{ id: WorldActivity; label: string; icon: string; dark: string; light: string }> = [
+export const WORLD_ACTIVITIES: Array<{ id: WorldActivity; label: string; icon: string; dark: string; light: string }> = [
   { id: 'quiz', label: 'Quiz', icon: 'psychology', dark: '#C4B5FD', light: '#6D28D9' },
   { id: 'writeRun', label: 'Write & Run', icon: 'code', dark: '#7DD3FC', light: '#0369A1' },
   { id: 'debug', label: 'Debug Problems', icon: 'bug_report', dark: '#FDBA74', light: '#C2410C' },
@@ -227,11 +229,11 @@ const ActivityArtwork = ({ activity, locked, size, color }: { activity: WorldAct
 
 // Every activity is a true milestone: the same curved ribbon runs from a World
 // through Quiz, Write & Run, and Debug before continuing to the next World.
-const worldPointIndex = (order: number) => 1 + (order - 1) * (WORLD_ACTIVITIES.length + 1);
-const activityPointIndex = (order: number, activityIndex: number) => worldPointIndex(order) + activityIndex + 1;
-const TOTAL_PATH_POINTS = 1 + TOTAL_WORLDS * (WORLD_ACTIVITIES.length + 1);
+export const worldPointIndex = (order: number) => 1 + (order - 1) * (WORLD_ACTIVITIES.length + 1);
+export const activityPointIndex = (order: number, activityIndex: number) => worldPointIndex(order) + activityIndex + 1;
+export const TOTAL_PATH_POINTS = 1 + TOTAL_WORLDS * (WORLD_ACTIVITIES.length + 1);
 
-function ActivityNode({ p, order, activity, position, locked, count, anchors, onOpen, shape = 'square' }: {
+export function ActivityNode({ p, order, activity, position, locked, count, anchors, onOpen, shape = 'square' }: {
   shape?: 'square' | 'circle' | 'diamond' | 'pill';
   p: Palette;
   order: number;
@@ -350,7 +352,7 @@ function nodeBoxColors(p: Palette, order: number, kind: 'done' | 'locked' | 'cur
     : { bg: withAlpha(gray(f.c50), 0.9), border: withAlpha(gray(f.c200), 0.9), bw: BW, icon: withAlpha(gray(f.c700), 0.8) };
 }
 
-function StandardNode({
+export function StandardNode({
   p, world, align, paddingTop, gap, pathStyle, completed, anchors, onOpenWorld,
 }: {
   p: Palette;
@@ -426,7 +428,7 @@ function StandardNode({
   );
 }
 
-function CurrentCard({ p, world, paddingTop, gap, anchors, onOpenWorld }: { p: Palette; world: (typeof HOME_WORLDS)[number]; paddingTop: number; gap: number; anchors: Anchors; onOpenWorld?: (order: number) => void }) {
+export function CurrentCard({ p, world, paddingTop, gap, anchors, onOpenWorld }: { p: Palette; world: (typeof HOME_WORLDS)[number]; paddingTop: number; gap: number; anchors: Anchors; onOpenWorld?: (order: number) => void }) {
   return (
     <View style={{ width: '100%', alignItems: 'center', paddingTop, paddingBottom: 16, marginTop: gap }}>
       <View style={{ width: '100%', maxWidth: 320 }}>
@@ -478,7 +480,7 @@ function CurrentCard({ p, world, paddingTop, gap, anchors, onOpenWorld }: { p: P
   );
 }
 
-function BossNode({ p, world, completed, anchors, onOpenWorld }: { p: Palette; world: (typeof HOME_WORLDS)[number]; completed: number; anchors: Anchors; onOpenWorld?: (order: number) => void }) {
+export function BossNode({ p, world, completed, anchors, onOpenWorld }: { p: Palette; world: (typeof HOME_WORLDS)[number]; completed: number; anchors: Anchors; onOpenWorld?: (order: number) => void }) {
   const unlocked = UNLOCK_ALL || world.order <= UNLOCK_THROUGH;
   const done = completed >= 15;
   const f = FAMILIES.violet;
@@ -513,7 +515,7 @@ function BossNode({ p, world, completed, anchors, onOpenWorld }: { p: Palette; w
   );
 }
 
-function FinalCard({ p, world, completed, anchors }: { p: Palette; world: (typeof HOME_WORLDS)[number]; completed: number; anchors: Anchors }) {
+export function FinalCard({ p, world, completed, anchors }: { p: Palette; world: (typeof HOME_WORLDS)[number]; completed: number; anchors: Anchors }) {
   const open = UNLOCK_ALL || completed >= 21;
   const d = p.isDark;
   return (
@@ -592,9 +594,9 @@ function FinalCard({ p, world, completed, anchors }: { p: Palette; world: (typeo
 // The winding trail
 // ---------------------------------------------------------------------------------------------------------------------
 
-interface Pt { x: number; y: number }
+export interface Pt { x: number; y: number }
 /** Parses buildTrail()'s "M x,y L x,y C x,y x,y x,y ..." into a polyline. */
-function trailToPolyline(d: string): Pt[] {
+export function trailToPolyline(d: string): Pt[] {
   const tokens = d.match(/[MLC]|-?\d+(?:\.\d+)?/g) ?? [];
   const pts: Pt[] = [];
   let i = 0;
@@ -625,7 +627,7 @@ function trailToPolyline(d: string): Pt[] {
 }
 
 /** Re-samples a polyline at an even spacing. */
-function resample(poly: Pt[], step: number): Pt[] {
+export function resample(poly: Pt[], step: number): Pt[] {
   if (poly.length < 2) return poly;
   const out: Pt[] = [poly[0]];
   let carry = 0;
@@ -645,395 +647,61 @@ function resample(poly: Pt[], step: number): Pt[] {
   return out;
 }
 
-const SHIMMER_PERIOD = 198; // stroke-dasharray "18 180": one 18px dash every 198px
-const SHIMMER_TRAVEL = 396; // the dashoffset animation moves the pattern two periods per loop, so the loop is seamless
-const SHIMMER_LEN = 18;
-const SHIMMER_W = 3;
+export const SHIMMER_PERIOD = 198; // stroke-dasharray "18 180": one 18px dash every 198px
+export const SHIMMER_TRAVEL = 396; // the dashoffset animation moves the pattern two periods per loop, so the loop is seamless
+export const SHIMMER_LEN = 18;
+export const SHIMMER_W = 3;
 
-/**
- * The web's light streaks along the trail. Streak k sits at k*198 + 396*progress along the path, so at progress 1 it is exactly
- * where streak k-2 was at progress 0 and the loop never jumps. Each streak is one small View whose x, y, angle and opacity are
- * interpolated from `progress` over keyframes sampled along the path: the native driver evaluates them on the UI thread.
- */
-function Streaks({
-  pts, startY, fadeEndY, color, opacity, progress,
-}: {
-  pts: Pt[];
-  startY: number;
-  fadeEndY: number;
-  color: string;
-  opacity: number;
-  progress: Animated.Value;
-}) {
-  const streaks = React.useMemo(() => {
-    if (pts.length < 2) return [];
-    const cum: number[] = [0];
-    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
-    const total = cum[cum.length - 1];
-    const at = (dist: number) => {
-      const d = Math.min(total, Math.max(0, dist));
-      let lo = 0;
-      let hi = cum.length - 1;
-      while (hi - lo > 1) {
-        const mid = (lo + hi) >> 1;
-        if (cum[mid] < d) lo = mid;
-        else hi = mid;
-      }
-      const t = (d - cum[lo]) / Math.max(0.0001, cum[hi] - cum[lo]);
-      const a = pts[lo];
-      const b = pts[hi];
-      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, angle: (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI };
-    };
-    const fade = (y: number) => (y <= startY ? 0 : y >= fadeEndY ? 1 : (y - startY) / Math.max(1, fadeEndY - startY));
-    const KEYS = 36; // keyframes per loop (every 11px of travel)
-    const out: Array<{ key: number; input: number[]; x: number[]; y: number[]; rot: string[]; op: number[] }> = [];
-    for (let k = -2; k * SHIMMER_PERIOD < total; k++) {
-      const input: number[] = [];
-      const x: number[] = [];
-      const y: number[] = [];
-      const rot: string[] = [];
-      const op: number[] = [];
-      let lastAngle = 0;
-      for (let j = 0; j <= KEYS; j++) {
-        const pos = k * SHIMMER_PERIOD + (SHIMMER_TRAVEL * j) / KEYS;
-        const q = at(pos);
-        // keep the angle continuous across +-180
-        let ang = q.angle;
-        while (ang - lastAngle > 180) ang -= 360;
-        while (ang - lastAngle < -180) ang += 360;
-        lastAngle = ang;
-        input.push(j / KEYS);
-        x.push(q.x);
-        y.push(q.y);
-        rot.push(`${ang.toFixed(1)}deg`);
-        op.push(pos < 0 || pos > total ? 0 : fade(q.y));
-      }
-      if (op.some((v) => v > 0)) out.push({ key: k, input, x, y, rot, op });
+export type StreakKeys = { key: number; input: number[]; x: number[]; y: number[]; rot: string[]; op: number[] };
+
+/** Keyframes of every light streak along a polyline (shared by the one-piece Home and the virtualized list Home). */
+export function computeStreaks(pts: Pt[], startY: number, fadeEndY: number): StreakKeys[] {
+  if (pts.length < 2) return [];
+  const cum: number[] = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  const total = cum[cum.length - 1];
+  const at = (dist: number) => {
+    const d = Math.min(total, Math.max(0, dist));
+    let lo = 0;
+    let hi = cum.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (cum[mid] < d) lo = mid;
+      else hi = mid;
     }
-    return out;
-  }, [pts, startY, fadeEndY]);
-
-  return (
-    <>
-      {streaks.map((st) => (
-        <Animated.View
-          key={st.key}
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            left: -(SHIMMER_LEN + SHIMMER_W) / 2,
-            top: -SHIMMER_W / 2,
-            width: SHIMMER_LEN + SHIMMER_W,
-            height: SHIMMER_W,
-            borderRadius: SHIMMER_W / 2,
-            backgroundColor: color,
-            opacity: progress.interpolate({ inputRange: st.input, outputRange: st.op.map((v) => v * opacity) }),
-            transform: [
-              { translateX: progress.interpolate({ inputRange: st.input, outputRange: st.x }) },
-              { translateY: progress.interpolate({ inputRange: st.input, outputRange: st.y }) },
-              { rotate: progress.interpolate({ inputRange: st.input, outputRange: st.rot }) },
-            ],
-          }}
-        />
-      ))}
-    </>
-  );
-}
-
-/**
- * The trail, a port of the web's SnakePathOverlay SVG (src/components/Home.tsx): the same layers, widths, opacities and gradients,
- * drawn by react-native-svg as ONE native view (no per-piece Views, no offscreen alpha layers) so scrolling stays smooth.
- * The static layers never redraw; the two moving light streaks live in their own small SVG so only they redraw each frame.
- */
-
-function Trail({
-  p, trail, activeIndex, startY, fadeEndY, width, height, animateStreaks,
-}: {
-  p: Palette;
-  trail: { path: (n?: number) => string };
-  activeIndex: number;
-  startY: number;
-  fadeEndY: number;
-  width: number;
-  height: number;
-  animateStreaks: boolean;
-}) {
-  const d = p.isDark;
-  const fullPath = React.useMemo(() => trail.path(), [trail]);
-  const activePath = React.useMemo(() => (activeIndex > 0 ? trail.path(activeIndex) : ''), [trail, activeIndex]);
-  const fullPts = React.useMemo(() => animateStreaks ? resample(trailToPolyline(fullPath), 8) : [], [fullPath, animateStreaks]);
-  const activePts = React.useMemo(() => animateStreaks && activePath ? resample(trailToPolyline(activePath), 8) : [], [activePath, animateStreaks]);
-
-  // The moving light (the web animates stroke-dashoffset 0 -> -396 every 7s). One native-driven value moves every streak, so no
-  // JavaScript runs per frame and nothing is redrawn: the streaks are tiny Views transformed on the UI thread.
-  const progress = React.useRef(new Animated.Value(0)).current;
-  React.useEffect(() => {
-    if (!animateStreaks) return;
-    const loop = Animated.loop(Animated.timing(progress, { toValue: 1, duration: 7000, easing: Easing.linear, useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [progress, animateStreaks]);
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <LinearGradient id="activeGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#6366F1" />
-            <Stop offset="1" stopColor="#8B5CF6" />
-          </LinearGradient>
-          <LinearGradient id="baseGrad" gradientUnits="userSpaceOnUse" x1="0" y1={startY} x2="0" y2={startY + 160}>
-            <Stop offset="0" stopColor="#6366F1" />
-            <Stop offset="0.35" stopColor={d ? '#4F46E5' : '#818CF8'} />
-            <Stop offset="1" stopColor={d ? '#384764' : '#9CA3AF'} />
-          </LinearGradient>
-          <LinearGradient id="highlightGrad" gradientUnits="userSpaceOnUse" x1="0" y1={startY} x2="0" y2={startY + 160}>
-            <Stop offset="0" stopColor={d ? '#818CF8' : '#C7D2FE'} />
-            <Stop offset="1" stopColor={d ? '#475569' : '#FFFFFF'} />
-          </LinearGradient>
-          {/* The web masks the start so the trail emerges softly from the band; here a page-coloured fade is laid over it. */}
-          <LinearGradient id="startFade" gradientUnits="userSpaceOnUse" x1="0" y1={startY} x2="0" y2={fadeEndY}>
-            <Stop offset="0" stopColor={p.page} stopOpacity="1" />
-            <Stop offset="0.25" stopColor={p.page} stopOpacity="0.75" />
-            <Stop offset="0.6" stopColor={p.page} stopOpacity="0.3" />
-            <Stop offset="1" stopColor={p.page} stopOpacity="0" />
-          </LinearGradient>
-        </Defs>
-        <Path d={fullPath} fill="none" stroke="url(#highlightGrad)" strokeWidth={12} strokeLinecap="round" opacity={d ? 0.35 : 0.85} />
-        <Path d={fullPath} fill="none" stroke="url(#baseGrad)" strokeWidth={6} strokeLinecap="round" opacity={0.75} />
-        {activePath !== '' && (
-          <>
-            <Path d={activePath} fill="none" stroke={d ? '#6366F1' : '#818CF8'} strokeWidth={8} strokeLinecap="round" opacity={d ? 0.25 : 0.3} />
-            <Path d={activePath} fill="none" stroke="url(#activeGrad)" strokeWidth={4} strokeLinecap="round" strokeDasharray="4 4" />
-          </>
-        )}
-        {fadeEndY > startY && <Rect x={0} y={startY} width={width} height={fadeEndY - startY} fill="url(#startFade)" />}
-      </Svg>
-      {animateStreaks && <Streaks pts={fullPts} startY={startY} fadeEndY={fadeEndY} color={d ? '#94A3B8' : '#FFFFFF'} opacity={d ? 0.5 : 0.7} progress={progress} />}
-      {animateStreaks && activePts.length > 1 && (
-        <Streaks pts={activePts} startY={startY} fadeEndY={fadeEndY} color={d ? '#C7D2FE' : '#FFFFFF'} opacity={d ? 0.95 : 1} progress={progress} />
-      )}
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-// The screen
-// ---------------------------------------------------------------------------------------------------------------------
-
-/** The Learn tab's content (the shared top bar and tab bar live in App.tsx). `gap` is the extra space between world nodes. */
-export const HomeContent = React.memo(function HomeContent({
-  p, gap, journeyVariant = 'milestones', onOpenWorld, onOpenActivity, quizActivityCounts = {}, writeRunActivityCounts = {}, debugActivityCounts = {},
-}: {
-  p: Palette;
-  gap: number;
-  journeyVariant?: JourneyVariant;
-  onOpenWorld?: (order: number) => void;
-  onOpenActivity?: (order: number, activity: WorldActivity) => void;
-  quizActivityCounts?: Record<number, number>;
-  writeRunActivityCounts?: Record<number, number>;
-  debugActivityCounts?: Record<number, number>;
-}) {
-  const { width } = useWindowDimensions();
-  const pathStyle = React.useMemo(() => getPathStyle(DEVICE_PATH_STYLE), []);
-  const expectedPointCount = TOTAL_PATH_POINTS;
-  const completed = COMPLETED_WORLDS;
-  // The large current-world card belongs on the furthest unlocked world.
-  const currentOrder = Math.min(TOTAL_WORLDS, Math.max(completed + 1, UNLOCK_THROUGH));
-  const current = HOME_WORLDS[currentOrder - 1];
-  const sectionWidth = Math.min(360, width);
-
-  // The ScrollView's inner content view: every trail coordinate is measured relative to it.
-  const contentRef = React.useRef<View | null>(null);
-  const scrollRef = React.useRef<ScrollView>(null);
-  const scrolledToCurrent = React.useRef(false);
-  const boxRefs = React.useRef(new Map<number, View | null>());
-  const topRefs = React.useRef(new Map<number, View | null>());
-  const activityRefs = React.useRef(new Map<string, View | null>());
-  const startRef = React.useRef<View>(null);
-  const [points, setPoints] = React.useState<Pt[] | null>(null);
-  const [contentHeight, setContentHeight] = React.useState(0);
-  const bandTops = React.useRef<Partial<Record<1 | 2 | 3, number>>>({});
-  const [stickyBand, setStickyBand] = React.useState<1 | 2 | 3>(1);
-  const onBandLayout = React.useCallback((chapter: 1 | 2 | 3, y: number) => {
-    // A sticky header is laid out again at y=0 when pinned. Keep the original
-    // content position; otherwise the pinned clone would make every later
-    // section appear sticky immediately.
-    if (y > 0 || bandTops.current[chapter] === undefined) bandTops.current[chapter] = y;
-  }, []);
-  const updateStickyBand = React.useCallback((event: any) => {
-    const y = event.nativeEvent.contentOffset.y;
-    const tops = bandTops.current;
-    const next = tops[3] !== undefined && y >= tops[3] - 1 ? 3 : tops[2] !== undefined && y >= tops[2] - 1 ? 2 : 1;
-    setStickyBand((currentSticky) => currentSticky === next ? currentSticky : next);
-  }, []);
-
-  const anchors = React.useMemo<Anchors>(
-    () => ({
-      box: (order) => (el) => { boxRefs.current.set(order, el); },
-      top: (order) => (el) => { topRefs.current.set(order, el); },
-      activity: (order, activity) => (el) => { activityRefs.current.set(`${order}:${activity}`, el); },
-    }),
-    []
-  );
-
-  const measure = React.useCallback(() => {
-    const journey = contentRef.current;
-    if (!journey) return;
-    const jobs: Array<{ index: number; el: View | null; mode: 'center' | 'top' }> = [{ index: 0, el: startRef.current, mode: 'top' }];
-    for (let order = 1; order <= TOTAL_WORLDS; order++) {
-      const box = boxRefs.current.get(order);
-      const top = topRefs.current.get(order);
-      const worldIndex = worldPointIndex(order);
-      if (box) jobs.push({ index: worldIndex, el: box, mode: 'center' });
-      else if (top) jobs.push({ index: worldIndex, el: top, mode: 'center' });
-      WORLD_ACTIVITIES.forEach((activity, activityIndex) => {
-        jobs.push({ index: activityPointIndex(order, activityIndex), el: activityRefs.current.get(`${order}:${activity.id}`) ?? null, mode: 'center' });
-      });
-    }
-    const result: Array<Pt | undefined> = new Array(expectedPointCount);
-    let pending = jobs.length;
-    const done = () => {
-      if (--pending > 0) return;
-      // Keep every World and activity at its fixed path index. Filtering a
-      // missing measurement would shift every later milestone on the trail.
-      if (result.every((point): point is Pt => Boolean(point))) {
-        setPoints(result as Pt[]);
-      }
-    };
-    jobs.forEach(({ index, el, mode }) => {
-      if (!el) { done(); return; }
-      el.measureLayout(
-        journey,
-        (x, y, w, h) => {
-          result[index] = { x: x + w / 2, y: mode === 'center' ? y + h / 2 : y };
-          done();
-        },
-        () => done()
-      );
-    });
-  }, [expectedPointCount]);
-
-  // Re-measure whenever the layout can change (gap, width). Layout events fire child-first, so wait a frame.
-  React.useEffect(() => {
-    const t = setTimeout(measure, 60);
-    return () => clearTimeout(t);
-  }, [gap, width, p.isDark, measure, pathStyle]);
-
-  // Open on the current world's card instead of the top of the journey (once, after the first measurement).
-  React.useEffect(() => {
-    const currentIndex = worldPointIndex(currentOrder);
-    if (!points || points.length !== expectedPointCount || scrolledToCurrent.current || points.length <= currentIndex) return;
-    scrolledToCurrent.current = true;
-    const y = Math.max(0, points[currentIndex].y - 150);
-    // Not cancelled on re-render: the layout is re-measured a moment later, which would otherwise drop this scroll.
-    const scrollTimer = setTimeout(() => scrollRef.current?.scrollTo({ y, animated: false }), 80);
-    return () => clearTimeout(scrollTimer);
-  }, [points, currentOrder, expectedPointCount]);
-
-  const trailData = React.useMemo(() => {
-    if (!points || points.length !== expectedPointCount || points.length < 2) return null;
-    const pts = points.map((q) => ({ ...q }));
-    // Keep the lead-in as part of the same curved trail. Forcing segment 0
-    // straight makes the RN path visibly collapse into a vertical line.
-    const trail = buildTrail(pts, [], width, pathStyle);
-    return { trail, startY: pts[0].y, fadeEndY: pts[0].y + Math.min(Math.max(30, pts[1].y - pts[0].y) * 0.75, 55), activeIndex: Math.min(pts.length - 1, worldPointIndex(currentOrder)) };
-  }, [points, width, pathStyle, currentOrder, expectedPointCount]);
-
-  const nodeCommon = { p, gap: gap + 14, pathStyle, completed, anchors, onOpenWorld };
-  const w = (order: number) => HOME_WORLDS[order - 1];
-  const sec = (extra: object) => [s.section, { width: sectionWidth }, extra];
-  const alignmentFor = (order: number): 'left' | 'right' => ((order <= 15 ? order % 2 === 1 : order % 2 === 0) ? 'left' : 'right');
-
-  const standard = (order: number, paddingTop: number) => (
-    <StandardNode {...nodeCommon} world={w(order)} align={alignmentFor(order)} paddingTop={paddingTop} />
-  );
-  const activities = (order: number) => {
-    const movesRight = alignmentFor(order) === 'left';
-    const positions: ActivityPosition[] = movesRight ? ['midLeft', 'center', 'midRight'] : ['midRight', 'center', 'midLeft'];
-    return WORLD_ACTIVITIES.map((activity, index) => (
-      <ActivityNode
-        key={`${order}-${activity.id}`}
-        p={p}
-        order={order}
-        activity={activity}
-        position={positions[index]}
-        locked={!UNLOCK_ALL && order > UNLOCK_THROUGH}
-        count={activity.id === 'quiz' ? (quizActivityCounts[order] ?? 0) : activity.id === 'writeRun' ? (writeRunActivityCounts[order] ?? 0) : (debugActivityCounts[order] ?? 0)}
-        anchors={anchors}
-        onOpen={onOpenActivity}
-        shape={journeyVariant === 'milestonesCircle' ? 'circle' : journeyVariant === 'milestonesDiamond' ? 'diamond' : journeyVariant === 'milestonesPill' ? 'pill' : 'square'}
-      />
-    ));
+    const t = (d - cum[lo]) / Math.max(0.0001, cum[hi] - cum[lo]);
+    const a = pts[lo];
+    const b = pts[hi];
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, angle: (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI };
   };
-  const worldNode = (order: number, paddingTop: number) => (
-    <React.Fragment key={order}>
-      {order === currentOrder ? (
-        <CurrentCard p={p} world={w(order)} paddingTop={paddingTop} gap={gap + 14} anchors={anchors} onOpenWorld={onOpenWorld} />
-      ) : (
-        standard(order, paddingTop)
-      )}
-      {activities(order)}
-    </React.Fragment>
-  );
-  return (
-    <View style={{ flex: 1, backgroundColor: p.page }}>
-      {/* The three chapter bands are the ScrollView's sticky headers (children 2, 4 and 6): the system pins the current one under
-          the header and the next one pushes it away, like the web's position: sticky. */}
-      <ScrollView
-        ref={scrollRef}
-        innerViewRef={contentRef as React.RefObject<View>}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
-        stickyHeaderIndices={[2, 4, 6]}
-        scrollEventThrottle={16}
-        onScroll={updateStickyBand}
-        onMomentumScrollEnd={updateStickyBand}
-        onScrollEndDrag={updateStickyBand}
-        onContentSizeChange={(_, h) => {
-          setContentHeight(h);
-          setTimeout(measure, 0);
-        }}
-      >
-        <JourneyCard p={p} current={current} completed={completed} />
-
-        {/* The trail fills the whole scroll content, behind everything else */}
-        <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: contentHeight }}>
-          {trailData && contentHeight > 0 && (
-            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-              <Trail p={p} trail={trailData.trail} activeIndex={trailData.activeIndex} startY={trailData.startY} fadeEndY={trailData.fadeEndY} width={width} height={contentHeight} animateStreaks />
-            </View>
-          )}
-        </View>
-
-        {/* Section 1: Beginner */}
-        <Band p={p} chapter={1} label="BEGINNER · WORLDS 1–8" active={currentOrder <= 8} topBorder={false} blurred={stickyBand === 1} onLayout={onBandLayout} />
-        <View style={sec({ paddingHorizontal: 20, paddingTop: 0, paddingBottom: 32 + 24 })}>
-          <View style={{ width: '100%', paddingLeft: 32, marginTop: -1 }}>
-            <View ref={startRef} collapsable={false} style={{ width: 44, height: 0 }} />
-          </View>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((order) => worldNode(order, 64))}
-        </View>
-
-        {/* Section 2: Intermediate */}
-        <Band p={p} chapter={2} label="INTERMEDIATE · WORLDS 9–15" active={currentOrder > 8 && currentOrder <= 15} topBorder blurred={stickyBand === 2} onLayout={onBandLayout} />
-        <View style={sec({ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 + 24 })}>
-          {[9, 10, 11, 12, 13, 14].map((order) => worldNode(order, order === 9 ? 40 : 60))}
-          <BossNode p={p} world={w(15)} completed={completed} anchors={anchors} onOpenWorld={onOpenWorld} />
-          {activities(15)}
-        </View>
-
-        {/* Section 3: Experienced */}
-        <Band p={p} chapter={3} label="EXPERIENCED · WORLDS 16–22" active={currentOrder > 15} topBorder blurred={stickyBand === 3} onLayout={onBandLayout} />
-        <View style={sec({ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 })}>
-          {[16, 17, 18, 19, 20, 21].map((order) => worldNode(order, order === 16 ? 40 : 60))}
-          <FinalCard p={p} world={w(22)} completed={completed} anchors={anchors} />
-          {activities(22)}
-        </View>
-      </ScrollView>
-    </View>
-  );
-});
+  const fade = (y: number) => (y <= startY ? 0 : y >= fadeEndY ? 1 : (y - startY) / Math.max(1, fadeEndY - startY));
+  const KEYS = 36; // keyframes per loop (every 11px of travel)
+  const out: StreakKeys[] = [];
+  for (let k = -2; k * SHIMMER_PERIOD < total; k++) {
+    const input: number[] = [];
+    const x: number[] = [];
+    const y: number[] = [];
+    const rot: string[] = [];
+    const op: number[] = [];
+    let lastAngle = 0;
+    for (let j = 0; j <= KEYS; j++) {
+      const pos = k * SHIMMER_PERIOD + (SHIMMER_TRAVEL * j) / KEYS;
+      const q = at(pos);
+      // keep the angle continuous across +-180
+      let ang = q.angle;
+      while (ang - lastAngle > 180) ang -= 360;
+      while (ang - lastAngle < -180) ang += 360;
+      lastAngle = ang;
+      input.push(j / KEYS);
+      x.push(q.x);
+      y.push(q.y);
+      rot.push(`${ang.toFixed(1)}deg`);
+      op.push(pos < 0 || pos > total ? 0 : fade(q.y));
+    }
+    if (op.some((v) => v > 0)) out.push({ key: k, input, x, y, rot, op });
+  }
+  return out;
+}
 
 const s = StyleSheet.create({
   // journey card
