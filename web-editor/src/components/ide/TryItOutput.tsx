@@ -5,6 +5,7 @@ interface TryItOutputProps {
   result: KotlinExecutionResult | null;
   isDark: boolean;
   onClear: () => void;
+  onRun: () => void;
 }
 
 const ERROR_LABELS: Record<string, string> = {
@@ -21,7 +22,7 @@ const ERROR_LABELS: Record<string, string> = {
  * the error with its line number, the run time, and Clear. Lines never wrap: a wrapped long line would look like an extra
  * newline, so a long line scrolls sideways instead.
  */
-export function TryItOutput({ result, isDark, onClear }: TryItOutputProps) {
+export function TryItOutput({ result, isDark, onClear, onRun }: TryItOutputProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const failed = !!result && !result.success;
   const printed = result?.output ?? '';
@@ -34,7 +35,7 @@ export function TryItOutput({ result, isDark, onClear }: TryItOutputProps) {
 
   const border = isDark ? 'border-slate-800' : 'border-slate-200';
   const muted = isDark ? 'text-slate-500' : 'text-slate-400';
-  const iconBtn = `w-7 h-7 rounded-md flex items-center justify-center cursor-pointer active:scale-95 transition-colors ${
+  const iconBtn = `w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer active:scale-95 transition-colors ${
     isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-200 hover:text-slate-800'
   }`;
 
@@ -44,7 +45,7 @@ export function TryItOutput({ result, isDark, onClear }: TryItOutputProps) {
       id="try-it-output"
       className={`shrink-0 max-h-[30vh] flex flex-col border-t ${isDark ? 'border-slate-700 bg-[#0a0e17]' : 'border-slate-300 bg-slate-50'}`}
     >
-      <div className={`shrink-0 flex items-center gap-1.5 pl-3 sm:pl-4 pr-1.5 h-9 border-b ${border}`}>
+      <div className={`shrink-0 flex items-center gap-1.5 pl-3 sm:pl-4 pr-3 sm:pr-4 h-11 border-b ${border}`}>
         <span
           className={`material-symbols-outlined !text-[16px] ${
             !result ? muted : failed ? 'text-rose-500' : 'text-emerald-500'
@@ -60,7 +61,18 @@ export function TryItOutput({ result, isDark, onClear }: TryItOutputProps) {
             {result.executionTimeMs || 0} ms
           </span>
         )}
-        <span className="ml-auto flex items-center gap-0.5">
+        <span className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="Run code"
+            onClick={onRun}
+            className={`h-8 px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-bold cursor-pointer active:scale-95 transition-all shadow-sm ${
+              isDark ? 'bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-950/40' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+            }`}
+          >
+            <span className="material-symbols-outlined !text-[15px]">play_arrow</span>
+            <span>Run</span>
+          </button>
           {result && (
             <button type="button" aria-label="Clear output" onClick={onClear} className={iconBtn}>
               <span className="material-symbols-outlined !text-[18px]">delete_sweep</span>

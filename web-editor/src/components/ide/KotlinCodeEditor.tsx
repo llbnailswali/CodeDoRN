@@ -49,10 +49,15 @@ export interface KotlinCodeEditorHandle {
 }
 
 interface KotlinCodeEditorProps {
-  /** A small control floating over the top-right corner of the code (e.g. Try it's Copy code button). */
+  /** A small control shown at the right edge above the keyboard, or above the output panel when requested. */
   floatingAction?: React.ReactNode;
+  floatingActionAboveOutput?: boolean;
   /** Free coding ("Try it"): open with the caret on a free line after the last statement, inside the final `}`, instead of at a starter's TODO comment. */
   cursorAtEnd?: boolean;
+  /** Controls the on-screen coding keyboard. Defaults to visible for existing editor flows. */
+  virtualKeyboardVisible?: boolean;
+  /** Called when the learner taps the editor surface. */
+  onEditorInteraction?: () => void;
   code: string;
   onCodeChange: (code: string) => void;
   // Ctrl/Cmd+Enter shortcut. What "running" means (graded vs. freeform) is
@@ -99,10 +104,12 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       outputPanel,
       cursorAtEnd,
       floatingAction,
+      floatingActionAboveOutput = false,
+      virtualKeyboardVisible = true,
+      onEditorInteraction,
     },
     ref
   ) => {
-    const [showVirtualKeyboard] = useState<boolean>(true);
     // On by default: lines do not wrap and long lines scroll sideways. The overflow menu can switch to wrapping.
     const [horizontalScrollEnabled, setHorizontalScrollEnabled] = useState<boolean>(true);
     // Helper comments the learner has tapped open (keyed by the comment's trimmed text).
@@ -1243,10 +1250,10 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
 
     return (
       <div className={`flex-1 flex flex-col min-h-0 relative overflow-hidden ${className}`} data-purpose="kotlin-code-editor">
-        {floatingAction && <div className="absolute top-2 right-2 z-20">{floatingAction}</div>}
         {/* ================= BEGIN: Code Editor Surface ================= */}
         <div
           ref={editorScrollRef}
+          onPointerDown={onEditorInteraction}
           onClick={handleCanvasClick}
           // scroll-padding gives scrollIntoView({inline:'nearest'}) room to stop
           // short of the true edge -- e.g. after a Backspace merges the cursor
@@ -1664,7 +1671,23 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
         )}
         {/* ================= END: Identifier Autocomplete Suggestions ================= */}
 
+        {floatingAction && floatingActionAboveOutput && (
+          <div className="w-full h-[52px] shrink-0 flex items-center justify-between pl-0 pr-3" data-purpose="editor-floating-action">
+            <span
+              aria-hidden="true"
+              className={`${collapseHelperComments ? 'w-[38px]' : 'w-[22px]'} self-stretch shrink-0 border-r ${
+                isDark ? 'bg-[#090d15]/90 border-ide-border' : 'bg-slate-100 border-slate-300'
+              }`}
+            />
+            <span className="ml-auto">{floatingAction}</span>
+          </div>
+        )}
         {outputPanel}
+        {floatingAction && !floatingActionAboveOutput && (
+          <div className="w-full shrink-0 flex justify-end px-3 py-2" data-purpose="editor-floating-action">
+            {floatingAction}
+          </div>
+        )}
 
         {/* ================= BEGIN: Sticky Bottom Keyboard & Accessories ================= */}
         <div
@@ -1673,28 +1696,29 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
           }`}
           data-purpose="sticky-bottom-keyboard-panel"
         >
-          <CodingAccessoryToolbar
-            onInsertToken={handleInsertKeywordToken}
-            onInsertSymbol={handleInsertToken}
-            customTokens={customTokens}
-            prioritySymbols={prioritySymbols}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < history.length - 1}
-            isDark={isDark}
-          />
-
-          {showVirtualKeyboard && (
-            <MobileCodingKeyboard
-              onInsertChar={handleInsertToken}
-              onBackspace={handleSmartBackspace}
-              onReturn={handleSmartReturn}
-              onSpace={handleSpace}
-              onCursorSwipeHorizontal={handleCursorSwipeHorizontal}
-              onCursorSwipeVertical={moveCursorVerticalBy}
-              isDark={isDark}
-            />
+          {virtualKeyboardVisible && (
+            <>
+              <CodingAccessoryToolbar
+                onInsertToken={handleInsertKeywordToken}
+                onInsertSymbol={handleInsertToken}
+                customTokens={customTokens}
+                prioritySymbols={prioritySymbols}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={historyIndex > 0}
+                canRedo={historyIndex < history.length - 1}
+                isDark={isDark}
+              />
+              <MobileCodingKeyboard
+                onInsertChar={handleInsertToken}
+                onBackspace={handleSmartBackspace}
+                onReturn={handleSmartReturn}
+                onSpace={handleSpace}
+                onCursorSwipeHorizontal={handleCursorSwipeHorizontal}
+                onCursorSwipeVertical={moveCursorVerticalBy}
+                isDark={isDark}
+              />
+            </>
           )}
         </div>
         {/* ================= END: Sticky Bottom Keyboard & Accessories ================= */}

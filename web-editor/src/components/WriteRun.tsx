@@ -82,9 +82,14 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   onPracticeGoBack,
 }) => {
   const [executionResult, setExecutionResult] = useState<KotlinExecutionResult | null>(null);
+  const [tryItKeyboardVisible, setTryItKeyboardVisible] = useState(false);
   const [showOutputPanel, setShowOutputPanel] = useState<boolean>(false);
   const [showSolutionModal, setShowSolutionModal] = useState<boolean>(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState<boolean>(false);
+
+  useEffect(() => {
+    setTryItKeyboardVisible(false);
+  }, [tryItMode]);
 
   // Clicking anywhere outside the three-dot menu (and its button) closes it. Capture phase, so it also works over the
   // editor, whose own handlers stop propagation; the click still reaches what was tapped.
@@ -422,7 +427,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           message: 'Code has not been edited yet. Please write the required logic before running.',
           line: 1,
           type: 'runtime_error',
-        },
+  },
         executionTimeMs: 0,
         exitCode: 1,
       };
@@ -516,9 +521,9 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           isDark ? 'bg-[#0d121d] border-ide-border' : 'bg-[#e8eaf0] border-slate-300'
         }`}
       >
-      <div className="px-3 sm:px-4 h-14 flex items-center justify-between">
+        <div className="relative px-3 sm:px-4 h-14 flex items-center justify-between">
         {/* Left: Back button & Problem Details Trigger */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
           <button
             type="button"
             aria-label="Go Back"
@@ -576,8 +581,17 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           )}
         </div>
 
-        {/* Center: Practice-mode task position, e.g. "2 / 12" */}
-        {isPracticeMode && practicePosition && (
+        {/* Center: Lesson name in Try it, otherwise practice task position. */}
+        {tryItMode ? (
+          <div
+            className={`absolute left-14 right-14 min-w-0 truncate text-center font-['Outfit'] text-base font-bold tracking-tight ${
+              isDark ? 'text-white' : 'text-slate-900'
+            }`}
+            title={topicTitle}
+          >
+            {topicTitle}
+          </div>
+        ) : isPracticeMode && practicePosition ? (
           <div
             className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold tracking-wide ${
               isDark ? 'bg-slate-800/80 text-indigo-300' : 'bg-white text-indigo-600 border border-slate-300'
@@ -585,12 +599,12 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           >
             {practicePosition.current} / {practicePosition.total}
           </div>
-        )}
+        ) : null}
 
         {/* Right: Run button and Overflow Menu (Undo/Redo now live above the
             keyboard, right-aligned, within easy thumb reach while typing) */}
-        <div className="flex items-center gap-2 relative">
-          <button
+        <div className="flex shrink-0 items-center gap-2 relative">
+          {!tryItMode && <button
             type="button"
             aria-label="Execute code"
             {...runButtonLongPress}
@@ -601,7 +615,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
               <polygon points="5 3 19 12 5 21 5 3" />
             </svg>
             <span className="tracking-wide">Run</span>
-          </button>
+          </button>}
 
           <button
             type="button"
@@ -783,8 +797,11 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
         collapseHelperComments={isPracticeMode}
         onHelperToggle={handleHelperToggle}
         cursorAtEnd={tryItMode}
+        virtualKeyboardVisible={!tryItMode || tryItKeyboardVisible}
+        onEditorInteraction={tryItMode ? () => setTryItKeyboardVisible(true) : undefined}
         floatingAction={<CopyCodeButton code={userCode} isDark={isDark} />}
-        outputPanel={tryItMode ? <TryItOutput result={executionResult} isDark={isDark} onClear={() => setExecutionResult(null)} /> : undefined}
+        floatingActionAboveOutput={tryItMode}
+        outputPanel={tryItMode ? <TryItOutput result={executionResult} isDark={isDark} onClear={() => setExecutionResult(null)} onRun={handleExecute} /> : undefined}
       />
 
       {/* ================= BEGIN: Preparing Exercise Progress Animation ================= */}

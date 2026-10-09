@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { copyText } from '../../utils/clipboard';
 
-/** The small floating "copy the code" button over the editor's top-right corner (Play, Write & Run and Debug). */
+/** The small floating "copy the code" button over the editor's bottom-right corner (Play, Write & Run and Debug). */
 export function CopyCodeButton({ code, isDark }: { code: string; isDark: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
