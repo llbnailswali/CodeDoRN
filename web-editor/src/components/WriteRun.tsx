@@ -816,7 +816,13 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
         topOverlay={(!tryItMode && data.expectedOutput) ? <ExpectedOutputChip expectedOutput={data.expectedOutput} isDark={isDark} /> : undefined}
         outputPanel={
           tryItMode ? (
-            <TryItOutput result={executionResult} isDark={isDark} onClear={() => setExecutionResult(null)} onRun={handleExecute} />
+            <TryItOutput
+              result={executionResult}
+              isDark={isDark}
+              onClear={() => setExecutionResult(null)}
+              onRun={handleExecute}
+              fix={compileFix ? { label: compileFix.label, onApply: () => { soundFX.playClick(); editorRef.current?.replaceCode(compileFix.code, compileFix.caret); } } : null}
+            />
           ) : undefined
         }
         bottomOverlay={

@@ -6,6 +6,8 @@ interface TryItOutputProps {
   isDark: boolean;
   onClear: () => void;
   onRun: () => void;
+  /** A one-tap repair for the shown compile error (rename to main, add a missing bracket, ...), when one is known. */
+  fix?: { label: string; onApply: () => void } | null;
 }
 
 const ERROR_LABELS: Record<string, string> = {
@@ -22,7 +24,7 @@ const ERROR_LABELS: Record<string, string> = {
  * the error with its line number, the run time, and Clear. Lines never wrap: a wrapped long line would look like an extra
  * newline, so a long line scrolls sideways instead.
  */
-export function TryItOutput({ result, isDark, onClear, onRun }: TryItOutputProps) {
+export function TryItOutput({ result, isDark, onClear, onRun, fix }: TryItOutputProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const failed = !!result && !result.success;
   const printed = result?.output ?? '';
@@ -100,6 +102,18 @@ export function TryItOutput({ result, isDark, onClear, onRun }: TryItOutputProps
                 <pre className="m-0 text-xs leading-relaxed font-mono whitespace-pre-wrap break-words">
                   {result.error?.message || 'The code could not be executed.'}
                 </pre>
+                {fix && (
+                  <button
+                    type="button"
+                    onClick={fix.onApply}
+                    className={`mt-1.5 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold cursor-pointer active:scale-95 transition-colors ${
+                      isDark ? 'bg-rose-500/20 text-rose-200 hover:bg-rose-500/30' : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-100'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined !text-[14px]">auto_fix_high</span>
+                    Apply fix: {fix.label}
+                  </button>
+                )}
               </div>
             )}
             {!failed && printed === '' && (
