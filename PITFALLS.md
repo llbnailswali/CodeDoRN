@@ -2912,3 +2912,11 @@ comma) and a generic alias for a function type. And `kotlinClassChecks.ts` now r
 class's method whose parameter is the class's own type parameter (`val s = Store<Int>()` then `s.add("20")`); it is silent for an
 overloaded method, a name declared twice, or a type argument that is not a plain value type. Pinned in `test:structure-rules`, whose cases
 are also checked against real kotlinc when `npm run real-kotlin:serve` is running.
+
+Same pass, two more: (1) the value of `withContext(...) { }`, `coroutineScope { }`, `supervisorScope { }`, `runBlocking { }` and `run { }` is
+now their block's value, `async { x }` is `Deferred<type of x>` and `.await()` unwraps it, and a block's earlier `val`s are in scope for
+its last expression, so `suspend fun total(): String = coroutineScope { ... a.await() + b.await() }` is a type mismatch. (2) A member
+that is private in EVERY class declaring it is rejected wherever it is reached from outside those classes, whatever the receiver
+(`Move.RIGHT.dx`, `customer.address?.city`, a loop variable); the receiver-typed rule above could not see these. Names standard types
+also have (`name`, `size`, `value`, ...) and names an extension declares are skipped. A repeated modifier (`private private val`) is
+a tree rule in `kotlinSyntaxCheck.ts`.

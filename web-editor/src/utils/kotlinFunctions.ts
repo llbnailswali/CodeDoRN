@@ -681,11 +681,19 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   /** The value of one branch of `if`/`when`/`try`: a `{ block }` gives its last statement (not a lambda), anything else is an expression. */
   function branchType(a: number, b: number, ctx: Context): Type {
     if (at(a) === '{' && pairs.get(a) === b - 1) {
-      const last = statements(a + 1, b - 1).at(-1);
+      const parts = statements(a + 1, b - 1);
+      const last = parts.at(-1);
       if (!last) return unit;
       // A block that ends in a declaration or a loop has no value the typer can read.
       if (['val', 'var', 'for', 'while', 'do', 'fun', 'class'].includes(at(last[0]))) return unknown;
-      return infer(last[0], last[1], ctx);
+      // Earlier `val x = ...` lines in the block are in scope for its last expression (`val a = async { 4 }` ... `a.await()`).
+      const inner = child(ctx);
+      for (const [x, y] of parts.slice(0, -1)) {
+        if ((at(x) === 'val' || at(x) === 'var') && isName(at(x + 1)) && at(x + 2) === '=') {
+          try { inner.vars.set(at(x + 1), infer(x + 3, y, inner)); } catch { inner.vars.set(at(x + 1), unknown); }
+        }
+      }
+      return infer(last[0], last[1], inner);
     }
     return infer(a, b, ctx);
   }
@@ -737,6 +745,21 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       params.forEach(p => inner.vars.set(p.name, p.type ?? unknown));
       const last = statements(arrow < 0 ? a + 1 : arrow + 1, end).at(-1);
       return { name: 'Function', params: params.map(p => p.type ?? unknown), result: last ? infer(last[0], last[1], inner) : unit };
+    }
+    // A scope builder's value is its block's value: `withContext(d) { 12 }`, `coroutineScope { a.await() + b.await() }`, `run { ... }`.
+    // `async { x }` is a Deferred of x's type, and `.await()` unwraps it.
+    if (at(b - 1) === '}' && pairs.has(b - 1)) {
+      const open = pairs.get(b - 1)!;
+      const callee = at(open - 1) === ')' && pairs.has(open - 1) ? pairs.get(open - 1)! - 1 : open - 1;
+      if (callee === a && ['withContext', 'coroutineScope', 'supervisorScope', 'runBlocking', 'run'].includes(at(a)) && !functions.has(at(a))) return branchType(open, b, ctx);
+      if (callee === a && at(a) === 'async' && !functions.has('async')) {
+        const value = branchType(open, b, ctx);
+        return value.name === '?' || value.name === 'Function' || value.nullable ? unknown : { name: `Deferred<${value.name}>` };
+      }
+    }
+    if (at(b - 1) === ')' && at(b - 2) === '(' && at(b - 3) === 'await' && at(b - 4) === '.' && b - 4 > a) {
+      const deferred = /^Deferred<(\w+)>$/.exec(infer(a, b - 4, ctx).name);
+      if (deferred) return { name: deferred[1] };
     }
     // `throw ...` never produces a value: its type is Nothing, which fits any branch.
     if (at(a) === 'throw') return { name: 'Nothing' };

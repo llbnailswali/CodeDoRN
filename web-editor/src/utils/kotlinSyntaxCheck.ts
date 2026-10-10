@@ -238,6 +238,14 @@ function looseShape(root: TSNode, code: string): { node: TSNode; message: string
         return;
       }
     }
+    // `private private val x`: a modifier written twice.
+    if (n.type === 'modifiers') {
+      const seen = new Set<string>();
+      for (const c of kids) {
+        if (seen.has(c.text)) { found = { node: c, message: `Repeated '${c.text}'` }; return; }
+        seen.add(c.text);
+      }
+    }
     // String arithmetic other than `+`: `name + ": " - score` printed NaN. A String has no minus/times/div/rem.
     if (n.type === 'binary_expression') {
       const op = n.childForFieldName('operator');

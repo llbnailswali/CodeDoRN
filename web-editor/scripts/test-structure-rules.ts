@@ -121,6 +121,18 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['generic interface typed by declaration', 'interface Logger<in T> {\n  fun log(v: T)\n}\nclass AnyLogger : Logger<Any> {\n  override fun log(v: Any) = println(v)\n}\nfun main() {\n  val l: Logger<String> = AnyLogger()\n  l.log(42)\n}', 'error'],
   ['generic interface given the right literal', 'interface Logger<in T> {\n  fun log(v: T)\n}\nclass AnyLogger : Logger<Any> {\n  override fun log(v: Any) = println(v)\n}\nfun main() {\n  val l: Logger<String> = AnyLogger()\n  l.log("hi")\n}', 'ok'],
   ['Int literal for a Long type argument', 'class Store<T> {\n  private val items = mutableListOf<T>()\n  fun add(v: T) {\n    items.add(v)\n  }\n  fun first(): T? = items.firstOrNull()\n}\nfun main() {\n  val s = Store<Long>()\n  s.add(5)\n  println(s.first())\n}', 'ok'],
+  // --- the value of a coroutine scope block, and async/await
+  ['withContext value of the wrong type', 'import kotlinx.coroutines.*\nsuspend fun load(): String = withContext(Dispatchers.Default) {\n  12\n}\nfun main() = runBlocking {\n  println(load())\n}', 'error'],
+  ['withContext value of the right type', 'import kotlinx.coroutines.*\nsuspend fun load(): Int = withContext(Dispatchers.Default) {\n  12\n}\nfun main() = runBlocking {\n  println(load())\n}', 'ok'],
+  ['awaited sum of the wrong type', 'import kotlinx.coroutines.*\nsuspend fun total(): String = coroutineScope {\n  val a = async {\n    4\n  }\n  val b = async {\n    6\n  }\n  a.await() + b.await()\n}\nfun main() = runBlocking {\n  println(total())\n}', 'error'],
+  ['awaited sum of the right type', 'import kotlinx.coroutines.*\nsuspend fun total(): Int = coroutineScope {\n  val a = async {\n    4\n  }\n  val b = async {\n    6\n  }\n  a.await() + b.await()\n}\nfun main() = runBlocking {\n  println(total())\n}', 'ok'],
+  ['run block value', 'fun f(): String = run {\n  val x = 2\n  "v" + x\n}\nfun main() {\n  println(f())\n}', 'ok'],
+  // --- a member that is private everywhere it is declared, reached through any receiver
+  ['private enum property from outside', 'enum class Move(private val dx: Int, val dy: Int) {\n  RIGHT(1, 0)\n}\nfun main() {\n  println(Move.RIGHT.dx)\n}', 'error'],
+  ['private property through a nullable chain', 'class Address(private val city: String?)\nclass Customer(val address: Address?)\nfun main() {\n  val c = Customer(Address("Pune"))\n  println(c.address?.city)\n}', 'error'],
+  ['same name public in another class', 'class A(private val v: Int)\nclass B(val v: Int)\nfun main() {\n  println(B(2).v)\n}', 'ok'],
+  ['private property of another instance inside the class', 'class P(private val x: Int) {\n  fun same(o: P) = o.x == x\n}\nfun main() {\n  println(P(1).same(P(1)))\n}', 'ok'],
+  ['repeated modifier', 'class F(private private val p: String)\nfun main() {\n  println(1)\n}', 'error'],
 ];
 
 (async () => {

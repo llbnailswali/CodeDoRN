@@ -54,9 +54,9 @@
  },
  "annotation-type-swap": {
   "total": 44,
-  "silent-wrong": 8,
+  "compile-line-differs": 6,
   "agree": 35,
-  "compile-line-differs": 1
+  "silent-wrong": 3
  },
  "initializer-mismatch": {
   "total": 12,
@@ -122,12 +122,14 @@
  "wrong-return-type": {
   "total": 80,
   "agree": 60,
-  "silent-wrong": 20
+  "compile-line-differs": 5,
+  "silent-wrong": 15
  },
  "private-access": {
   "total": 45,
-  "agree": 31,
-  "silent-wrong": 14
+  "agree": 39,
+  "silent-wrong": 5,
+  "compile-token-differs": 1
  },
  "remove-import": {
   "total": 44,
@@ -173,11 +175,11 @@
  },
  "generic-duplicate-token": {
   "total": 1500,
-  "agree": 1408,
-  "false-accept": 66,
+  "agree": 1414,
+  "false-accept": 64,
   "extra-runtime": 11,
   "compile-token-differs": 4,
-  "silent-wrong": 10,
+  "silent-wrong": 6,
   "false-reject": 1
  },
  "generic-swap-tokens": {

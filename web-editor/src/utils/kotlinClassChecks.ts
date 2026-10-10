@@ -376,7 +376,31 @@ export function checkClassMemberRules(source: string): ClassRuleError | null {
       }
     }
   }
-  return genericArgumentMismatch(source, m, decls);
+  return privateMemberAnywhere(m, decls) ?? genericArgumentMismatch(source, m, decls);
+}
+
+/** Member names that also exist on standard-library types, so `x.name` may be a String's or an enum's, not the private one. */
+const STDLIB_MEMBER_NAMES = new Set(['name', 'size', 'length', 'value', 'key', 'first', 'second', 'third', 'message', 'cause', 'keys', 'values',
+  'entries', 'indices', 'lastIndex', 'isEmpty', 'count', 'ordinal', 'text', 'data', 'id', 'start', 'end', 'last', 'max', 'min', 'sum']);
+
+/**
+ * `x.dx` where EVERY declaration of a member named `dx` in the program is private, used outside the classes that declare it. The
+ * receiver's type does not matter then (an enum constant `Move.RIGHT.dx`, a loop variable, `customer.address?.city`): whatever it is,
+ * the only `dx` it can have is private. Names that standard types also have (`name`, `size`, ...) and extension declarations are skipped.
+ */
+function privateMemberAnywhere(m: string, decls: Decl[]): ClassRuleError | null {
+  const owners = new Map<string, { decl: Decl; member: Member }[]>();
+  for (const d of decls) for (const member of d.members) owners.set(member.name, [...(owners.get(member.name) ?? []), { decl: d, member }]);
+  for (const [name, list] of owners) {
+    if (!list.every((o) => o.member.visibility === 'private') || STDLIB_MEMBER_NAMES.has(name) || BUILTIN_MEMBERS.has(name)) continue;
+    if (new RegExp(`\\b(?:fun|val|var)\\s+(?:<[^>]*>\\s*)?[A-Za-z_][\\w<>?, ]*\\.\\s*${name}\\b`).test(m)) continue; // an extension
+    for (const use of m.matchAll(new RegExp(`(?:\\?\\.|\\.)\\s*${name}\\b`, 'g'))) {
+      const index = use.index!;
+      if (list.some((o) => o.decl.start <= index && index <= o.decl.end)) continue;
+      return { message: `Cannot access '${name}': it is private in '${list[0].decl.name}'`, line: lineOf(m, index), type: 'compiler_error' };
+    }
+  }
+  return null;
 }
 
 /**
