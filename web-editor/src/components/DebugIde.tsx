@@ -466,7 +466,7 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
               type="button"
               id="task-trigger-btn"
               onClick={handleToggleTaskModal}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium active:scale-95 transition-all cursor-pointer ${
+              className={`relative flex items-center gap-1.5 px-2 py-1.5 rounded-xl border text-xs font-medium active:scale-95 transition-all cursor-pointer ${
                 isTaskButtonCatching ? 'animate-task-catch ring-2 ring-rose-400' : ''
               } ${
                 showTaskModal
@@ -503,9 +503,10 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
           {/* Center: Practice-mode task position, e.g. "2 / 12" */}
           {isPracticeMode && practicePosition && (
             <div
-              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold tracking-wide ${
+              className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 px-1 py-1 rounded-lg font-mono text-[11px] font-bold tracking-wide ${
                 isDark ? 'bg-rose-950/40 text-rose-300' : 'bg-white text-rose-700 border border-rose-200'
               }`}
+              style={{ left: 'calc(50% + 6px)' }}
             >
               {practicePosition.current} / {practicePosition.total}
             </div>

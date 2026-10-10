@@ -240,14 +240,14 @@ function CodePanel({
             hitSlop={8}
             style={s.copyButton}
           >
-            <Svg width={16} height={16} viewBox="0 0 24 24" accessibilityLabel={copyState === 'copied' ? 'Copied' : 'Copy code'}>
+            <Svg width={12} height={12} viewBox="0 0 24 24" accessibilityLabel={copyState === 'copied' ? 'Copied' : 'Copy code'}>
               {copyState === 'copied' ? (
                 <Path fill="#6EE7B7" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
               ) : (
                 <Path fill={copyState === 'failed' ? '#FDA4AF' : '#CBD5E1'} d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
               )}
             </Svg>
-            {copyState !== 'idle' && <Text style={[s.mono11, { color: copyState === 'failed' ? '#FDA4AF' : '#6EE7B7' }]}>{copyState === 'copied' ? 'Copied' : 'Failed'}</Text>}
+            {copyState === 'failed' && <Text style={[s.mono11, { color: '#FDA4AF' }]}>Failed</Text>}
           </Pressable>
         </View>
       )}
@@ -551,7 +551,7 @@ function QuizToolbar({ p, world, label, question, topInset, step, total, checked
   onClose: () => void;
 }) {
   const dark = p.isDark;
-  const bg = dark ? '#0B0F19' : '#F3F4F8';
+  const bg = dark ? '#121826' : '#FFFFFF';
   const title = dark ? '#F8FAFC' : '#1C2033';
   const muted = dark ? '#94A3B8' : '#64748B';
   const progress = Math.min(1, (step - 1 + (checked ? 1 : 0)) / total);
@@ -563,7 +563,8 @@ function QuizToolbar({ p, world, label, question, topInset, step, total, checked
       : { bg: dark ? 'rgba(245,158,11,0.18)' : '#FEF3C7', fg: dark ? '#FCD34D' : '#B45309' };
   return (
     <View style={{ paddingTop: topInset, backgroundColor: bg, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: dark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
-      <View style={[s.header, { paddingRight: 0, paddingTop: 0 }]}>
+      <View style={{ height: 6 }} />
+      <View style={[s.header, { paddingRight: 0, paddingTop: 0 }]}> 
         <Pressable onPress={onClose} style={[s.closeBtn, dark ? { borderColor: 'rgba(255,255,255,0.15)', backgroundColor: '#121826' } : { borderColor: '#CBD5E1', backgroundColor: '#FFFFFF' }]}>
           <Icon name="close" size={20} exact color={dark ? '#E2E8F0' : '#334155'} />
         </Pressable>
@@ -575,7 +576,7 @@ function QuizToolbar({ p, world, label, question, topInset, step, total, checked
             </View>
           )}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <Text numberOfLines={1} style={[s.concept, { color: muted, flexShrink: 1 }]}>Concept · {question.topic}</Text>
+            <Text numberOfLines={1} style={[s.concept, { color: muted, flexShrink: 1 }]}>{question.topic}</Text>
             <View style={s.badgeRow}>
               {question.type === 'multi_select' && (
                 <View style={[s.diffPill, { backgroundColor: dark ? 'rgba(99,102,241,0.25)' : '#E0E7FF' }]}>
@@ -635,7 +636,7 @@ function QuestionScreen({
     <View style={{ flex: 1, backgroundColor: bg }}>
       <ScrollView ref={onScrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 16 }}>
         <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <RichText text={q.question} style={[s.question, { color: title, flex: 1 }]} dark={dark} />
             {playCode && <Pressable onPress={playCode} accessibilityRole="button" accessibilityLabel="Play this code in Write and Run" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 2, paddingHorizontal: 10, height: 30, borderRadius: 16, backgroundColor: dark ? '#4338CA' : '#4F46E5' }}>
               <Svg width={15} height={15} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
@@ -1145,8 +1146,8 @@ const s = StyleSheet.create({
   body13: { fontFamily: FONT.body, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
   // code panel
   codePanel: { width: '100%', borderRadius: 12, borderWidth: BW, borderColor: 'rgba(51,65,85,0.6)', backgroundColor: '#0D1322', overflow: 'hidden' },
-  codeBar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 4, backgroundColor: '#090D17', borderBottomWidth: BW, borderBottomColor: 'rgba(30,41,59,0.7)' },
-  copyButton: { marginLeft: 'auto', width: 30, height: 30, borderRadius: 7, borderWidth: BW, borderColor: '#334155', backgroundColor: 'rgba(30,41,59,0.9)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  codeBar: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 4, backgroundColor: '#090D17', borderBottomWidth: BW, borderBottomColor: 'rgba(30,41,59,0.7)' },
+  copyButton: { marginLeft: 'auto', width: 22, height: 22, borderRadius: 5, borderWidth: BW, borderColor: '#334155', backgroundColor: 'rgba(30,41,59,0.9)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   codeRow: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 2.91 },
   gutter: { width: 36, textAlign: 'right', paddingRight: 12, fontFamily: FONT.mono.r, fontSize: fz(12 * MAIN), color: '#64748B', includeFontPadding: false },
