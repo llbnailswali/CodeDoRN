@@ -15,11 +15,6 @@ type Status = 'not_started' | 'in_progress' | 'completed';
 type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: Mode, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null) => Promise<'continue' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
-const practiceLessonKey = (worldOrder: number, mode: Mode, title: string) => {
-  const normalizedTitle = mode === 'debug' ? title.replace(/^Fix the\s+/i, '') : title;
-  const slug = normalizedTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return `world-${worldOrder}-practice-${mode === 'writeRun' ? 'writerun' : 'debug'}-${slug}`;
-};
 
 export const WORLD_TITLES: Record<number, string> = {
   1: 'Kotlin Awakening', 2: 'Operator Forge', 3: 'Decision Maker', 4: 'Loop Master', 5: 'Function Forge', 6: 'Collection Valley',
@@ -294,7 +289,7 @@ export function TaskListScreen({
                           onPress={(event) => {
                             event.stopPropagation();
                             if (!WebStage) return;
-                            WebStage.open(practiceLessonKey(worldOrder, mode, task.title), mode, dark, true, false, null).catch(() => {});
+                            WebStage.open(task.id, mode, dark, true, false, null).catch(() => {});
                           }}
                           style={[s.action, actionStyle]}
                           accessibilityRole="button"
