@@ -26,6 +26,7 @@
     "test:structure-rules": "tsx scripts/test-structure-rules.ts",
     "test:structure-no-false-positives": "tsx scripts/test-structure-no-false-positives.ts",
     "compare:errors": "tsx scripts/compare-errors/run.ts",
+    "check:content": "tsx scripts/compare-errors/check-content.ts",
     "check:all": "bash scripts/run-all-checks.sh",
     "improve": "bash scripts/improve.sh",
     "test:highlighter-fidelity": "tsx scripts/test-highlighter-fidelity.tsx",

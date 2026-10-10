@@ -1,0 +1,3 @@
+{
+  "world-16-coroutine-fundamentals-coroutine-builder-predict-5": "Asks what happens IF runBlocking were removed; the shown program keeps it, so real Kotlin compiles it. The marked answer (launch needs a CoroutineScope) is correct Kotlin."
+}
