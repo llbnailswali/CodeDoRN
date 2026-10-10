@@ -2939,3 +2939,15 @@ marks the name, and Apply fix renames it to `main`. It judges only a top-level f
 anywhere, one letter from `main`; a called or parameterised helper (`fun min(a: Int, b: Int)`, `fun gain()`) is a fragment's helper and
 stays quiet. A file without any function near `main` keeps running as a fragment (lesson snippets rely on that). The kotlinc comparison
 counts "Main method not found" against this message as agreement, since kotlinc reports it at run time instead of compile time.
+
+## `total += score ?: 0` was rejected, then crashed: the right side of a compound assignment is one expression
+
+Reported on World 7 Debug 10 ("Fix the Score Total"): `total += score ?: 0` is valid Kotlin (prints `Total: 10`) but the editor said
+"Nullable numeric value requires a null check or fallback". Two layers had the same blind spot. The null-safety rule saw `score` right
+after `+=` and called it arithmetic on a nullable value, ignoring the `?:` that follows; Kotlin evaluates the whole right side first, so
+`score ?: 0` is safe. Once that was fixed, the lowerer still emitted the `?:` untranslated (a JavaScript syntax error), because a compound
+assignment is lowered token by token and only whole expressions get their Elvis translated. Now: a `?:` right after the operand of a
+compound assignment counts as a fallback (only there: in `total + score ?: 0` the `?:` applies to the sum, which kotlinc rejects), and the
+right side of any compound assignment containing a top-level `?:` is lowered as one expression. In the same rule, `!== null` / `=== null`
+now count as null checks like `!=` / `==` (the one false rejection the kotlinc comparison had). The guard stays flow-insensitive: `x == null`
+or `x === null` anywhere earlier counts, so a use inside the null branch is a missed error, never a false rejection.

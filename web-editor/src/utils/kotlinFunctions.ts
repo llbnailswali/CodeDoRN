@@ -1288,7 +1288,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // on every use, so an earlier `!= null` / `== null` / `is` / `when` check proves nothing about the next evaluation. Only the
       // operators that act on the use itself (`?:`, `!!`, `as?`) count for those.
       if (/[\[(]/.test(receiver)) return new RegExp(`${lead}${r}\\s*(?:\\?:|!!|as\\?)`).test(before);
-      return new RegExp(`${lead}${r}\\s*(?:!=\\s*null|==\\s*null|\\?:|!!|is\\b|!is\\b|as\\?)|${lead}null\\s*(?:!=|==)\\s*${r}\\b|when\\s*\\(\\s*${r}\\s*\\)`).test(before);
+      // `!== null` / `=== null` (identity) smart-cast exactly like `!= null` / `== null`.
+      return new RegExp(`${lead}${r}\\s*(?:!==?\\s*null|===?\\s*null|\\?:|!!|is\\b|!is\\b|as\\?)|${lead}null\\s*(?:!==?|===?)\\s*${r}\\b|when\\s*\\(\\s*${r}\\s*\\)`).test(before);
     };
     // `"Age: " + age` is string concatenation: String.plus(Any?) accepts a nullable (it prints "null"). Only a String on the LEFT counts
     // (real kotlinc rejects `age + " years"` for an Int?). Looks for a string literal or String variable earlier in the same `+` chain.
@@ -1402,6 +1403,14 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           }
         }
       }
+      // `total += score ?: 0`: the right side of a compound assignment is one expression. Lowered token by token, its `?:` reached
+      // JavaScript untranslated (a syntax error); lowering the whole right side translates the Elvis like any other expression.
+      if (isName(at(i)) && ['+=', '-=', '*=', '/=', '%='].includes(at(i + 1)) && !['.', '?.'].includes(at(i - 1))) {
+        const end = expressionEnd(i + 2, b);
+        if (end > i + 2 && top(i + 2, end, '?:') >= 0) {
+          emit(i, end, `${at(i)} ${at(i + 1)} (${lower(i + 2, end, ctx)})`); i = end - 1; continue;
+        }
+      }
       if (startsChain(i)) {
         // `d.toString()` on a Float/Double must give Kotlin's decimal text ("25.0").
         const primary = primaryEnd(i);
@@ -1446,7 +1455,10 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         if (operand?.nullable && ['Int', 'Long', 'Float', 'Double'].includes(operand.name) && operand.runtimeName !== 'Nothing' && !['.', '?.'].includes(at(i - 1))) {
           const arithmeticNext = i + 1 < b && ['+', '-', '*', '/', '%'].includes(at(i + 1));
           const arithmeticPrev = i > a && ['+', '-', '*', '/', '%', '+=', '-=', '*=', '/=', '%='].includes(at(i - 1));
-          if ((arithmeticNext || arithmeticPrev) && !stringConcatenation(i) && !nullGuardMentioned(at(i), i)) fail('Nullable numeric value requires a null check or fallback before arithmetic', i);
+          // `total += score ?: 0`: the whole right side (`score ?: 0`) is computed first, so the fallback guards it. Only after a
+          // compound assignment: in `total + score ?: 0` the `?:` applies to the sum, so `total + score` is still an error.
+          const elvisAfterAssignment = at(i + 1) === '?:' && ['+=', '-=', '*=', '/=', '%='].includes(at(i - 1));
+          if ((arithmeticNext || arithmeticPrev) && !elvisAfterAssignment && !stringConcatenation(i) && !nullGuardMentioned(at(i), i)) fail('Nullable numeric value requires a null check or fallback before arithmetic', i);
         }
       }
       const variable = ctx.vars.get(at(i));

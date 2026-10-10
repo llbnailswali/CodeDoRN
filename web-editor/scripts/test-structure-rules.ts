@@ -137,6 +137,13 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['misspelled println in a branch that never runs', wrap('  val ok = false\n  if (ok) {\n    printn("x")\n  }\n  println("done")'), 'error'],
   ['misspelled member', 'class Address(val city: String)\nclass User(val adrdess: Address?)\nfun main() {\n  val u = User(Address("Pune"))\n  println("City: ${u.address?.city}")\n}', 'error'],
   ['class one letter from a standard type is fine', 'class Strings(val n: Int)\nfun main() {\n  val s: String = "a"\n  println(s + Strings(2).n)\n}', 'ok'],
+  // --- Elvis as the right side of a compound assignment, and identity null checks (World 7 Debug 10)
+  ['elvis after +=', 'fun main() {\n  val scores: List<Int?> = listOf(4, null, 6)\n  var total = 0\n  for (score in scores) {\n    total += score ?: 0\n  }\n  println(\"Total: $total\")\n}', 'ok'],
+  ['elvis after += without spaces', 'fun main() {\n  val scores: List<Int?> = listOf(4, null, 6)\n  var total = 0\n  for (score in scores) {\n    total += score?:0\n  }\n  println(\"Total: $total\")\n}', 'ok'],
+  ['elvis after -=', 'fun main() {\n  val scores: List<Int?> = listOf(4, null, 6)\n  var total = 0\n  for (score in scores) {\n    total -= score ?: 1\n  }\n  println(\"Total: $total\")\n}', 'ok'],
+  ['elvis after a plus applies to the sum', 'fun main() {\n  val scores: List<Int?> = listOf(4, null, 6)\n  var total = 0\n  for (score in scores) {\n    total = total + score ?: 0\n  }\n  println(\"Total: $total\")\n}', 'error'],
+  ['nullable += without a fallback', 'fun main() {\n  val scores: List<Int?> = listOf(4, null, 6)\n  var total = 0\n  for (score in scores) {\n    total += score\n  }\n  println(\"Total: $total\")\n}', 'error'],
+  ['identity null check smart-casts', 'fun main() {\n  val scores: List<Int?> = listOf(4, null, 6)\n  var total = 0\n  for (score in scores) {\n    if (score !== null) {\n      total += score\n    }\n  }\n  println(\"Total: $total\")\n}', 'ok'],
 ];
 
 (async () => {
