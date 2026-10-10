@@ -4,7 +4,7 @@ import { KotlinList, KotlinPair, KotlinSequence, outOfBounds } from './kotlinCol
 import { lowerKotlinFunctions, KotlinFunctionError } from './kotlinFunctions';
 import { maskStringsAndComments } from './errorSpan';
 import { checkStructureRules } from './kotlinStructureChecks';
-import { insertLineMarkers, expressionBodyLines, wrapFunctionsForLines } from './kotlinLineMarkers';
+import { insertLineMarkers, expressionBodyLines, wrapFunctionsForLines, braceSingleStatementLoops } from './kotlinLineMarkers';
 import {
   kotlinAsync,
   KotlinCoroutineStart,
@@ -692,7 +692,8 @@ function transformRanges(line: string): string {
   // Endpoints: an integer, a single-quoted char, or a (member) identifier such as
   // `low` / `limits.max` -- `n in low..high` is as ordinary as `n in 1..10`.
   const endpoint = String.raw`(-?\d[\d_]*|'.'|[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)`;
-  const subject = String.raw`([a-zA-Z_][a-zA-Z0-9_.]*|\([^()]*\))`;
+  // A number or char literal is a valid subject too: `println(10 in 5..10)`.
+  const subject = String.raw`(-?\d[\d_]*(?:\.\d+)?|'.'|[a-zA-Z_][a-zA-Z0-9_.]*|\([^()]*\))`;
   const inclusive = new RegExp(`${subject}\\s+(!in|in)\\s+${endpoint}\\.\\.${endpoint}(?![\\w.])`, 'g');
   const exclusive = new RegExp(`${subject}\\s+(!in|in)\\s+${endpoint}\\s+until\\s+${endpoint}(?![\\w.])`, 'g');
   // `x in collection` / `x !in collection` (a name that is not a range): membership via .contains().
@@ -3251,7 +3252,7 @@ export async function compileAndRunKotlin(
   // is unambiguously wrong. See `runKotlinCode` below.
 
   // 2. Transpilation to Safe JS
-  const marked = insertLineMarkers(code);
+  const marked = insertLineMarkers(braceSingleStatementLoops(code));
   let transpiledJS = '';
   try {
     // Line markers (`__kt_line = N`) let a runtime error report the Kotlin line that was running; see kotlinLineMarkers.ts.

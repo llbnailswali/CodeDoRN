@@ -17,7 +17,8 @@ const literalType = (first: string, second?: string): Type | undefined => {
   const text = negative ? second ?? '' : first;
   if (/^\d[\d_]*L$/.test(text)) return { name: 'Long' };
   if (/^\d[\d_]*\.\d/.test(text)) return { name: /[fF]$/.test(text) ? 'Float' : 'Double' };
-  if (/^\d[\d_]*$/.test(text)) return { name: 'Int' };
+  // An integer literal above Int.MAX_VALUE is a Long in Kotlin (`val big: Long = 3000000000` is valid; as an Int it is a type mismatch).
+  if (/^\d[\d_]*$/.test(text)) return { name: Number(text.replace(/_/g, '')) > 2147483647 ? 'Long' : 'Int' };
   if (!negative && text.startsWith('"')) return { name: 'String' };
   if (!negative && (text === 'true' || text === 'false')) return { name: 'Boolean' };
   return undefined;
@@ -780,7 +781,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     // lexer split a decimal literal into three tokens ("10", ".", "0"),
     // making the "." briefly visible as its own top-level token -- see
     // PITFALLS.md for the tokenizer fix this relied on before it was fixed.
-    if (/^-?\d/.test(at(a)) || (at(a) === '-' && /^\d/.test(at(a + 1)))) return { name: /[fF]$/.test(text(a, b)) ? 'Float' : /L$/.test(text(a, b)) ? 'Long' : /\.\d/.test(text(a, b)) ? 'Double' : 'Int' };
+    if (/^-?\d/.test(at(a)) || (at(a) === '-' && /^\d/.test(at(a + 1)))) return { name: /[fF]$/.test(text(a, b)) ? 'Float' : /L$/.test(text(a, b)) ? 'Long' : /\.\d/.test(text(a, b)) ? 'Double' : Number(text(a, b).replace(/[_-]/g, '')) > 2147483647 ? 'Long' : 'Int' };
     if (at(a + 1) === '(' && pairs.get(a + 1) === b - 1) {
       if (['println', 'print'].includes(at(a))) return unit;
       if (classes.has(at(a))) {

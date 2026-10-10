@@ -127,7 +127,7 @@ export function checkStructureRules(code: string): KotlinDiagnostic | null {
     }
   }
 
-  return conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
+  return topLevelStatement(code, masked, tokens) ?? nonBooleanCondition(code, masked, tokens) ?? assignedLiteralMismatch(code, masked, tokens) ?? conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
 }
 
 /** True when the `if` at `i` (an `if (cond) body [else ...]` chain) ends in an `else` that is not itself another `if`. */
@@ -579,6 +579,84 @@ function conflictingInterfaceDefaults(code: string, masked: string, tokens: Sour
       const nameToken = tokens.find((t) => t.kind === 'word' && t.text === m[1] && t.start >= m.index!);
       if (nameToken) return diagnostic(code, masked, nameToken, `Class '${m[1]}' must override '${name}' because it inherits multiple interface methods for it.`);
     }
+  }
+  return null;
+}
+
+const TOP_LEVEL_STARTERS = new Set(['fun', 'val', 'var', 'class', 'interface', 'object', 'enum', 'data', 'sealed', 'abstract', 'open', 'private', 'public', 'internal', 'protected', 'import', 'package', 'typealias', 'const', 'inline', 'suspend', 'tailrec', 'operator', 'infix', 'lateinit', 'override', 'inner', 'value', 'annotation', 'expect', 'actual', 'external', 'final']);
+
+/**
+ * `fun main() { ... }` followed by a bare `println("B")`: only declarations may sit at the top level of a Kotlin file. Judged only for a
+ * complete program (one with `fun main`), since lesson fragments without main are run as if they were inside it.
+ */
+function topLevelStatement(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  if (!/\bfun\s+main\s*\(/.test(masked)) return null;
+  let depth = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.kind === 'symbol' && OPENERS.has(t.text)) { depth++; continue; }
+    if (t.kind === 'symbol' && CLOSERS.has(t.text)) { depth--; continue; }
+    if (depth !== 0) continue;
+    const previous = tokens[i - 1];
+    const firstOnLine = !previous || lineOfOffset(code, previous.start) !== lineOfOffset(code, t.start);
+    if (!firstOnLine) continue;
+    // a line that continues the previous declaration (`= expr`, `: Type`, a chained call, an annotation, a class header continuation)
+    if (previous && ((previous.kind === 'symbol' && !['}', ')', ']'].includes(previous.text)) || (previous.kind === 'word' && ['by', 'where', 'in', 'is', 'as', 'else'].includes(previous.text)))) continue;
+    if (t.kind === 'symbol' && ['@', '.', '?', ':', '=', ',', '>', '<', '+', '-', '*', '/', '|', '&'].includes(t.text)) continue;
+    if (t.kind === 'word' && (TOP_LEVEL_STARTERS.has(t.text) || ['where', 'get', 'set', 'by', 'else', 'in', 'is', 'as'].includes(t.text))) continue;
+    return diagnostic(code, masked, t, 'Syntax error: Expecting a top level declaration (statements must be inside a function such as main).');
+  }
+  return null;
+}
+
+/** `if (n)` / `while (count)` where the condition is an Int (a number literal, or a name declared once with a number). */
+function nonBooleanCondition(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  const numeric = new Map<string, string>();
+  for (const m of masked.matchAll(/\b(?:val|var)\s+([A-Za-z_]\w*)\s*(?::\s*(Int|Long|Double|String)\s*)?=\s*(-?\d[\d_]*(\.\d+)?)\s*$/gm)) numeric.set(m[1], m[2] ?? (m[4] ? 'Double' : 'Int'));
+  for (const m of masked.matchAll(/\b(?:val|var)\s+([A-Za-z_]\w*)\s*:\s*(Int|Long|Double)\b/g)) numeric.set(m[1], m[2]);
+  const declaredTwice = (name: string) => (masked.match(new RegExp(`\\b(?:val|var)\\s+${name}\\b|[(,]\\s*${name}\\s*:`, 'g')) ?? []).length > 1;
+  for (let i = 0; i + 3 < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.kind !== 'word' || (t.text !== 'if' && t.text !== 'while') || tokens[i + 1].text !== '(' || tokens[i + 3].text !== ')') continue;
+    const c = tokens[i + 2];
+    const type = c.kind === 'number' ? (/\./.test(c.text) ? 'Double' : 'Int') : c.kind === 'word' && numeric.has(c.text) && !declaredTwice(c.text) ? numeric.get(c.text) : undefined;
+    if (type && type !== 'String') return diagnostic(code, masked, c, `Condition type mismatch: inferred type is ${type} but Boolean was expected.`);
+  }
+  return null;
+}
+
+/** `var name = "Kotlin"` then `name = 5`: the variable's type comes from its first value, and a literal of another type cannot be assigned. */
+function assignedLiteralMismatch(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  const kindOf = (t: SourceToken | undefined): string | undefined => !t ? undefined : t.kind === 'string' ? (t.text.startsWith("'") ? 'Char' : 'String')
+    : t.kind === 'number' ? (/[lL]$/.test(t.text) ? 'Long' : /[fF]$/.test(t.text) ? 'Float' : /\./.test(t.text) ? 'Double' : 'Int')
+    : t.kind === 'word' && (t.text === 'true' || t.text === 'false') ? 'Boolean' : undefined;
+  const declared = new Map<string, string>();
+  const count = new Map<string, number>();
+  for (let i = 0; i + 3 < tokens.length; i++) {
+    if (tokens[i].kind !== 'word' || (tokens[i].text !== 'var' && tokens[i].text !== 'val') || tokens[i + 1].kind !== 'word') continue;
+    const name = tokens[i + 1].text;
+    count.set(name, (count.get(name) ?? 0) + 1);
+    if (isPlainAssign(tokens, i + 2, code)) {
+      const value = tokens[i + 3];
+      const after = tokens[i + 4];
+      const k = kindOf(value);
+      if (k && (!after || lineOfOffset(code, after.start) !== lineOfOffset(code, value.start) || after.text === ';')) declared.set(name, k);
+    }
+  }
+  for (const m of masked.matchAll(/[(,]\s*(?:val\s+|var\s+)?([A-Za-z_]\w*)\s*:/g)) count.set(m[1], (count.get(m[1]) ?? 0) + 1);
+  for (let i = 1; i + 2 < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.kind !== 'word' || !declared.has(t.text) || count.get(t.text) !== 1) continue;
+    const before = tokens[i - 1]?.text;
+    if (before === '.' || before === 'val' || before === 'var' || before === '?') continue;
+    if (!isPlainAssign(tokens, i + 1, code)) continue;
+    const value = tokens[i + 2];
+    const after = tokens[i + 3];
+    const k = kindOf(value);
+    if (!k || (after && lineOfOffset(code, after.start) === lineOfOffset(code, value.start) && after.text !== ';')) continue;
+    const want = declared.get(t.text)!;
+    const fits = k === want || (want === 'Long' && k === 'Int') || (want === 'Double' && k === 'Double');
+    if (!fits) return diagnostic(code, masked, value, `Assignment type mismatch: actual type is ${k}, but ${want} was expected.`);
   }
   return null;
 }

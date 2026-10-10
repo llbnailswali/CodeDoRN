@@ -94,7 +94,9 @@ export function insertLineMarkers(code: string): { code: string; lineMap: number
         const completeSuffix = (p.text === '+' && text(previous - 1) === '+') || (p.text === '-' && text(previous - 1) === '-') || (p.text === '!' && text(previous - 1) === '!')
           || (p.text === '?' && tokens[previous - 1]?.kind === 'word') || (p.text === '>' && !['-', '=', '>'].includes(text(previous - 1)) && tokens[previous - 1]?.kind === 'word');
         const incomplete = (p.kind === 'symbol' && ENDS_INCOMPLETE.has(p.text) && previous !== open && !completeSuffix) || (p.kind === 'word' && WORD_ENDS_INCOMPLETE.has(p.text)) || headerWithoutBraces;
-        const continuation = (t.kind === 'symbol' && STARTS_CONTINUATION.has(t.text)) || (t.kind === 'word' && WORD_STARTS_CONTINUATION.has(t.text));
+        // `}` then `while (cond)` on the next line closes a do-while: the while belongs to it.
+        const doWhileTail = t.kind === 'word' && t.text === 'while' && isSymbol(previous, '}') && pairs.has(previous) && text(pairs.get(previous)! - 1) === 'do';
+        const continuation = doWhileTail || (t.kind === 'symbol' && STARTS_CONTINUATION.has(t.text)) || (t.kind === 'word' && WORD_STARTS_CONTINUATION.has(t.text));
         if (!incomplete && !continuation) insertBefore.push({ offset: lineStarts[line[j] - 1], line: line[j] });
       }
       if (pairs.has(j) && pairs.get(j)! > j && pairs.get(j)! < close) j = pairs.get(j)!; // nested brackets are judged on their own
@@ -225,4 +227,48 @@ export function wrapFunctionsForLines(js: string, declarationLines: Map<string, 
   let result = js;
   for (const e of edits) result = result.slice(0, e.at) + e.text + result.slice(e.at);
   return result;
+}
+
+/**
+ * `for (n in 1..3) println(n)` / `while (i < 3) i++`: a loop whose body is one statement without braces. The runner's loop translation
+ * expects a block, so the body is wrapped in braces first. The braces go on the SAME line(s) (a body on the next line gets `{` after the
+ * header and `}` at the end of that line), so line numbers never move. Repeats until no brace-less loop is left (nested one-liners).
+ */
+export function braceSingleStatementLoops(code: string): string {
+  for (let round = 0; round < 20; round++) {
+    let tokens: SourceToken[];
+    try { tokens = scanKotlin(code).filter((t) => t.kind !== 'comment'); } catch { return code; }
+    const lineOf = (offset: number) => code.slice(0, offset).split('\n').length;
+    let changed = false;
+    for (let i = 0; i + 1 < tokens.length && !changed; i++) {
+      const t = tokens[i];
+      if (t.kind !== 'word' || (t.text !== 'for' && t.text !== 'while') || tokens[i + 1].text !== '(') continue;
+      if (t.text === 'while' && tokens[i - 1]?.text === '}') {
+        // `} while (cond)` closes a do-while: no body of its own.
+        let depth = 0;
+        let isDoWhile = false;
+        for (let k = i - 1; k >= 0; k--) { if (tokens[k].text === '}') depth++; else if (tokens[k].text === '{' && --depth === 0) { isDoWhile = tokens[k - 1]?.text === 'do'; break; } }
+        if (isDoWhile) continue;
+      }
+      let depth = 0;
+      let close = -1;
+      for (let k = i + 1; k < tokens.length; k++) { if (tokens[k].text === '(') depth++; else if (tokens[k].text === ')' && --depth === 0) { close = k; break; } }
+      const body = tokens[close + 1];
+      if (close < 0 || !body || body.text === '{' || body.text === ';') continue;
+      // The body runs to the end of its line (the line of its first token).
+      const bodyLine = lineOf(body.start);
+      const lineEnd = code.indexOf('\n', body.start) < 0 ? code.length : code.indexOf('\n', body.start);
+      let end = lineEnd;
+      // keep a trailing `// comment` outside the braces
+      for (const tok of scanKotlin(code.slice(body.start, lineEnd))) if (tok.kind === 'comment') { end = body.start + tok.start; break; }
+      while (end > body.start && /\s/.test(code[end - 1])) end--;
+      const sameLine = lineOf(tokens[close].start) === bodyLine;
+      code = sameLine
+        ? code.slice(0, body.start) + '{ ' + code.slice(body.start, end) + ' }' + code.slice(end)
+        : code.slice(0, tokens[close].end) + ' {' + code.slice(tokens[close].end, end) + ' }' + code.slice(end);
+      changed = true;
+    }
+    if (!changed) return code;
+  }
+  return code;
 }

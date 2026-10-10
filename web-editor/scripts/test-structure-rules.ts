@@ -76,7 +76,23 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['two interface defaults, not overridden', 'interface Light {\n  fun mode() = "light"\n}\ninterface Dark {\n  fun mode() = "dark"\n}\nclass Theme : Light, Dark\nfun main() {\n  println(Theme().mode())\n}', 'error'],
   ['two interface defaults, overridden', 'interface Light {\n  fun mode() = "light"\n}\ninterface Dark {\n  fun mode() = "dark"\n}\nclass Theme : Light, Dark {\n  override fun mode() = super<Dark>.mode()\n}\nfun main() {\n  println(Theme().mode())\n}', 'ok'],
   ['two interfaces with different members', 'interface A {\n  fun a() = 1\n}\ninterface B {\n  fun b() = 2\n}\nclass C : A, B\nfun main() {\n  println(C().a() + C().b())\n}', 'ok'],
-  ['one default, one abstract, overridden', 'interface A {\n  fun f(): Int\n}\ninterface B {\n  fun f() = 2\n}\nclass C : A, B {\n  override fun f() = 3\n}\nfun main() {\n  println(C().f())\n}', 'ok'],
+  ['one default, one abstract, overridden', 'interface A {\n  fun f(): Int\n}\ninterface B {\n  fun f() = 2\n}\nclass C : A, B {\n  override fun f() = 3\n}\nfun main() {\n  println(C().f())\n}', 'ok'],  // --- KR-004/005/006 (KOTLIN_RUNNER_KNOWN_ISSUES.md)
+  ['statement after main at the top level', 'fun main() {\n  println("A")\n}\nprintln("B")', 'error'],
+  ['top-level declarations around main are fine', 'val greeting = "hi"\nfun shout(s: String) = s.uppercase()\nclass A\nfun main() {\n  println(shout(greeting))\n}', 'ok'],
+  ['an Int as an if condition', wrap('  val n = 1\n  if (n) {\n    println("yes")\n  }'), 'error'],
+  ['a Boolean as an if condition', wrap('  val ok = true\n  if (ok) {\n    println("yes")\n  }'), 'ok'],
+  ['an Int literal as a while condition', wrap('  var i = 0\n  while (1) {\n    i++\n    if (i > 2) break\n  }'), 'error'],
+  ['a String var given an Int', wrap('  var name = "Kotlin"\n  name = 5\n  println(name)'), 'error'],
+  ['an Int var given a String', wrap('  var count = 3\n  count = "four"\n  println(count)'), 'error'],
+  ['an Int var given an Int', wrap('  var count = 3\n  count = 4\n  println(count)'), 'ok'],
+  ['a Long var given an Int literal', wrap('  var big = 5L\n  big = 7\n  println(big)'), 'ok'],
+  ['a Double var given an Int literal', wrap('  var price = 2.5\n  price = 3\n  println(price)'), 'error'],
+  ['an Int literal above Int.MAX_VALUE', wrap('  val c: Int = 3000000000\n  println(c)'), 'error'],
+  ['the same literal as a Long', wrap('  val c: Long = 3000000000\n  println(c)'), 'ok'],
+  ['a one-line for body', wrap('  for (n in 1..3) println(n)'), 'ok'],
+  ['downTo with step, one-line body', wrap('  for (n in 10 downTo 0 step 4) println(n)'), 'ok'],
+  ['vararg iterated with a one-line for', 'fun total(vararg xs: Int): Int {\n  var s = 0\n  for (x in xs) s += x\n  return s\n}\nfun main() {\n  println(total())\n  println(total(1, 2, 3))\n}', 'ok'],  ['do-while with while on the next line', wrap('  var n = 5\n  do {\n    print(n)\n  }\n  while (n < 2)\n  println()'), 'ok'],
+  ['a range check used as a value', wrap('  println(10 in 5..10)\n  println(3 !in 5..10)'), 'ok'],
 ];
 
 (async () => {
