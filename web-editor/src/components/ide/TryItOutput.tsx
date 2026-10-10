@@ -66,12 +66,11 @@ export function TryItOutput({ result, isDark, onClear, onRun }: TryItOutputProps
             type="button"
             aria-label="Run code"
             onClick={onRun}
-            className={`h-8 px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-bold cursor-pointer active:scale-95 transition-all shadow-sm ${
+            className={`w-10 h-8 rounded-lg flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm ${
               isDark ? 'bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-950/40' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
             }`}
           >
-            <span className="material-symbols-outlined !text-[15px]">play_arrow</span>
-            <span>Run</span>
+            <span className="material-symbols-outlined !text-[20px]">play_arrow</span>
           </button>
           {result && (
             <button type="button" aria-label="Clear output" onClick={onClear} className={iconBtn}>

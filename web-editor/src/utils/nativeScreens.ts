@@ -14,6 +14,9 @@ interface NativeScreensPlugin {
   stageReady(): Promise<void>;
   /** Recolors the activity's system bars and window for a theme. */
   setStageTheme(options: { dark: boolean }): Promise<void>;
+  /** The system clipboard's text (empty when there is none). */
+  readClipboard(): Promise<{ value: string }>;
+  writeClipboard(options: { value: string }): Promise<void>;
 }
 
 const NativeScreens = registerPlugin<NativeScreensPlugin>('NativeScreens');
@@ -54,3 +57,8 @@ export const notifyStageReady = (): Promise<void> => NativeScreens.stageReady().
 
 /** Colors the system bars for the stage's theme (they are also set natively from the launch theme, before the page loads). */
 export const setNativeStageTheme = (dark: boolean): Promise<void> => NativeScreens.setStageTheme({ dark }).catch(() => {});
+
+/** Reads the clipboard through the app. Throws outside the Android app or in an older build without the method. */
+export const readNativeClipboard = async (): Promise<string> => (await NativeScreens.readClipboard()).value ?? '';
+
+export const writeNativeClipboard = (value: string): Promise<void> => NativeScreens.writeClipboard({ value });

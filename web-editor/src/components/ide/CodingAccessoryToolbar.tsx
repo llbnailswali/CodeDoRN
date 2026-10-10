@@ -163,12 +163,27 @@ export const CodingAccessoryToolbar: React.FC<CodingAccessoryToolbarProps> = ({
   return (
     <nav
       aria-label="Code Input Quick Bar"
-      className={`border-t px-2 py-1 shrink-0 flex flex-col gap-1 z-20 select-none ${
+      className={`border-t px-2 py-0.5 shrink-0 z-20 select-none ${
         isDark ? 'bg-[#121623] border-slate-800/90' : 'bg-[#eef0f5] border-slate-300/70'
       }`}
     >
-      {/* Row 1: Contextual Kotlin suggestions row */}
-      <div ref={row1Ref} className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 px-0.5">
+      {/* ONE row (it used to be two): the fixed fixed symbols come first (brackets are needed on every line), then the task's own
+          symbols and tokens, then the keywords, all scrolling sideways; Undo/Redo stay pinned at the right. */}
+      <div className="flex items-center gap-1 py-0.5 px-0.5">
+        <div ref={row1Ref} className="flex items-center gap-1.5 overflow-x-auto scrollbar-none flex-1 min-w-0">
+        {fixedSymbols.map((sym, idx) => (
+          <button
+            key={`${sym.label}-${idx}`}
+            type="button"
+            onClick={() => onInsertSymbol(sym.value)}
+            className={`font-mono text-[12px] tracking-[0.12em] [font-variant-ligatures:none] h-[28px] rounded-md border shrink-0 flex items-center justify-center cursor-pointer transition-all active:scale-95 ${sym.width} ${
+              sym.special ? (isDark ? 'text-indigo-300 font-bold' : 'text-indigo-600 font-bold') : ''
+            } ${squareButtonClass}`}
+          >
+            {sym.label}
+          </button>
+        ))}
+
         {/* Task-relevant symbols first (e.g. + - * / % for arithmetic tasks) */}
         {suggestedSymbols.map((sym) => (
           <button
@@ -213,24 +228,6 @@ export const CodingAccessoryToolbar: React.FC<CodingAccessoryToolbarProps> = ({
             {item.text}
           </button>
         ))}
-      </div>
-
-      {/* Row 2: scrollable programming
-          symbols, and a right-pinned Undo/Redo pair (handy above the keyboard) */}
-      <div className="flex items-center gap-1 py-0.5 px-0.5">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
-          {fixedSymbols.map((sym, idx) => (
-            <button
-              key={`${sym.label}-${idx}`}
-              type="button"
-              onClick={() => onInsertSymbol(sym.value)}
-              className={`font-mono text-[12px] tracking-[0.12em] [font-variant-ligatures:none] h-[28px] rounded-md border shrink-0 flex items-center justify-center cursor-pointer transition-all active:scale-95 ${sym.width} ${
-                sym.special ? (isDark ? 'text-indigo-300 font-bold' : 'text-indigo-600 font-bold') : ''
-              } ${squareButtonClass}`}
-            >
-              {sym.label}
-            </button>
-          ))}
         </div>
 
         {/* Undo / Redo: pinned to the right edge, directly above the keyboard */}

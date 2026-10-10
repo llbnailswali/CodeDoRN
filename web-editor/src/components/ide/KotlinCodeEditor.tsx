@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { Clipboard } from '@capacitor/clipboard';
+import { copyText, readClipboardText } from '../../utils/clipboard';
 import { soundFX } from '../../utils/audio';
 import { renderHighlightedLine, renderHighlightedLineSegments, KEYWORDS } from '../../utils/ideSyntaxHighlighter';
 import {
@@ -24,6 +24,9 @@ import {
   getWordRangeAt,
   pointFromOffset,
 } from '../../utils/editorLogic';
+import type { ErrorSpan } from '../../utils/errorSpan';
+import { formatJoinedKotlin } from '../../utils/kotlinFormatter';
+import { scanKotlin } from '../../utils/kotlinSource';
 import { CodingAccessoryToolbar } from './CodingAccessoryToolbar';
 import { MobileCodingKeyboard } from './MobileCodingKeyboard';
 
@@ -46,6 +49,12 @@ export interface KotlinCodeEditorHandle {
   // no horizontal scrollbar -- write code without ever scrolling sideways)
   // and the old no-wrap-plus-horizontal-scroll behavior.
   toggleHorizontalScroll: () => void;
+  // Closes the on-screen keyboard (a run hides it so the result and the code are both visible).
+  hideKeyboard: () => void;
+  // Re-indents the code and splits crammed lines (undoable). Shows a short notice: reformatted, already formatted, or why it could not.
+  reformat: () => void;
+  // Replaces the code in one undoable step WITHOUT closing the hints the learner opened (unlike resetTo); the caret goes to `caret`.
+  replaceCode: (newCode: string, caret: number) => void;
 }
 
 interface KotlinCodeEditorProps {
@@ -83,6 +92,14 @@ interface KotlinCodeEditorProps {
   onHelperToggle?: (key: string, open: boolean) => void;
   /** Rendered between the code surface and the keyboard (e.g. the Try it output window). */
   outputPanel?: React.ReactNode;
+  /** A compile-time error to mark: its line is tinted and the exact span underlined. Clear it when the code changes. */
+  errorSpan?: ErrorSpan | null;
+  /** Floats over the code's bottom-left corner without taking a row (e.g. the expected-output chip). */
+  topOverlay?: React.ReactNode;
+  /** Reports which way the learner scrolls the code (down hides a header, up or the very top shows it). */
+  onScrollDirection?: (direction: 'up' | 'down') => void;
+  /** Floats over the bottom of the code, above the corner buttons (e.g. a compile-error message). Takes no row. */
+  bottomOverlay?: React.ReactNode;
 }
 
 const LONG_PRESS_MS = 450;
@@ -102,6 +119,10 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       collapseHelperComments = false,
       onHelperToggle,
       outputPanel,
+      errorSpan = null,
+      topOverlay,
+      onScrollDirection,
+      bottomOverlay,
       cursorAtEnd,
       floatingAction,
       floatingActionAboveOutput = false,
@@ -110,6 +131,9 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
     },
     ref
   ) => {
+    // The on-screen keyboard starts closed so the code gets the whole screen; a tap on the code opens it and the hide button
+    // (next to the copy button) closes it again.
+    const [keyboardOpen, setKeyboardOpen] = useState<boolean>(false);
     // On by default: lines do not wrap and long lines scroll sideways. The overflow menu can switch to wrapping.
     const [horizontalScrollEnabled, setHorizontalScrollEnabled] = useState<boolean>(true);
     // Helper comments the learner has tapped open (keyed by the comment's trimmed text).
@@ -143,6 +167,10 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       { code, cursor: cursorPosition },
     ]);
     const [historyIndex, setHistoryIndex] = useState<number>(0);
+    // Two edits in the same tick (before React re-renders) must each see the index the previous one produced, not the stale state
+    // value, or the history ends up shorter than the index and the next effect reads `.code` of undefined.
+    const historyIndexRef = useRef(0);
+    historyIndexRef.current = historyIndex;
 
     // Text handed in from OUTSIDE the editor (first mount, a different task, a reset or replacement by the parent) is
     // loaded as a new document: shown in the editor's own 2-space indentation (starters are authored with 4 spaces
@@ -171,6 +199,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       setExpandedHelpers(new Set());
       setCursorPosition(loaded.cursorPosition);
       setHistory([{ code: loaded.code, cursor: loaded.cursorPosition }]);
+      historyIndexRef.current = 0;
       setHistoryIndex(0);
       // A parent that re-applies the RAW text in its own effect right after mount gets that update merged with ours
       // (last write wins), so the prop can end up back at the raw text with no further change to trigger this effect,
@@ -227,6 +256,34 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
     // and position recomputation can find "the DOM element for line N"
     // without an app-wide id/selector lookup.
     const lineElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+    const lastScrollTopRef = useRef(0);
+    // Bring a newly reported error into view, vertically AND horizontally, clear of the error strip and corner buttons that float over
+    // the bottom of the code. Runs after the underline has been drawn so its real position can be measured.
+    useEffect(() => {
+      if (!errorSpan) return;
+      const frame = requestAnimationFrame(() => {
+        const scroller = editorScrollRef.current;
+        const mark = scroller?.querySelector<HTMLElement>('[data-error-span]');
+        const row = lineElsRef.current.get(errorSpan.line);
+        const target = mark ?? row;
+        if (!scroller || !target) return;
+        const box = scroller.getBoundingClientRect();
+        const rect = target.getBoundingClientRect();
+        const left = rect.left - box.left + scroller.scrollLeft;
+        const top = rect.top - box.top + scroller.scrollTop;
+        const bottomReserve = 130; // the floating error strip and the corner buttons
+        const gutter = 16;
+        // Vertical: keep the line in the upper part of the visible area when it is off-screen or under the strip.
+        if (top < scroller.scrollTop + 8 || top + rect.height > scroller.scrollTop + scroller.clientHeight - bottomReserve) {
+          scroller.scrollTop = Math.max(0, top - scroller.clientHeight / 3);
+        }
+        // Horizontal: only when the marked token is outside the visible width (not in wrap mode, where nothing scrolls sideways).
+        if (mark && (left < scroller.scrollLeft + gutter + 8 || left + rect.width > scroller.scrollLeft + scroller.clientWidth - 24)) {
+          scroller.scrollLeft = Math.max(0, left - scroller.clientWidth / 3);
+        }
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [errorSpan?.line, errorSpan?.start, errorSpan?.end]);
     // How many on-screen rows each logical line takes. When lines wrap (horizontal scroll off) a long line spans several
     // rows and every row is numbered, so the gutter never has a gap. Lines not listed take one row.
     const [rowCounts, setRowCounts] = useState<Record<number, number>>({});
@@ -246,7 +303,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
     useLayoutEffect(() => {
       const next: Record<number, number> = {};
       lineElsRef.current.forEach((el, idx) => {
-        const rows = Math.max(1, Math.round(el.getBoundingClientRect().height / 24));
+        const rows = Math.max(1, Math.round(el.getBoundingClientRect().height / 22));
         if (rows > 1) next[idx] = rows;
       });
       const keys = Object.keys(next);
@@ -256,11 +313,11 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
 
     // Sync history if `code` changes externally (e.g. loading a new lesson)
     useEffect(() => {
-      if (history[historyIndex].code !== code) {
-        setHistory((prev) =>
-          [...prev.slice(0, historyIndex + 1), { code, cursor: Math.min(cursorPosition, code.length) }].slice(-MAX_UNDO_STATES)
-        );
-        setHistoryIndex((prev) => Math.min(prev + 1, MAX_UNDO_STATES - 1));
+      if (history[historyIndex]?.code !== code) {
+        const base = historyIndexRef.current;
+        historyIndexRef.current = Math.min(base + 1, MAX_UNDO_STATES - 1);
+        setHistory((prev) => [...prev.slice(0, base + 1), { code, cursor: Math.min(cursorPosition, code.length) }].slice(-MAX_UNDO_STATES));
+        setHistoryIndex(historyIndexRef.current);
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [code]);
@@ -280,11 +337,10 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       emitCode(newCode);
       setSelection(null);
       const cursor = newCursorPos !== undefined ? newCursorPos : cursorPosition;
-      setHistory((prev) => {
-        const next = [...prev.slice(0, historyIndex + 1), { code: newCode, cursor }];
-        return next.slice(-MAX_UNDO_STATES);
-      });
-      setHistoryIndex((prev) => Math.min(prev + 1, MAX_UNDO_STATES - 1));
+      const base = historyIndexRef.current;
+      historyIndexRef.current = Math.min(base + 1, MAX_UNDO_STATES - 1);
+      setHistory((prev) => [...prev.slice(0, base + 1), { code: newCode, cursor }].slice(-MAX_UNDO_STATES));
+      setHistoryIndex(historyIndexRef.current);
 
       if (newCursorPos !== undefined) {
         setCursorPosition(newCursorPos);
@@ -295,6 +351,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       if (historyIndex > 0) {
         soundFX.playClick();
         const nextIdx = historyIndex - 1;
+        historyIndexRef.current = nextIdx;
         setHistoryIndex(nextIdx);
         const prevEntry = history[nextIdx];
         emitCode(prevEntry.code);
@@ -306,6 +363,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       if (historyIndex < history.length - 1) {
         soundFX.playClick();
         const nextIdx = historyIndex + 1;
+        historyIndexRef.current = nextIdx;
         setHistoryIndex(nextIdx);
         const nextEntry = history[nextIdx];
         emitCode(nextEntry.code);
@@ -313,10 +371,64 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       }
     };
 
+    // The handle below is only rebuilt when the undo position changes, so it reads the latest code and caret through this ref.
+    const latestRef = useRef({ code, cursorPosition });
+    latestRef.current = { code, cursorPosition };
+    const reformatCode = () => {
+      const { code: current, cursorPosition: caret } = latestRef.current;
+      let formatted: { code: string; changed: boolean };
+      try {
+        // Brackets must pair up: the formatter indents by nesting depth, so an unclosed one would produce nonsense.
+        const stack: string[] = [];
+        for (const token of scanKotlin(current)) {
+          if (token.kind !== 'symbol') continue;
+          if ('({['.includes(token.text)) stack.push(token.text);
+          else if (')}]'.includes(token.text) && '({['.indexOf(stack.pop() ?? '') !== ')}]'.indexOf(token.text)) throw new Error('unbalanced');
+        }
+        if (stack.length) throw new Error('unbalanced');
+        formatted = formatJoinedKotlin(current);
+      } catch {
+        soundFX.playError();
+        showClipboardNotice('Cannot format: check the brackets and quotes');
+        return;
+      }
+      // The editor keeps indentation on a blank line for the caret; trailing spaces alone are not worth reporting or moving the caret for.
+      if (!formatted.changed || formatted.code === current || formatted.code === current.replace(/[ \t]+$/gm, '')) {
+        showClipboardNotice('Already formatted');
+        return;
+      }
+      // Keep the caret on the same character: count the non-space characters before it, then find that spot in the new text.
+      let newCaret = 0;
+      const oldLines = current.split('\n');
+      const newLines = formatted.code.split('\n');
+      if (oldLines.length === newLines.length) {
+        // Same number of lines: stay on the same line, shifted by the indentation change.
+        const lineIdx = current.slice(0, caret).split('\n').length - 1;
+        const col = caret - (current.lastIndexOf('\n', caret - 1) + 1);
+        const oldIndent = oldLines[lineIdx].length - oldLines[lineIdx].trimStart().length;
+        const newIndent = newLines[lineIdx].length - newLines[lineIdx].trimStart().length;
+        const newCol = Math.min(newLines[lineIdx].length, Math.max(0, col - oldIndent + newIndent));
+        newCaret = newLines.slice(0, lineIdx).reduce((sum, l) => sum + l.length + 1, 0) + newCol;
+      } else {
+        const before = current.slice(0, caret).replace(/\s/g, '').length;
+        let seen = 0;
+        while (newCaret < formatted.code.length && seen < before) {
+          if (!/\s/.test(formatted.code[newCaret])) seen++;
+          newCaret++;
+        }
+      }
+      soundFX.playClick();
+      updateCodeWithHistory(formatted.code, newCaret);
+      showClipboardNotice('Code reformatted');
+    };
+
     useImperativeHandle(
       ref,
       () => ({
         expandHelperComment: (key: string) => setExpandedHelpers((prev) => new Set(prev).add(key)),
+        hideKeyboard: () => setKeyboardOpen(false),
+        reformat: () => reformatCode(),
+        replaceCode: (newCode: string, caret: number) => updateCodeWithHistory(newCode, Math.min(caret, newCode.length)),
         resetTo: (newCode: string, cursorPos?: number) => {
           setExpandedHelpers(new Set());
           if (cursorPos !== undefined) {
@@ -568,6 +680,14 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
         if (editorScrollRef.current) editorScrollRef.current.scrollLeft = 0;
       }
       cursorSpanRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      // `nearest` only ever scrolls far enough to reveal the caret, so it never scrolls back. When the caret is back within the first
+      // screenful of the line (e.g. Home, or a swipe to the line start), return to the left edge so the line's beginning shows.
+      const scroller = editorScrollRef.current;
+      const caret = cursorSpanRef.current;
+      if (scroller && caret && scroller.scrollLeft > 0) {
+        const caretX = caret.getBoundingClientRect().left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
+        if (caretX < scroller.clientWidth - 96) scroller.scrollLeft = 0;
+      }
     }, [cursorPosition, code]);
 
     // Cursor movement, shared by the physical-keyboard listener below and
@@ -730,7 +850,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
         const text = e.clipboardData?.getData('text');
         if (text) {
           e.preventDefault();
-          handleInsertToken(text);
+          handleInsertToken(normalizePasted(text));
         }
       };
 
@@ -1096,10 +1216,9 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       soundFX.playClick();
       const text = getSelectedText();
       if (text) {
-        try {
-          await Clipboard.write({ string: text });
+        if (await copyText(text)) {
           showClipboardNotice('Copied');
-        } catch {
+        } else {
           soundFX.playError();
           showClipboardNotice('Copy failed');
         }
@@ -1113,9 +1232,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       const text = getSelectedText();
       if (text && selection) {
         let copyFailed = false;
-        try {
-          await Clipboard.write({ string: text });
-        } catch {
+        if (!(await copyText(text))) {
           soundFX.playError();
           copyFailed = true;
           // Still remove the selected text below even if the copy failed --
@@ -1130,13 +1247,22 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
       closeLongPressMenu();
     };
 
+    // Pasted text must match the editor's own line model: `\r\n` or a stray `\r` would split lines wrongly, and tabs or 4-space
+    // indents from another editor would disagree with the 2-space code around them.
+    const normalizePasted = (text: string) => toEditorIndent(text.replace(/\r\n?/g, '\n'));
+
     const handlePasteFromClipboard = async () => {
-      if (!selection && caretOnCollapsedFold) return;
+      if (!selection && caretOnCollapsedFold) {
+        soundFX.playError();
+        showClipboardNotice('Tap a code line first');
+        closeLongPressMenu();
+        return;
+      }
       soundFX.playClick();
       try {
-        const { value } = await Clipboard.read();
+        const value = await readClipboardText();
         if (value) {
-          handleInsertToken(value);
+          handleInsertToken(normalizePasted(value));
         } else {
           soundFX.playError();
           showClipboardNotice('Clipboard is empty');
@@ -1251,9 +1377,24 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
     return (
       <div className={`flex-1 flex flex-col min-h-0 relative overflow-hidden ${className}`} data-purpose="kotlin-code-editor">
         {/* ================= BEGIN: Code Editor Surface ================= */}
+        {/* The wrapper lets the floating action sit over the code's bottom-right corner without taking a row of its own. */}
+        <div className="relative flex-1 flex flex-col min-h-0">
         <div
           ref={editorScrollRef}
+          onScroll={(e) => {
+            if (!onScrollDirection) return;
+            const top = e.currentTarget.scrollTop;
+            const delta = top - lastScrollTopRef.current;
+            lastScrollTopRef.current = top;
+            if (top <= 8) onScrollDirection('up');
+            else if (delta > 6) onScrollDirection('down');
+            else if (delta < -6) onScrollDirection('up');
+          }}
           onPointerDown={onEditorInteraction}
+          onClickCapture={(e) => {
+            // A tap (not a scroll) on the code opens the keyboard; taps on the fold/hint buttons do not.
+            if (!(e.target as HTMLElement).closest('button')) setKeyboardOpen(true);
+          }}
           onClick={handleCanvasClick}
           // scroll-padding gives scrollIntoView({inline:'nearest'}) room to stop
           // short of the true edge -- e.g. after a Backspace merges the cursor
@@ -1264,7 +1405,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
           style={{ scrollPaddingLeft: 24, scrollPaddingRight: 96, scrollPaddingTop: 24, scrollPaddingBottom: 24 }}
           className={`flex-1 overflow-y-auto ${
             horizontalScrollEnabled ? 'overflow-x-auto' : 'overflow-x-hidden'
-          } overscroll-contain relative font-mono text-[13.5px] leading-[24px] cursor-text ${
+          } overscroll-contain relative font-mono text-[13.5px] leading-[22px] cursor-text ${
             isDark ? 'bg-[#0b0f19]' : 'bg-white'
           }`}
         >
@@ -1286,7 +1427,7 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
               tabIndex={-1}
               aria-hidden="true"
               value={code}
-              className="absolute inset-0 opacity-0 w-full h-full resize-none p-0 pointer-events-none font-mono text-[13.5px] leading-[24px] -z-10 select-none"
+              className="absolute inset-0 opacity-0 w-full h-full resize-none p-0 pointer-events-none font-mono text-[13.5px] leading-[22px] -z-10 select-none"
             />
             {lines.map((lineStr, lineIdx) => {
               // Lines swallowed by a collapsed fold are not drawn; their gutter numbers are skipped.
@@ -1312,12 +1453,15 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
               // The fold this row's gutter toggles: its own (first row) or the open fold it sits inside.
               const gutterFold = fold ?? folds.find((f) => isFoldOpen(f) && lineIdx >= f.start && lineIdx <= f.end) ?? null;
               // What a collapsed hint shows (`// TODO 1.`); the word TODO is display-only.
+              // A folded hint hides its lines but they are still in the document: show them selected too.
+              const foldSelected =
+                isHelperCollapsed && fold !== null && selStart !== null && selEnd !== null &&
+                selEnd > lineStartOffset && selStart < getLineBounds(fold.end).end;
               const foldDisplay = fold ? foldPreviewDisplay(fold.preview) : { text: '', column: (c: number) => c };
 
               return (
                 <div key={lineIdx} className="flex items-stretch">
-                  {/* ONE gutter area: line number + fold marker + the space between. Clicking anywhere in it toggles the
-                      fold the row belongs to (its first row, or any row inside an open fold); otherwise it selects the line. */}
+                  {/* Line-number gutter. Tapping it toggles the hint fold the row belongs to; otherwise it selects the line. */}
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1328,15 +1472,15 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
                       }
                       handleLineClick(lineIdx);
                     }}
-                    className={`sticky left-0 z-10 flex shrink-0 select-none cursor-pointer ${
-                      isDark ? 'bg-[#090d15]/90' : 'bg-slate-100'
-                    }`}
+                    className={`sticky left-0 z-10 flex shrink-0 select-none cursor-pointer ${isDark ? 'bg-[#090d15]/90' : 'bg-slate-100'}`}
                   >
                     <span
-                      className={`w-[22px] shrink-0 text-center text-[10px] leading-[24px] font-mono tracking-tighter ${collapseHelperComments ? '' : 'border-r'} transition-colors ${
+                      className={`w-[16px] shrink-0 text-center text-[9px] leading-[22px] font-mono tracking-tighter border-r transition-colors ${
                         isDark ? 'border-ide-border' : 'border-slate-300'
                       } ${
-                        isActive
+                        errorSpan?.line === lineIdx
+                          ? 'text-rose-500 font-bold'
+                          : isActive
                           ? 'text-indigo-400 font-bold'
                           : isDark
                           ? 'text-slate-600 hover:text-slate-400'
@@ -1344,29 +1488,11 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
                       }`}
                     >
                       {Array.from({ length: isHelperCollapsed ? 1 : rowCounts[lineIdx] ?? 1 }).map((_, r) => (
-                        <div key={r} className="h-[24px]">
+                        <div key={r} className="h-[22px]">
                           {gutterStart[lineIdx] + r}
                         </div>
                       ))}
                     </span>
-                    {collapseHelperComments && (
-                      <span className={`w-[16px] shrink-0 flex items-start justify-center border-r ${isDark ? 'border-ide-border' : 'border-slate-300'}`}>
-                        {fold && (
-                          <span className="h-[24px] flex items-center">
-                            <span
-                              role="button"
-                              aria-expanded={isHelperExpanded}
-                              aria-label={isHelperExpanded ? 'Collapse hint comment' : 'Expand hint comment'}
-                              className={`w-[11px] h-[11px] rounded-[2px] border flex items-center justify-center text-[10px] leading-none font-mono ${
-                                isDark ? 'border-slate-500 text-slate-400' : 'border-slate-400 text-slate-500'
-                              }`}
-                            >
-                              {isHelperExpanded ? '\u2212' : '+'}
-                            </span>
-                          </span>
-                        )}
-                      </span>
-                    )}
                   </div>
                   <div
                     ref={(el) => {
@@ -1393,17 +1519,40 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
                     onPointerCancel={handleLinePointerUp}
                     style={
                       horizontalScrollEnabled && isCommentRow && viewportWidth > 0
-                        ? { maxWidth: Math.max(160, viewportWidth - (collapseHelperComments ? 38 : 22)) }
+                        ? { maxWidth: Math.max(160, viewportWidth - 16) }
                         : undefined
                     }
-                    className={`flex-1 py-0 pl-1.5 pr-8 leading-[24px] transition-colors relative cursor-pointer font-mono ${
+                    className={`flex-1 py-0 pl-1.5 pr-8 leading-[22px] transition-colors relative cursor-pointer font-mono ${
                       fold ? 'overflow-hidden' : ''
                     } ${
                       horizontalScrollEnabled && !isCommentRow ? 'whitespace-pre' : 'whitespace-pre-wrap break-words min-w-0'
                     } ${
-                      isActive ? (isDark ? 'bg-[#13192c]' : 'bg-indigo-50') : isDark ? 'hover:bg-slate-800/30' : 'hover:bg-slate-100'
+                      foldSelected
+                        ? isDark ? 'bg-indigo-500/40' : 'bg-indigo-300/60'
+                        : errorSpan?.line === lineIdx
+                        ? isDark ? 'bg-rose-500/15 shadow-[inset_2px_0_0_#f43f5e]' : 'bg-rose-100 shadow-[inset_2px_0_0_#f43f5e]'
+                        : isActive ? (isDark ? 'bg-[#13192c]' : 'bg-indigo-50') : isDark ? 'hover:bg-slate-800/30' : 'hover:bg-slate-100'
                     }`}
+                    data-error-line={errorSpan?.line === lineIdx ? 'true' : undefined}
                   >
+                    {fold && (
+                      <button
+                        type="button"
+                        aria-expanded={isHelperExpanded}
+                        aria-label={isHelperExpanded ? 'Collapse hint comment' : 'Expand hint comment'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          soundFX.playClick();
+                          toggleHelper(fold.key);
+                        }}
+                        // Sits in the comment's own indentation, at the start of the comment.
+                        className={`absolute left-[2px] top-[5.5px] z-10 w-[11px] h-[11px] rounded-[2px] border flex items-center justify-center text-[10px] leading-none font-mono cursor-pointer select-none ${
+                          isDark ? 'border-slate-500 text-slate-400' : 'border-slate-400 text-slate-500'
+                        }`}
+                      >
+                        {isHelperExpanded ? '\u2212' : '+'}
+                      </button>
+                    )}
                     {isHelperCollapsed && fold ? (
                       <span className="animate-fadeIn">
                         {isActive ? (
@@ -1459,6 +1608,54 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
                           </>
                         );
                       })()
+                    ) : errorSpan?.line === lineIdx && !isHelperCollapsed ? (
+                      (() => {
+                        // Split at the error span's edges (and the caret, when this is the active line) so the span can be underlined.
+                        const clamp = (n: number) => Math.max(0, Math.min(lineStr.length, n));
+                        const errStart = clamp(errorSpan.start);
+                        const errEnd = clamp(errorSpan.end);
+                        const points = Array.from(new Set([errStart, errEnd, ...(isActive ? [colInLine] : [])])).sort((x, y) => x - y);
+                        const segments = renderHighlightedLineSegments(lineStr, points, `line-${lineIdx}`, isDark);
+                        let caretPlaced = !isActive;
+                        return (
+                          <>
+                            {segments.map((seg, k) => {
+                              const segStart = k === 0 ? 0 : points[k - 1];
+                              const segEnd = k < points.length ? points[k] : lineStr.length;
+                              const inError = segStart >= errStart && segEnd <= errEnd && segEnd > segStart;
+                              const caret = !caretPlaced && segStart === colInLine && k >= 1;
+                              if (caret) caretPlaced = true;
+                              return (
+                                <React.Fragment key={k}>
+                                  {caret && (
+                                    <span
+                                      ref={cursorSpanRef}
+                                      className="inline-block w-[2px] h-[17px] bg-indigo-400 align-middle blinking-cursor shadow-[0_0_8px_rgba(129,140,248,0.9)] mx-[0.5px]"
+                                    />
+                                  )}
+                                  {inError ? (
+                                    <span
+                                      data-error-span="true"
+                                      className={`rounded-[2px] ${isDark ? 'bg-rose-500/30' : 'bg-rose-300/50'}`}
+                                      style={{ textDecoration: 'underline wavy #f43f5e', textUnderlineOffset: 4 }}
+                                    >
+                                      {seg}
+                                    </span>
+                                  ) : (
+                                    seg
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                            {!caretPlaced && (
+                              <span
+                                ref={cursorSpanRef}
+                                className="inline-block w-[2px] h-[17px] bg-indigo-400 align-middle blinking-cursor shadow-[0_0_8px_rgba(129,140,248,0.9)] mx-[0.5px]"
+                              />
+                            )}
+                          </>
+                        );
+                      })()
                     ) : isActive ? (
                       (() => {
                         const [before, after] = renderHighlightedLineSegments(lineStr, [colInLine], `line-${lineIdx}`, isDark);
@@ -1481,31 +1678,59 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
               );
             })}
 
-            {/* Filler rows below the real content, purely decorative so a
-                short file doesn't look cramped. They carry NO line number, so the
-                gutter never shows a line the program does not have. */}
+            {/* Filler rows below the real content, purely decorative so a short file doesn't look cramped. They carry NO line number,
+                so the gutter never shows a line the program does not have. */}
             {Array.from({ length: Math.max(0, displayLineCount - lines.length) }).map((_, i) => (
-              <div key={`filler-${i}`} className="flex items-stretch h-[24px] shrink-0">
+              <div key={`filler-${i}`} className="flex items-stretch h-[22px] shrink-0">
                 <span
-                  className={`sticky left-0 z-10 ${collapseHelperComments ? 'w-[38px]' : 'w-[22px]'} shrink-0 text-center text-[10px] font-mono tracking-tighter border-r ${
-                    isDark ? 'text-slate-600 bg-[#090d15]/90 border-ide-border' : 'text-slate-400 bg-slate-100 border-slate-300'
+                  className={`sticky left-0 z-10 w-[16px] shrink-0 border-r ${
+                    isDark ? 'bg-[#090d15]/90 border-ide-border' : 'bg-slate-100 border-slate-300'
                   }`}
-                >
-                  {/* decorative padding only: never numbered, so it cannot be mistaken for a real line */}
-                </span>
+                />
                 <div className="flex-1" />
               </div>
             ))}
             {/* Takes up whatever height is left so the gutter runs all the way down to the output window / keyboard. */}
             <div className="flex items-stretch flex-1 min-h-0">
               <span
-                className={`sticky left-0 z-10 ${collapseHelperComments ? 'w-[38px]' : 'w-[22px]'} shrink-0 border-r ${
+                className={`sticky left-0 z-10 w-[16px] shrink-0 border-r ${
                   isDark ? 'bg-[#090d15]/90 border-ide-border' : 'bg-slate-100 border-slate-300'
                 }`}
               />
               <div className="flex-1" />
             </div>
           </div>
+        </div>
+        {bottomOverlay && (
+          <div className="absolute bottom-[52px] left-2 right-2 z-20" data-purpose="editor-bottom-overlay">
+            {bottomOverlay}
+          </div>
+        )}
+        {topOverlay && (
+          <div className="absolute bottom-2 left-[28px] z-20" data-purpose="editor-corner-overlay">
+            {topOverlay}
+          </div>
+        )}
+        {(floatingAction || (virtualKeyboardVisible && keyboardOpen)) && (
+          <div className="absolute bottom-2 right-3 z-20 flex items-center gap-2" data-purpose="editor-floating-action">
+            {virtualKeyboardVisible && keyboardOpen && (
+              <button
+                type="button"
+                aria-label="Hide keyboard"
+                onClick={() => {
+                  soundFX.playClick();
+                  setKeyboardOpen(false);
+                }}
+                className={`w-9 h-9 rounded-lg border flex items-center justify-center cursor-pointer active:scale-95 ${
+                  isDark ? 'bg-slate-800/90 border-slate-700 text-slate-300' : 'bg-white/90 border-slate-300 text-slate-600'
+                }`}
+              >
+                <span className="material-symbols-outlined !text-[18px]">keyboard_hide</span>
+              </button>
+            )}
+            {floatingAction}
+          </div>
+        )}
         </div>
         {/* ================= END: Code Editor Surface ================= */}
 
@@ -1671,32 +1896,18 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
         )}
         {/* ================= END: Identifier Autocomplete Suggestions ================= */}
 
-        {floatingAction && floatingActionAboveOutput && (
-          <div className="w-full h-[52px] shrink-0 flex items-center justify-between pl-0 pr-3" data-purpose="editor-floating-action">
-            <span
-              aria-hidden="true"
-              className={`${collapseHelperComments ? 'w-[38px]' : 'w-[22px]'} self-stretch shrink-0 border-r ${
-                isDark ? 'bg-[#090d15]/90 border-ide-border' : 'bg-slate-100 border-slate-300'
-              }`}
-            />
-            <span className="ml-auto">{floatingAction}</span>
-          </div>
-        )}
         {outputPanel}
-        {floatingAction && !floatingActionAboveOutput && (
-          <div className="w-full shrink-0 flex justify-end px-3 py-2" data-purpose="editor-floating-action">
-            {floatingAction}
-          </div>
-        )}
 
         {/* ================= BEGIN: Sticky Bottom Keyboard & Accessories ================= */}
         <div
-          className={`sticky bottom-0 z-30 w-full shrink-0 mt-auto pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-2px_8px_rgba(0,0,0,0.15)] border-t ${
-            isDark ? 'bg-[#121622] border-slate-800/80' : 'bg-[#e8eaf0] border-slate-300'
+          className={`sticky bottom-0 z-30 w-full shrink-0 mt-auto ${
+            virtualKeyboardVisible && keyboardOpen
+              ? `pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-2px_8px_rgba(0,0,0,0.15)] border-t ${isDark ? 'bg-[#121622] border-slate-800/80' : 'bg-[#e8eaf0] border-slate-300'}`
+              : ''
           }`}
           data-purpose="sticky-bottom-keyboard-panel"
         >
-          {virtualKeyboardVisible && (
+          {virtualKeyboardVisible && keyboardOpen && (
             <>
               <CodingAccessoryToolbar
                 onInsertToken={handleInsertKeywordToken}

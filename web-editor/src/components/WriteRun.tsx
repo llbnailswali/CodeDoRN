@@ -7,6 +7,14 @@ import { runKotlinCode, KotlinExecutionResult } from '../utils/kotlinRunner';
 import { applySolutionPreservingComments } from '../utils/applySolution';
 import { renderVisibleWhitespace, renderTaskText, stripTaskMarkup } from '../utils/outputDisplay';
 import { TryItOutput } from './ide/TryItOutput';
+import { resolveErrorSpan } from '../utils/errorSpan';
+import { useAutoHideHeader } from '../utils/useAutoHideHeader';
+import { ExpectedOutputChip } from './ide/ExpectedOutputChip';
+import { CompileErrorBar } from './ide/CompileErrorBar';
+import { RunButtons } from './ide/RunButtons';
+import { suggestFix } from '../utils/compileFixes';
+import { runWithRealKotlin } from '../utils/realKotlin';
+import { runWithMinikotlin } from '../utils/minikotlinRun';
 import { CopyCodeButton } from './ide/CopyCodeButton';
 import { KotlinCodeEditor, KotlinCodeEditorHandle } from './ide/KotlinCodeEditor';
 import { renderKotlinCodeLines } from '../utils/codeHighlighter';
@@ -101,9 +109,6 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
     document.addEventListener('pointerdown', close, true);
     return () => document.removeEventListener('pointerdown', close, true);
   }, [showOverflowMenu]);
-  // Persistent Expected Output strip: collapsed by default, expandable via
-  // its header row when the learner wants to check the target.
-  const [showExpectedOutputStrip, setShowExpectedOutputStrip] = useState<boolean>(false);
 
   // Preparing state with progress animation before auto-opening Task dialog
   const [isPreparing, setIsPreparing] = useState<boolean>(!TEMP_SKIP_PREP_DIALOG);
@@ -230,6 +235,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   const [horizontalScrollEnabled, setHorizontalScrollEnabled] = useState<boolean>(true);
 
   const editorRef = useRef<KotlinCodeEditorHandle>(null);
+  const autoHideHeader = useAutoHideHeader(showOverflowMenu);
   const taskButtonRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const animTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -409,6 +415,39 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
     setShowOutputPanel(false);
   };
 
+  const compileErrorSpan = resolveErrorSpan(userCode, executionResult?.error);
+  const compileFix = React.useMemo(() => suggestFix(userCode, executionResult?.error), [userCode, executionResult]);
+
+  // Same display as a normal run, but the code goes to the real Kotlin compiler (dev server). It never completes the task.
+  const [realRunning, setRealRunning] = useState(false);
+  const [miniRunning, setMiniRunning] = useState(false);
+  const handleRealExecute = async () => {
+    if (realRunning) return;
+    soundFX.playClick();
+    setRealRunning(true);
+    const res = await runWithRealKotlin(userCode, tryItMode ? undefined : data.expectedOutput);
+    setRealRunning(false);
+    setExecutionResult(res);
+    setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
+    setHasRunCode(true);
+    if (res.success) soundFX.playSuccess();
+    else soundFX.playError();
+  };
+
+  // minikotlin.run (WebAssembly compiler in a worker): a comparison engine. Same display, never completes the task.
+  const handleMiniExecute = async () => {
+    if (miniRunning) return;
+    soundFX.playClick();
+    setMiniRunning(true);
+    const res = await runWithMinikotlin(userCode, tryItMode ? undefined : data.expectedOutput);
+    setMiniRunning(false);
+    setExecutionResult(res);
+    setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
+    setHasRunCode(true);
+    if (res.success) soundFX.playSuccess();
+    else soundFX.playError();
+  };
+
   // Execute Kotlin Code
   const handleExecute = async () => {
     soundFX.playClick();
@@ -441,7 +480,8 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       ? await runKotlinCode(userCode)
       : await runKotlinCode(userCode, data.expectedOutput, data.testCase, data.hardcodeCheck);
     setExecutionResult(res);
-    setShowOutputPanel(true);
+    // A compile-time error is shown under the editor (CompileErrorBar) so its underlined line stays visible, not in the dialog.
+    setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
     setHasRunCode(true);
 
     if (setActualOutput) {
@@ -517,18 +557,20 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           with a real status-bar inset -- invisible in browser preview,
           where the inset is always 0). */}
       <header
+        ref={autoHideHeader.ref}
+        style={autoHideHeader.style}
         className={`sticky top-0 ${showOverflowMenu ? "z-[45]" : "z-30"} w-full border-b shrink-0 select-none pt-[env(safe-area-inset-top,0px)] ${
           isDark ? 'bg-[#0d121d] border-ide-border' : 'bg-[#e8eaf0] border-slate-300'
         }`}
       >
-        <div className="relative px-3 sm:px-4 h-14 flex items-center justify-between">
+        <div className="relative px-3 sm:px-4 h-11 flex items-center justify-between">
         {/* Left: Back button & Problem Details Trigger */}
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
           <button
             type="button"
             aria-label="Go Back"
             onClick={requestLeave}
-            className={`w-9 h-9 rounded-xl border flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0 ${
+            className={`w-8 h-8 rounded-xl border flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0 ${
               isDark
                 ? 'bg-slate-800/80 hover:bg-slate-700 border-slate-700/60 text-slate-300'
                 : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-600'
@@ -593,7 +635,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           </div>
         ) : isPracticeMode && practicePosition ? (
           <div
-            className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold tracking-wide ${
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold tracking-wide ${
               isDark ? 'bg-slate-800/80 text-indigo-300' : 'bg-white text-indigo-600 border border-slate-300'
             }`}
           >
@@ -604,25 +646,13 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
         {/* Right: Run button and Overflow Menu (Undo/Redo now live above the
             keyboard, right-aligned, within easy thumb reach while typing) */}
         <div className="flex shrink-0 items-center gap-2 relative">
-          {!tryItMode && <button
-            type="button"
-            aria-label="Execute code"
-            {...runButtonLongPress}
-            className="h-9 px-4 rounded-xl bg-[#6366f1] hover:bg-[#4f46e5] text-white font-semibold text-xs flex items-center gap-1.5 shadow-[0_0_14px_rgba(99,102,241,0.45)] active:scale-95 transition-all cursor-pointer select-none"
-            id="run-btn"
-          >
-            <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-            <span className="tracking-wide">Run</span>
-          </button>}
 
           <button
             type="button"
             aria-label="More options"
             data-overflow-menu
             onClick={() => setShowOverflowMenu((prev) => !prev)}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer transition-colors ${
+            className={`w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-colors ${
               isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -696,6 +726,20 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
                 type="button"
                 onClick={() => {
                   setShowOverflowMenu(false);
+                  editorRef.current?.reformat();
+                }}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer ${
+                  isDark ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-100 text-slate-700'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">format_align_left</span>
+                <span>Reformat code</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOverflowMenu(false);
                   soundFX.playClick();
                   editorRef.current?.toggleHorizontalScroll();
                 }}
@@ -736,54 +780,6 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       </header>
       {/* ================= END: Minimal Top Toolbar ================= */}
 
-      {/* ================= BEGIN: Persistent Target Output Strip ================= */}
-      {/* Lets a learner glance at the exact expected output while actively
-          coding, without leaving the editor to reopen "View Task" -- see
-          PITFALLS.md's rule that whitespace-exact output must always render
-          via renderVisibleWhitespace, and CLAUDE.md's discussion of why this
-          belongs here (a persistent display) rather than inside the code's
-          own comments (which would just hand the learner the literal
-          answer to paste). Reuses the exact same "terminal window" card
-          design as the task-intro modal's own Expected Output box below
-          (dot header row + green monospace value row) instead of a single
-          inline line, so the
-          label and the value are never visually ambiguous with each other. */}
-      {!tryItMode && data.expectedOutput && (
-        <div className={`shrink-0 border-b ${isDark ? 'border-ide-border' : 'border-slate-300'}`}>
-          <div className={`text-xs font-mono ${isDark ? 'bg-[#0a0e17]' : 'bg-white'}`}>
-            <button
-              type="button"
-              onClick={() => {
-                soundFX.playClick();
-                setShowExpectedOutputStrip((prev) => !prev);
-              }}
-              className={`w-full flex items-center gap-1.5 px-3 sm:px-4 py-1.5 cursor-pointer ${
-                showExpectedOutputStrip
-                  ? isDark
-                    ? 'border-b border-slate-800'
-                    : 'border-b border-slate-200'
-                  : ''
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500/70" />
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70" />
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
-              <span className={`ml-1.5 text-[9px] font-bold uppercase tracking-wider font-sans ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                Expected Output
-              </span>
-              <span className={`material-symbols-outlined text-[15px] ml-auto ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                {showExpectedOutputStrip ? 'expand_less' : 'expand_more'}
-              </span>
-            </button>
-            {showExpectedOutputStrip && (
-              <div className={`px-3 sm:px-4 py-1.5 overflow-x-auto whitespace-nowrap text-[11px] font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                {renderVisibleWhitespace(data.expectedOutput)}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      {/* ================= END: Persistent Target Output Strip ================= */}
 
       <KotlinCodeEditor
         ref={editorRef}
@@ -799,9 +795,40 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
         cursorAtEnd={tryItMode}
         virtualKeyboardVisible={!tryItMode || tryItKeyboardVisible}
         onEditorInteraction={tryItMode ? () => setTryItKeyboardVisible(true) : undefined}
-        floatingAction={<CopyCodeButton code={userCode} isDark={isDark} />}
+        floatingAction={
+          <>
+            <RunButtons
+              isDark={isDark}
+              accent="indigo"
+              showRun={!tryItMode}
+              runHandlers={runButtonLongPress}
+              onRealRun={handleRealExecute}
+              realRunning={realRunning}
+              onMiniRun={handleMiniExecute}
+              miniRunning={miniRunning}
+            />
+            <CopyCodeButton code={userCode} isDark={isDark} />
+          </>
+        }
         floatingActionAboveOutput={tryItMode}
-        outputPanel={tryItMode ? <TryItOutput result={executionResult} isDark={isDark} onClear={() => setExecutionResult(null)} onRun={handleExecute} /> : undefined}
+        errorSpan={compileErrorSpan}
+        onScrollDirection={autoHideHeader.onScrollDirection}
+        topOverlay={(!tryItMode && data.expectedOutput) ? <ExpectedOutputChip expectedOutput={data.expectedOutput} isDark={isDark} /> : undefined}
+        outputPanel={
+          tryItMode ? (
+            <TryItOutput result={executionResult} isDark={isDark} onClear={() => setExecutionResult(null)} onRun={handleExecute} />
+          ) : undefined
+        }
+        bottomOverlay={
+          !tryItMode && compileErrorSpan && executionResult?.error ? (
+            <CompileErrorBar
+              line={executionResult.error.line}
+              message={executionResult.error.message}
+              isDark={isDark}
+              fix={compileFix ? { label: compileFix.label, onApply: () => { soundFX.playClick(); editorRef.current?.replaceCode(compileFix.code, compileFix.caret); } } : null}
+            />
+          ) : undefined
+        }
       />
 
       {/* ================= BEGIN: Preparing Exercise Progress Animation ================= */}

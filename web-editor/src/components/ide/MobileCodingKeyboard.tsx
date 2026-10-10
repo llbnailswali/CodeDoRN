@@ -248,13 +248,13 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
       onClickCapture={handleKeyboardClickCapture}
     >
       {/* Key Row 1 */}
-      <div className="flex justify-center gap-1 my-1">
+      <div className="flex justify-center gap-1 my-[3px]">
         {currentLettersRow1.map((k) => (
           <button
             key={k}
             type="button"
             onClick={() => handleKeyClick(k)}
-            className={`w-[34px] h-[41px] rounded-md text-base font-normal shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${letterKeyClass}`}
+            className={`w-[34px] h-[36px] rounded-md text-base font-normal shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${letterKeyClass}`}
           >
             {isShiftActive ? k.toUpperCase() : k}
           </button>
@@ -262,13 +262,13 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
       </div>
 
       {/* Key Row 2 */}
-      <div className="flex justify-center gap-1 my-1">
+      <div className="flex justify-center gap-1 my-[3px]">
         {currentLettersRow2.map((k) => (
           <button
             key={k}
             type="button"
             onClick={() => handleKeyClick(k)}
-            className={`w-[34px] h-[41px] rounded-md text-base font-normal shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${letterKeyClass}`}
+            className={`w-[34px] h-[36px] rounded-md text-base font-normal shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${letterKeyClass}`}
           >
             {isShiftActive ? k.toUpperCase() : k}
           </button>
@@ -276,7 +276,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
       </div>
 
       {/* Key Row 3: Shift + letters + Backspace */}
-      <div className="flex justify-center gap-1 my-1">
+      <div className="flex justify-center gap-1 my-[3px]">
         {/* Shift Key */}
         <button
           type="button"
@@ -284,7 +284,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
             triggerHaptic();
             setIsShiftActive((prev) => !prev);
           }}
-          className={`w-[44px] h-[41px] rounded-md transition-colors flex items-center justify-center shadow cursor-pointer active:scale-95 ${secondaryKeyClass(isShiftActive)}`}
+          className={`w-[44px] h-[36px] rounded-md transition-colors flex items-center justify-center shadow cursor-pointer active:scale-95 ${secondaryKeyClass(isShiftActive)}`}
           aria-label={isShiftActive ? 'Shift Active' : 'Shift Inactive'}
         >
           <svg className="w-4 h-4 stroke-current" fill="none" strokeWidth="2.2" viewBox="0 0 24 24">
@@ -297,7 +297,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
             key={k}
             type="button"
             onClick={() => handleKeyClick(k)}
-            className={`w-[34px] h-[41px] rounded-md text-base font-normal shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${letterKeyClass}`}
+            className={`w-[34px] h-[36px] rounded-md text-base font-normal shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${letterKeyClass}`}
           >
             {isShiftActive ? k.toUpperCase() : k}
           </button>
@@ -310,7 +310,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
           onPointerUp={clearBackspaceTimers}
           onPointerLeave={clearBackspaceTimers}
           onPointerCancel={clearBackspaceTimers}
-          className={`w-[44px] h-[41px] rounded-md text-sm font-medium shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${secondaryKeyClass(false)}`}
+          className={`w-[44px] h-[36px] rounded-md text-sm font-medium shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${secondaryKeyClass(false)}`}
           aria-label="Backspace"
         >
           <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -320,7 +320,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
       </div>
 
       {/* Key Row 4: Symbols toggle, Slash, Spacebar ("CodeDo"), Dot, and Return Key */}
-      <div className="flex justify-center gap-1 my-1 px-1">
+      <div className="flex justify-center gap-1 my-[3px] px-1">
         {/* Number/Symbols Mode Toggle */}
         <button
           type="button"
@@ -328,7 +328,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
             triggerHaptic();
             setIsSymbolsMode((prev) => !prev);
           }}
-          className={`w-[44px] h-[41px] rounded-md text-xs font-semibold shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${secondaryKeyClass(isSymbolsMode)}`}
+          className={`w-[44px] h-[36px] rounded-md text-xs font-semibold shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${secondaryKeyClass(isSymbolsMode)}`}
         >
           {isSymbolsMode ? 'ABC' : '?123'}
         </button>
@@ -337,7 +337,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
         <button
           type="button"
           onClick={() => handleKeyClick('/')}
-          className={`w-[32px] h-[41px] rounded-md text-sm font-mono shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${punctuationKeyClass}`}
+          className={`w-[32px] h-[36px] rounded-md text-sm font-mono shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${punctuationKeyClass}`}
         >
           /
         </button>
@@ -351,7 +351,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
             triggerHaptic();
             onSpace();
           }}
-          className={`flex-1 h-[41px] rounded-md text-xs font-medium tracking-wide shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${
+          className={`flex-1 h-[36px] rounded-md text-xs font-medium tracking-wide shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${
             isDark
               ? 'bg-[#252c3d] hover:bg-[#2e374c] active:bg-[#31394d] text-slate-400 hover:text-slate-200'
               : 'bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-500 hover:text-slate-700 border border-slate-300'
@@ -364,7 +364,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
         <button
           type="button"
           onClick={() => handleKeyClick('.')}
-          className={`w-[32px] h-[41px] rounded-md text-base font-bold shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${punctuationKeyClass}`}
+          className={`w-[32px] h-[36px] rounded-md text-base font-bold shadow flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${punctuationKeyClass}`}
         >
           .
         </button>
@@ -376,7 +376,7 @@ export const MobileCodingKeyboard: React.FC<MobileCodingKeyboardProps> = ({
             triggerHaptic();
             onReturn();
           }}
-          className="w-[64px] h-[41px] rounded-md bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-xs shadow flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+          className="w-[64px] h-[36px] rounded-md bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium text-xs shadow flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
         >
           <span>Return</span>
           <svg className="w-3.5 h-3.5 stroke-current" fill="none" strokeWidth="2.5" viewBox="0 0 24 24">
