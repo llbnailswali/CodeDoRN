@@ -2875,7 +2875,21 @@ a member followed by `}` on the same line (`class K { val x = 1 }`), a `catch`/`
 an untyped parameter (`fun(word) = ...`), and a statement that is only a parenthesized name (`{ (it) }`). Note also that `*x` is valid
 syntax (spread), so `n +* 2` parses. fwcd's tree-sitter-kotlin 0.3.8 was built and compared: same gaps, nothing gained.
 
+**The grammar also ACCEPTS some invalid Kotlin**, so a clean parse is not proof. It allows a receiver type without its dot
+(`fun fun main()` parses as `fun <type fun> main`, `val hasPass  true` as `val <type hasPass> true`, `var counter counter = 0`), any name as
+an infix call (`println println(x)`), an anonymous function as a statement (`fun (main) {`), and a function with no body. `looseShape`
+checks the clean tree for these, plus three meaning errors that are pure shape: String `-`/`*`/`/`/`%` (`name + ": " - score` printed
+NaN), a named argument to `println`/`print` other than `message` (`println(a = b)`, a typo for `==`) and `print()` with no argument.
+Two traps found on the way: a missing statement separator (`fun main()  runBlocking {`) is a HIDDEN grammar node (`_semi`), so
+`hasError` is true while no ERROR/MISSING node is visible through `children`; and the untyped-anonymous-parameter rewrite must only apply
+where a value is expected, or it turns `fun (main) {` into valid code. The typo rule (`unresolvedTypo`) now also compares against common
+bare built-ins (`printn` → `println`), except `yield`, which is one letter from a getter's `field`.
+
+With these rules, agreement with kotlinc on the broken-program set went from 85.3% to 92.3%; over both steps (parser, then these
+rules) silent wrong answers fell from 495 to 156 (`npm run compare:errors`).
+
 **Rule:** a new Kotlin shape in lesson content that the grammar rejects shows up as a failure in `test:structure-no-false-positives`
 (every valid program in the app). Fix it with a line-preserving rewrite in `prepareForParse` plus a case in `test:kotlin-syntax`; never by
-switching the check off. The grammar does not see TYPE errors or duplicated keywords it happens to accept (`fun fun main`,
-`var counter counter = 0`): those remain the shape rules' job.
+switching the check off. A new `looseShape` rule needs a valid look-alike in the test's accepted list (`a to b`, a declared `infix fun`,
+`println(message = ...)`, `abstract fun`), because the guard only covers shapes the lessons happen to use. The grammar does not see TYPE
+errors: those remain the engine's job.

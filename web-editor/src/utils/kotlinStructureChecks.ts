@@ -162,6 +162,10 @@ function ifChainEndsInElse(tokens: SourceToken[], i: number, code: string): bool
   return true;
 }
 
+const BARE_BUILTINS = ['println', 'print', 'readln', 'readLine', 'listOf', 'mutableListOf', 'arrayOf', 'intArrayOf', 'setOf', 'mutableSetOf', 'mapOf',
+  'mutableMapOf', 'emptyList', 'emptyMap', 'emptySet', 'maxOf', 'minOf', 'repeat', 'require', 'check', 'error', 'buildString', 'sequenceOf',
+  'generateSequence', 'runBlocking', 'launch', 'delay', 'coroutineScope', 'supervisorScope', 'withContext', 'arrayListOf', 'hashMapOf'];
+
 /**
  * A name that is not declared anywhere but is one typo away from a name that is: `val qauntity = 1 ... quantity`. Real Kotlin rejects the
  * unknown name wherever it appears; the simulator only noticed when that line actually ran, and never inside an unexecuted branch or a
@@ -169,8 +173,9 @@ function ifChainEndsInElse(tokens: SourceToken[], i: number, code: string): bool
  */
 function unresolvedTypo(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
   const declared = declaredNames(masked);
-  // Every name the program declares or imports, plus lambda parameters and names after `.`, counts as known.
-  const known = new Set(declared);
+  // Every name the program declares or imports, plus lambda parameters and names after `.`, counts as known. So do the common bare
+  // standard-library functions, so `printn(...)` or `mutableListf<T>()` is caught too (not `yield`: one letter from a getter's `field`).
+  const known = new Set([...declared, ...BARE_BUILTINS]);
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     if (t.kind !== 'word') continue;

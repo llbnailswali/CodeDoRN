@@ -31,10 +31,10 @@
  },
  "typo-builtin": {
   "total": 120,
-  "agree": 111,
+  "agree": 113,
   "silent-wrong": 3,
-  "false-accept": 2,
-  "compile-line-differs": 4
+  "compile-line-differs": 3,
+  "false-accept": 1
  },
  "var-to-val": {
   "total": 120,
@@ -79,8 +79,7 @@
  },
  "equals-to-assign": {
   "total": 63,
-  "agree": 54,
-  "false-accept": 6,
+  "agree": 60,
   "silent-wrong": 3
  },
  "remove-return": {
@@ -92,15 +91,11 @@
  },
  "remove-else": {
   "total": 80,
-  "agree": 79,
-  "silent-wrong": 1
+  "agree": 80
  },
  "string-minus": {
   "total": 85,
-  "agree": 73,
-  "silent-wrong": 8,
-  "compile-token-differs": 2,
-  "compile-line-differs": 2
+  "agree": 85
  },
  "divide-by-zero": {
   "total": 56,
@@ -158,19 +153,19 @@
  },
  "generic-delete-token": {
   "total": 1105,
-  "agree": 975,
-  "false-accept": 81,
-  "silent-wrong": 31,
-  "compile-token-differs": 7,
+  "agree": 1013,
+  "silent-wrong": 27,
+  "false-accept": 49,
   "compile-line-differs": 6,
   "output-differs": 1,
   "extra-runtime": 3,
+  "compile-token-differs": 5,
   "missed-runtime": 1
  },
  "generic-operator-char": {
   "total": 545,
-  "false-accept": 77,
-  "agree": 443,
+  "false-accept": 69,
+  "agree": 451,
   "silent-wrong": 18,
   "extra-runtime": 2,
   "compile-token-differs": 1,
@@ -179,21 +174,20 @@
  },
  "generic-duplicate-token": {
   "total": 1500,
-  "agree": 1103,
-  "false-accept": 194,
-  "silent-wrong": 132,
+  "agree": 1408,
+  "false-accept": 66,
   "extra-runtime": 11,
-  "compile-line-differs": 50,
-  "compile-token-differs": 9,
+  "compile-token-differs": 4,
+  "silent-wrong": 10,
   "false-reject": 1
  },
  "generic-swap-tokens": {
   "total": 1354,
-  "agree": 1223,
-  "false-accept": 100,
-  "silent-wrong": 13,
-  "compile-line-differs": 7,
-  "compile-token-differs": 11
+  "agree": 1309,
+  "silent-wrong": 9,
+  "false-accept": 24,
+  "compile-line-differs": 2,
+  "compile-token-differs": 10
  },
  "remove-open": {
   "total": 10,

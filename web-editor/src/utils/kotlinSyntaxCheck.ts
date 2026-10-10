@@ -85,8 +85,9 @@ export function prepareForParse(code: string): { text: string; inserted: Map<num
     const close = masked.indexOf(')', open);
     out[open] = ' '; out[close] = ' ';
   }
-  // 3. Anonymous function parameters without a type (`fun(word) = ...`, valid where the expected type is known): give them one.
-  for (const m of src.matchAll(/(?<![\w.])fun\s*\(([^()]*)\)/g)) {
+  // 3. Anonymous function parameters without a type (`fun(word) = ...`, valid where the expected type is known): give them one. Only
+  //    where a value is expected: `fun (main) {` as a statement is a declaration without a name, and must stay an error.
+  for (const m of src.matchAll(/(?<=(?:[=(,:]|->|\breturn)\s*)fun\s*\(([^()]*)\)/g)) {
     let at = m.index! + m[0].indexOf('(') + 1;
     for (const part of m[1].split(',')) {
       const name = /^\s*([A-Za-z_]\w*)\s*$/.exec(part);
@@ -114,15 +115,29 @@ export function checkKotlinSyntax(code: string): KotlinSyntaxError | null {
   const tree = parser.parse(text);
   if (!tree) return null;
   let bad: { row: number; column: number; message: string } | null = null;
+  let hidden = false;
   const missing: { row: number; column: number; message: string }[] = [];
   try {
-    if (!tree.rootNode.hasError) return null;
-    const p = firstProblem(tree.rootNode);
-    if (p) bad = { row: p.node.startPosition.row, column: p.node.startPosition.column, message: p.message };
-    collectMissing(tree.rootNode, missing);
+    // The grammar is looser than kotlinc in a few places; a tree with no visible problem is checked for those shapes. A tree can also
+    // report an error with no visible node: a missing statement separator (`fun main()  runBlocking {`) is a hidden grammar rule.
+    const p = tree.rootNode.hasError ? firstProblem(tree.rootNode) : null;
+    if (!p) {
+      const r = looseShape(tree.rootNode, code);
+      if (r) {
+        const row = r.node.startPosition.row;
+        const column = r.node.startPosition.column - (inserted.get(row) ?? []).filter((c, k) => c + k < r.node.startPosition.column).length;
+        return { line: row + 1, column, message: r.message, token: r.node.text.split('\n')[0].slice(0, 30) };
+      }
+      if (!tree.rootNode.hasError) return null;
+      hidden = true;
+    } else {
+      bad = { row: p.node.startPosition.row, column: p.node.startPosition.column, message: p.message };
+      collectMissing(tree.rootNode, missing);
+    }
   } finally {
     tree.delete();
   }
+  if (hidden) bad = { row: code.split('\n').length, column: 0, message: "Unexpected tokens (use ';' to separate expressions on the same line)" };
   if (!bad) return null;
   const unshift = (row: number, column: number) => column - (inserted.get(row) ?? []).filter((c, k) => c + k < column).length;
   const lines = code.split('\n');
@@ -143,6 +158,7 @@ export function checkKotlinSyntax(code: string): KotlinSyntaxError | null {
     if (programBalanced && balance(maskedLines[r]) !== 0) continue;
     if (parsesCleanly(blankLine(r))) { row = r; break; }
   }
+  if (row < 0 && hidden) return null; // no place to point at: say nothing rather than guess
   if (row < 0) {
     // No single line is to blame (often an unclosed bracket): report tree-sitter's own first problem.
     const column = unshift(bad.row, bad.column);
@@ -157,7 +173,7 @@ export function checkKotlinSyntax(code: string): KotlinSyntaxError | null {
   const miss = missing.find((x) => x.row === row);
   if (miss) { const column = unshift(row, miss.column); return { line: row + 1, column, message: miss.message, token: tokenAt(row, column) }; }
   const column = bad.row === row ? unshift(row, bad.column) : masked.length - masked.trimStart().length;
-  return { line: row + 1, column, message: bad.row === row ? bad.message : 'This line is not valid Kotlin', token: tokenAt(row, column) };
+  return { line: row + 1, column, message: bad.row === row || hidden ? bad.message : 'This line is not valid Kotlin', token: tokenAt(row, column) };
 }
 
 function parsesCleanly(code: string): boolean {
@@ -172,6 +188,96 @@ function collectMissing(node: TSNode, out: { row: number; column: number; messag
   if (node.isMissing) out.push({ row: node.startPosition.row, column: node.startPosition.column, message: `Expecting ${describe(node.type)}` });
   if (!node.hasError) return;
   for (const c of node.children) if (c) collectMissing(c, out);
+}
+
+/** Standard library infix functions; an infix call to anything else needs an `infix fun` declared in the program. */
+const STDLIB_INFIX = new Set(['to', 'until', 'downTo', 'step', 'and', 'or', 'xor', 'shl', 'shr', 'ushr', 'zip', 'union', 'intersect', 'subtract', 'matches', 'rangeUntil', 'rangeTo', 'contentEquals', 'compareTo', 'equals', 'contains', 'then', 'thenBy', 'plus', 'minus', 'times', 'div', 'rem']);
+
+/**
+ * Shapes the grammar accepts but kotlinc rejects (each one a learner typo):
+ * - a receiver type with no dot: `fun fun main()`, `fun main main()`, `var counter counter = 0`, `val hasPass  true`, `val second Any = "2"`;
+ * - an infix call to a function that is not infix: `println println(x)`;
+ * - an anonymous function used as a statement: `fun (x: Int) { }` (a declaration without a name);
+ * - a function without a body outside an interface or an abstract/external declaration.
+ */
+function looseShape(root: TSNode, code: string): { node: TSNode; message: string } | null {
+  const ownPrint = /\bfun\s+(?:[\w<>?.]+\.)?(println|print)\s*\(/.test(code);
+  const declaredInfix = new Set([...code.matchAll(/\binfix\b[^(\n]*?(\w+)\s*\(/g)].map((m) => m[1]));
+  let found: { node: TSNode; message: string } | null = null;
+  const visit = (n: TSNode) => {
+    if (found) return;
+    const kids = n.children.filter((c): c is TSNode => !!c);
+    if (n.type === 'function_declaration' || n.type === 'property_declaration') {
+      const recv = kids.findIndex((c) => c.type === 'user_type' || c.type === 'nullable_type');
+      const keyword = kids.findIndex((c) => c.type === 'fun' || c.type === 'val' || c.type === 'var');
+      if (recv === keyword + 1 && recv >= 0 && kids[recv + 1]?.type !== '.') {
+        const receiver = kids[recv];
+        const name = kids[recv + 1];
+        const repeated = receiver.text === name?.text?.split(/\W/)[0] || /^(fun|val|var)$/.test(receiver.text);
+        if (repeated) found = { node: receiver, message: `Unexpected '${receiver.text}': it is written twice` };
+        else if (n.type === 'function_declaration') found = { node: name ?? receiver, message: `Expecting '.' between '${receiver.text}' and the function name` };
+        else if (kids.some((c) => c.type === '=')) found = { node: name ?? receiver, message: `Expecting ':' before the type '${name?.text ?? ''}'` };
+        else found = { node: name ?? receiver, message: `Expecting '=' before '${name?.text ?? ''}'` };
+        return;
+      }
+    }
+    if (n.type === 'function_declaration' && !kids.some((c) => c.type === 'function_body')) {
+      const modifiers = kids.find((c) => c.type === 'modifiers')?.text ?? '';
+      let inInterface = false;
+      for (let a = n.parent; a; a = a.parent) if (a.type === 'class_declaration') { inInterface = /^\s*(?:[\w@]+\s+)*interface\b/.test(a.text) || /\babstract\b/.test(modifiers); break; }
+      if (!inInterface && !/\b(abstract|external|expect)\b/.test(modifiers)) {
+        const name = kids.find((c) => c.type === 'identifier');
+        found = { node: name ?? n, message: `Function '${name?.text ?? ''}' must have a body` };
+        return;
+      }
+    }
+    if (n.type === 'infix_expression' && kids.length >= 3 && kids[1].type === 'identifier') {
+      const op = kids[1].text;
+      if (!STDLIB_INFIX.has(op) && !declaredInfix.has(op)) {
+        found = { node: kids[1], message: kids[0].text === op ? `Unexpected '${op}': it is written twice` : `Unexpected '${op}' ('${op}' is not an infix function)` };
+        return;
+      }
+    }
+    // String arithmetic other than `+`: `name + ": " - score` printed NaN. A String has no minus/times/div/rem.
+    if (n.type === 'binary_expression') {
+      const op = n.childForFieldName('operator');
+      const opName = ({ '-': 'minus', '*': 'times', '/': 'div', '%': 'rem' } as Record<string, string>)[op?.text ?? ''];
+      if (op && opName && isStringValued(n.childForFieldName('left'))) {
+        found = { node: op, message: `Unresolved reference '${opName}' for operator '${op.text}': a String cannot be used with '${op.text}'` };
+        return;
+      }
+    }
+    // `println(a = b)` (a typo for `==`) and `print()`: println/print take one parameter, named `message`.
+    if (n.type === 'call_expression' && /^(println|print)$/.test(kids[0]?.text ?? '') && kids[0].type === 'identifier' && !ownPrint) {
+      const args = kids.find((c) => c.type === 'value_arguments');
+      const values = args?.namedChildren.filter((c): c is TSNode => !!c && c.type === 'value_argument') ?? [];
+      const named = values.find((v) => v.children.some((c) => c?.type === '=') && v.namedChildren[0]?.text !== 'message');
+      if (named) {
+        found = { node: named, message: `None of the following candidates is applicable: '${kids[0].text}' has no parameter named '${named.namedChildren[0]?.text}' (use '==' to compare)` };
+        return;
+      }
+      if (kids[0].text === 'print' && args && !values.length && !kids.some((c) => c.type === 'annotated_lambda')) {
+        found = { node: kids[0], message: "No value passed for parameter 'message': print needs something to print" };
+        return;
+      }
+    }
+    if (n.type === 'anonymous_function' && (n.parent?.type === 'block' || n.parent?.type === 'statements' || n.parent?.type === 'source_file' || n.parent?.type === 'class_body')) {
+      found = { node: n, message: 'Function declaration must have a name' };
+      return;
+    }
+    for (const c of kids) visit(c);
+  };
+  visit(root);
+  return found;
+}
+
+/** True when the expression is a String built from a literal: `"a"`, `("a")`, or a `+` chain containing one (`name + ": "`). */
+function isStringValued(e: TSNode | null): boolean {
+  if (!e) return false;
+  if (e.type === 'string_literal') return true;
+  if (e.type === 'parenthesized_expression') return isStringValued(e.namedChildren[0] ?? null);
+  if (e.type === 'binary_expression' && e.childForFieldName('operator')?.text === '+') return isStringValued(e.childForFieldName('left')) || isStringValued(e.childForFieldName('right'));
+  return false;
 }
 
 function firstProblem(node: TSNode): { node: TSNode; message: string } | null {
