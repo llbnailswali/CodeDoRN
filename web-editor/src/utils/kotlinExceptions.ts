@@ -43,6 +43,7 @@ export class IndexOutOfBoundsException extends RuntimeException {}
 export class ArithmeticException extends RuntimeException {}
 export class NoSuchElementException extends RuntimeException {}
 export class UnsupportedOperationException extends RuntimeException {}
+export class ClassCastException extends RuntimeException {}
 
 /**
  * `Result<T>` (World 15's Result/runCatching/Success-failure-handling

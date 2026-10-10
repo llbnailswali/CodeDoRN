@@ -53,7 +53,26 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['val with deferred initialization is fine', wrap('  val total: Int\n  total = 5\n  println(total)'), 'ok'],
   ['same name in two scopes is never judged', 'fun a() {\n  val count = 1\n  println(count)\n}\nfun b() {\n  var count = 0\n  count += 1\n  println(count)\n}\nfun main() {\n  a()\n  b()\n}', 'ok'],
   ['a loop variable named like an earlier val is fine', wrap('  val i = 10\n  for (i in 1..2) {\n    println(i)\n  }'), 'ok'],
-  ['a property assigned through a receiver is not a local val', 'class A(var x: Int)\nfun main() {\n  val x = 1\n  val a = A(2)\n  a.x = 3\n  println(x + a.x)\n}', 'ok'],
+  ['a property assigned through a receiver is not a local val', 'class A(var x: Int)\nfun main() {\n  val x = 1\n  val a = A(2)\n  a.x = 3\n  println(x + a.x)\n}', 'ok'],  // --- a nullable number concatenated into a string is fine; in arithmetic it is not
+  ['String + nullable Int is concatenation', wrap('  val age: Int? = null\n  println("Age: " + age)'), 'ok'],
+  ['nullable Int + String is an error (Int?.plus does not exist)', wrap('  val age: Int? = null\n  println(age + " years")'), 'error'],
+  ['String + other + nullable Int is concatenation', wrap('  val age: Int? = 3\n  val name = "Ana"\n  println("Name: " + name + " age: " + age)'), 'ok'],
+  ['nullable Int + 1 is an error', wrap('  val age: Int? = 3\n  println(age + 1)'), 'error'],
+  ['nullable Int * 2 inside a string template is an error', wrap('  val age: Int? = 3\n  println("x: ${age * 2}")'), 'error'],  // --- exhaustive when over a sealed class or an enum
+  ['sealed when missing a case', 'sealed class S\nclass A : S()\nclass B : S()\nfun f(s: S): String = when (s) {\n  is A -> "a"\n}\nfun main() {\n  println(f(A()))\n}', 'error'],
+  ['sealed when covering every case', 'sealed class S\nclass A : S()\nclass B : S()\nfun f(s: S): String = when (s) {\n  is A -> "a"\n  is B -> "b"\n}\nfun main() {\n  println(f(A()))\n}', 'ok'],
+  ['sealed interface with an object case', 'sealed interface St\nobject Idle : St\ndata class Done(val n: Int) : St\nfun f(s: St) = when (s) {\n  is Done -> "done"\n}\nfun main() {\n  println(f(Idle))\n}', 'error'],
+  ['sealed when with else', 'sealed class S\nclass A : S()\nclass B : S()\nfun f(s: S): String = when (s) {\n  is A -> "a"\n  else -> "other"\n}\nfun main() {\n  println(f(B()))\n}', 'ok'],
+  ['enum when missing an entry', 'enum class Color { RED, GREEN, BLUE }\nfun f(c: Color) = when (c) {\n  Color.RED -> 1\n  Color.GREEN -> 2\n}\nfun main() {\n  println(f(Color.RED))\n}', 'error'],
+  ['enum when covering every entry', 'enum class Color { RED, GREEN, BLUE }\nfun f(c: Color) = when (c) {\n  Color.RED -> 1\n  Color.GREEN, Color.BLUE -> 2\n}\nfun main() {\n  println(f(Color.RED))\n}', 'ok'],
+  ['enum with constructor arguments', 'enum class Size(val ml: Int) { SMALL(250), LARGE(500) }\nfun f(s: Size) = when (s) {\n  Size.SMALL -> "s"\n}\nfun main() {\n  println(f(Size.SMALL))\n}', 'error'],
+  ['when over an Int is not judged here', 'fun f(n: Int) = when (n) {\n  1 -> "one"\n  else -> "many"\n}\nfun main() {\n  println(f(1))\n}', 'ok'],
+  // --- extension property with an initializer
+  ['extension property with an initializer', 'class User(val first: String)\nval User.greeting: String = "hi"\nfun main() {\n  println(User("a").greeting)\n}', 'error'],
+  ['extension property with a getter', 'class User(val first: String)\nval User.greeting: String get() = "hi " + first\nfun main() {\n  println(User("a").greeting)\n}', 'ok'],
+  // --- casts
+  ['an as cast that succeeds', wrap('  val a: Any = "text"\n  val s = a as String\n  println(s.length)'), 'ok'],  ['sealed objects compared by name, one missing', 'sealed interface St\ndata object Waiting : St\ndata object Done : St\nfun f(s: St) = when (s) {\n  Waiting -> "w"\n}\nfun main() {\n  println(f(Done))\n}', 'error'],
+  ['sealed objects compared by name, all covered', 'sealed interface St\ndata object Waiting : St\ndata object Done : St\nfun f(s: St) = when (s) {\n  Waiting -> "w"\n  Done -> "d"\n}\nfun main() {\n  println(f(Done))\n}', 'ok'],
 ];
 
 (async () => {

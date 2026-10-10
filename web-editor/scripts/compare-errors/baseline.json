@@ -1,14 +1,13 @@
 {
  "authored-broken": {
   "total": 291,
-  "agree": 252,
-  "false-accept": 16,
-  "false-reject": 1,
-  "output-differs": 5,
+  "agree": 263,
+  "false-accept": 7,
+  "output-differs": 6,
   "compile-line-differs": 4,
-  "extra-runtime": 9,
-  "exception-differs": 1,
-  "compile-token-differs": 3
+  "compile-token-differs": 4,
+  "extra-runtime": 6,
+  "exception-differs": 1
  },
  "drop-close-bracket": {
   "total": 120,
@@ -24,8 +23,8 @@
  },
  "typo-identifier": {
   "total": 120,
-  "agree": 113,
-  "false-accept": 6,
+  "agree": 115,
+  "false-accept": 4,
   "compile-line-differs": 1
  },
  "typo-builtin": {
@@ -81,7 +80,8 @@
  "remove-return": {
   "total": 80,
   "agree": 70,
-  "false-accept": 10
+  "false-accept": 9,
+  "compile-line-differs": 1
  },
  "remove-else": {
   "total": 80,

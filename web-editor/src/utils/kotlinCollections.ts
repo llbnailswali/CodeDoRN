@@ -164,6 +164,13 @@ export class KotlinSequence {
     }
     return this.genFn();
   }
+  // Printing a Sequence shows the object, not its elements (that needs a terminal operation): like the JVM's `kotlin.sequences.…@hash`.
+  private static printed = 0;
+  private printId?: number;
+  toString(): string {
+    if (this.printId === undefined) this.printId = (0x7a81197d + KotlinSequence.printed++ * 0x2f6e9b1) >>> 0;
+    return `kotlin.sequences.Sequence@${this.printId.toString(16)}`;
+  }
   private static guard(count: number) {
     if (count > SEQUENCE_ITERATION_CAP) throw new Error('Execution timed out (possible infinite loop)');
   }

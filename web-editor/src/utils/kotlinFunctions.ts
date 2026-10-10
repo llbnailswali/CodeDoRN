@@ -656,6 +656,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     if (at(b - 1) === '!!') return { ...infer(a, b - 1, ctx), nullable: false };
     const cast = top(a, b, 'as');
     if (cast >= 0 && at(cast + 1) === '?' && cast + 3 === b) return { name: at(cast + 2), nullable: true };
+    if (cast > a && at(cast + 1) !== '?' && isName(at(cast + 1)) && (cast + 2 === b || (cast + 3 === b && at(b - 1) === '?'))) return { name: at(cast + 1), nullable: at(b - 1) === '?' };
     const elvis = top(a, b, '?:');
     if (elvis > a && !['val', 'var', 'fun'].includes(at(a))) {
       const left = infer(a, elvis, ctx), right = infer(elvis + 1, b, ctx);
@@ -1112,6 +1113,11 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           const condition = target === 'String' ? 'typeof __kt_value === "string"' : target === 'Boolean' ? 'typeof __kt_value === "boolean"' : runtimeType === target ? 'typeof __kt_value === "number"' : 'false';
           return `((__kt_value) => ${condition} ? __kt_value : null)(${lower(a, cast, ctx)})`;
         }
+        if (cast > a && at(cast + 1) !== '?' && isName(at(cast + 1))) {
+          // `value as Type` / `value as Type?`: checked for primitive targets at runtime, a no-op (unchecked) for classes and generics.
+          const nullableTarget = at(b - 1) === '?';
+          return `__kt_cast(${lower(a, cast, ctx)}, '${at(cast + 1)}', ${nullableTarget})`;
+        }
         if (assertion > a) return `__kt_notNull(${lower(a, assertion, ctx)})${lower(assertion + 1, b, ctx)}`;
       }
     }
@@ -1172,6 +1178,13 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // operators that act on the use itself (`?:`, `!!`, `as?`) count for those.
       if (/[\[(]/.test(receiver)) return new RegExp(`${lead}${r}\\s*(?:\\?:|!!|as\\?)`).test(before);
       return new RegExp(`${lead}${r}\\s*(?:!=\\s*null|==\\s*null|\\?:|!!|is\\b|!is\\b|as\\?)|${lead}null\\s*(?:!=|==)\\s*${r}\\b|when\\s*\\(\\s*${r}\\s*\\)`).test(before);
+    };
+    // `"Age: " + age` is string concatenation: String.plus(Any?) accepts a nullable (it prints "null"). Only a String on the LEFT counts
+    // (real kotlinc rejects `age + " years"` for an Int?). Looks for a string literal or String variable earlier in the same `+` chain.
+    const stringConcatenation = (k: number): boolean => {
+      const isText = (n: number) => at(n).startsWith('"') || (isName(at(n)) && ctx.vars.get(at(n))?.name === 'String');
+      if (at(k - 1) === '+') for (let n = k - 2; n >= a && !['(', ',', '=', '{', '}', ';', 'return'].includes(at(n)) && !newline(n, n + 1); n--) if (isText(n)) return true;
+      return false;
     };
     const NULL_TOLERANT_MEMBERS = new Set(['toString', 'hashCode', 'equals', 'isNullOrEmpty', 'isNullOrBlank', 'orEmpty', 'let', 'also', 'run', 'apply', 'takeIf', 'takeUnless']);
     const primaryEnd = (j: number): number => {
@@ -1322,7 +1335,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         if (operand?.nullable && ['Int', 'Long', 'Float', 'Double'].includes(operand.name) && operand.runtimeName !== 'Nothing' && !['.', '?.'].includes(at(i - 1))) {
           const arithmeticNext = i + 1 < b && ['+', '-', '*', '/', '%'].includes(at(i + 1));
           const arithmeticPrev = i > a && ['+', '-', '*', '/', '%', '+=', '-=', '*=', '/=', '%='].includes(at(i - 1));
-          if ((arithmeticNext || arithmeticPrev) && !nullGuardMentioned(at(i), i)) fail('Nullable numeric value requires a null check or fallback before arithmetic', i);
+          if ((arithmeticNext || arithmeticPrev) && !stringConcatenation(i) && !nullGuardMentioned(at(i), i)) fail('Nullable numeric value requires a null check or fallback before arithmetic', i);
         }
       }
       const variable = ctx.vars.get(at(i));
@@ -1338,7 +1351,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         // exception.
         const calledExtensionAcceptsNull = functions.get(at(i + 2))?.receiver?.nullable;
         if (at(i + 1) === '.' && !['toString'].includes(at(i + 2)) && !calledExtensionAcceptsNull) fail('Only safe (?.) or non-null asserted (!!.) calls are allowed on this nullable receiver', i);
-        if (['Int', 'Long', 'Float', 'Double'].includes(variable.name) && ((i + 1 < b && ['+', '-', '*', '/', '%'].includes(at(i + 1))) || (i > a && ['+', '-', '*', '/', '%'].includes(at(i - 1))))) fail('Nullable numeric value requires a null check or fallback before arithmetic', i);
+        if (['Int', 'Long', 'Float', 'Double'].includes(variable.name) && !stringConcatenation(i) && ((i + 1 < b && ['+', '-', '*', '/', '%'].includes(at(i + 1))) || (i > a && ['+', '-', '*', '/', '%'].includes(at(i - 1))))) fail('Nullable numeric value requires a null check or fallback before arithmetic', i);
       }
       if (at(i) === 'filterIsInstance' && at(i + 1) === '<') {
         const type = at(i + 2);

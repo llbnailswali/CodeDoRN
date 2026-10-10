@@ -127,7 +127,7 @@ export function checkStructureRules(code: string): KotlinDiagnostic | null {
     }
   }
 
-  return valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
+  return extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
 }
 
 /** True when the `if` at `i` (an `if (cond) body [else ...]` chain) ends in an `else` that is not itself another `if`. */
@@ -413,6 +413,126 @@ function valReassigned(code: string, masked: string, tokens: SourceToken[]): Kot
     const compound = next.kind === 'symbol' && ['+', '-', '*', '/', '%'].includes(next.text) && afterNext?.text === '=' && lineOfOffset(code, next.start) === lineOfOffset(code, afterNext.start) && afterNext.start === next.start + 1 && tokens[i + 3]?.text !== '=';
     const increment = next.kind === 'symbol' && ['+', '-'].includes(next.text) && afterNext?.text === next.text && afterNext.start === next.start + 1;
     if (isPlainAssign(tokens, i + 1, code) || ((compound || increment) && (plainValue.has(t.text) || increment))) return diagnostic(code, masked, t, "'val' cannot be reassigned.");
+  }
+  return null;
+}
+
+/** `val User.fullName: String = ...`: an extension property has no backing field, so it cannot have an initializer (it needs a getter). */
+function extensionPropertyInitializer(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  for (let i = 0; i + 3 < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.kind !== 'word' || (t.text !== 'val' && t.text !== 'var')) continue;
+    // receiver type (with optional generics), a dot, the property name
+    let k = i + 1;
+    if (tokens[k]?.kind !== 'word' || !/^[A-Z]/.test(tokens[k].text)) continue;
+    k++;
+    if (tokens[k]?.text === '<') { let d = 0; for (; k < tokens.length; k++) { if (tokens[k].text === '<') d++; else if (tokens[k].text === '>' && --d === 0) { k++; break; } } }
+    if (tokens[k]?.text !== '.' || tokens[k + 1]?.kind !== 'word') continue;
+    const name = tokens[k + 1];
+    const line = lineOfOffset(code, t.start);
+    for (let j = k + 2; j < tokens.length && lineOfOffset(code, tokens[j].start) === line; j++) {
+      if (tokens[j].kind === 'word' && (tokens[j].text === 'get' || tokens[j].text === 'by')) break;
+      if (isPlainAssign(tokens, j, code)) return diagnostic(code, masked, name, 'Extension property cannot be initialized because it has no backing field.');
+    }
+  }
+  return null;
+}
+
+/**
+ * A `when` whose branches test the cases of ONE sealed class/interface (`is Loading ->`) or ONE enum (`State.DONE ->`) but miss one and
+ * have no `else` is a compile error in Kotlin (as an expression, and since Kotlin 1.7 as a statement too). Only judged when every branch
+ * condition is recognised as such a case, so a `when` over anything else is left alone.
+ */
+function whenNotExhaustive(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  // sealed parents and their direct subtypes; enums and their entries -- all read from the program text
+  const sealed = new Set<string>();
+  const children = new Map<string, string[]>();
+  for (const m of masked.matchAll(/\bsealed\s+(?:class|interface)\s+([A-Z]\w*)/g)) sealed.add(m[1]);
+  for (const m of masked.matchAll(/\b(?:class|object|interface)\s+([A-Z]\w*)\s*(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*:\s*([^{\n]+)/g)) {
+    for (const part of m[2].split(',')) {
+      const parent = part.trim().replace(/\(.*$/, '').replace(/<.*$/, '').trim();
+      if (sealed.has(parent)) children.set(parent, [...(children.get(parent) ?? []), m[1]]);
+    }
+  }
+  const enums = new Map<string, string[]>();
+  for (const m of masked.matchAll(/\benum\s+class\s+([A-Z]\w*)[^{]*\{([^}]*)/g)) {
+    const entries: string[] = [];
+    let depth = 0;
+    let current = '';
+    for (const ch of m[2].split(';')[0]) {
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+      if (depth === 0 && ch === ',') { entries.push(current); current = ''; } else if (depth === 0 && ch !== ')') current += ch;
+    }
+    entries.push(current);
+    enums.set(m[1], entries.map((e) => e.trim().split(/[\s(]/)[0]).filter((e) => /^[A-Za-z_]\w*$/.test(e)));
+  }
+  if (!children.size && !enums.size) return null;
+  const allSubtypes = (parent: string): Set<string> => {
+    const out = new Set<string>();
+    for (const c of children.get(parent) ?? []) { out.add(c); if (sealed.has(c)) for (const g of allSubtypes(c)) out.add(g); }
+    return out;
+  };
+
+  for (let i = 0; i + 1 < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.kind !== 'word' || t.text !== 'when' || tokens[i + 1].text !== '(') continue;
+    const subjectClose = closeOf(tokens, i + 1);
+    if (subjectClose < 0 || tokens[subjectClose + 1]?.text !== '{') continue;
+    const open = subjectClose + 1;
+    const close = closeOf(tokens, open);
+    if (close < 0) continue;
+    // Split the body into branch conditions (the tokens before each `->` at depth 0).
+    const conditions: SourceToken[][] = [];
+    let current: SourceToken[] = [];
+    let depth = 0;
+    let inBody = false;
+    let hasElse = false;
+    let line = -1;
+    for (let k = open + 1; k < close; k++) {
+      const u = tokens[k];
+      if (u.kind === 'symbol' && OPENERS.has(u.text)) depth++;
+      else if (u.kind === 'symbol' && CLOSERS.has(u.text)) depth--;
+      if (depth !== 0) continue;
+      if (u.text === '-' && tokens[k + 1]?.text === '>') { conditions.push(current); current = []; inBody = true; line = lineOfOffset(code, u.start); k++; continue; }
+      if (inBody) { if (lineOfOffset(code, u.start) !== line) { inBody = false; current = [u]; } continue; }
+      current.push(u);
+    }
+    for (const c of conditions) if (c.length === 1 && c[0].text === 'else') hasElse = true;
+    if (hasElse || !conditions.length) continue;
+    // Each condition is a comma-separated list of `is Type` or `Enum.ENTRY` / `ENTRY`.
+    const covered: string[] = [];
+    let recognised = true;
+    for (const c of conditions) {
+      const parts: SourceToken[][] = [[]];
+      for (const u of c) { if (u.text === ',') parts.push([]); else parts[parts.length - 1].push(u); }
+      for (const p of parts) {
+        if (p.length === 2 && p[0].text === 'is') covered.push(p[1].text);
+        else if (p.length === 3 && p[1].text === '.' && enums.has(p[0].text)) covered.push(`${p[0].text}.${p[2].text}`);
+        else if (p.length === 1 && [...enums.values()].some((e) => e.includes(p[0].text))) covered.push(p[0].text);
+        // a sealed `object` case compared by equality: `Waiting ->`
+        else if (p.length === 1 && [...children.values()].some((c) => c.includes(p[0].text))) covered.push(p[0].text);
+        else recognised = false;
+      }
+    }
+    if (!recognised || !covered.length) continue;
+    // A sealed hierarchy: every covered type belongs under one sealed parent.
+    const typeNames = covered.filter((c) => !c.includes('.'));
+    for (const parent of sealed) {
+      const subtypes = allSubtypes(parent);
+      if (!typeNames.length || !typeNames.every((n) => subtypes.has(n) || n === parent)) continue;
+      if (typeNames.includes(parent)) break;
+      const coveredAll = new Set<string>(typeNames.flatMap((n) => [n, ...allSubtypes(n)]));
+      const missing = (children.get(parent) ?? []).filter((c) => !coveredAll.has(c));
+      if (missing.length) return diagnostic(code, masked, t, `'when' expression must be exhaustive. Add the '${missing[0]}' branch or an 'else' branch.`);
+    }
+    // An enum: every covered entry belongs to one enum.
+    for (const [name, entries] of enums) {
+      const names = covered.map((c) => (c.startsWith(`${name}.`) ? c.slice(name.length + 1) : c));
+      if (!names.every((n) => entries.includes(n))) continue;
+      const missing = entries.filter((e) => !names.includes(e));
+      if (missing.length) return diagnostic(code, masked, t, `'when' expression must be exhaustive. Add the '${missing[0]}' branch or an 'else' branch.`);
+    }
   }
   return null;
 }

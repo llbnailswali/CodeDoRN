@@ -27,13 +27,13 @@ import {
 import {
   Throwable, Exception, RuntimeException, IllegalStateException, IllegalArgumentException,
   NumberFormatException, IndexOutOfBoundsException, ArithmeticException, NoSuchElementException,
-  UnsupportedOperationException, KotlinResult, kotlinRunCatching,
+  UnsupportedOperationException, ClassCastException, KotlinResult, kotlinRunCatching,
 } from './kotlinExceptions';
 
 const BUILTIN_EXCEPTION_NAMES = [
   'Throwable', 'Exception', 'RuntimeException', 'IllegalStateException', 'IllegalArgumentException',
   'NumberFormatException', 'IndexOutOfBoundsException', 'ArithmeticException', 'NoSuchElementException',
-  'UnsupportedOperationException',
+  'UnsupportedOperationException', 'ClassCastException',
 ];
 
 /**
@@ -1994,6 +1994,9 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
       `  constructor(${renderCtorParams(ctorParams)}) {`,
       ...ctorBodyLines,
       '  }',
+      // A plain class prints like the JVM's Object.toString (`Ticket@6d06d69c`), not JS's `[object Object]`. Placed before the class's own
+      // methods so an `override fun toString()` (a later method of the same name) still wins; subclasses inherit it.
+      ...(!dataFlag && !isRealSuperclass ? ['  toString() { return __kt_identityText(this); }'] : []),
       ...methodLines,
       ...companionStaticLines,
       ...dataClassLines,
@@ -3413,6 +3416,7 @@ export async function compileAndRunKotlin(
     (globalThis as any).NumberFormatException = NumberFormatException;
     (globalThis as any).IndexOutOfBoundsException = IndexOutOfBoundsException;
     (globalThis as any).ArithmeticException = ArithmeticException;
+    (globalThis as any).ClassCastException = ClassCastException;
     (globalThis as any).NoSuchElementException = NoSuchElementException;
     (globalThis as any).UnsupportedOperationException = UnsupportedOperationException;
     (globalThis as any).Result = KotlinResult;
@@ -3857,6 +3861,21 @@ export async function compileAndRunKotlin(
         return value;
       };
       const __kt_run = (action) => action();
+      // value as Type: a checked cast for the primitive types this runtime can tell apart, unchecked (as in Kotlin for generics) otherwise.
+      const __kt_cast = (value, type, nullable) => {
+        if (value == null) { if (nullable) return null; throw new Error('NullPointerException: null cannot be cast to non-null type ' + type); }
+        const ok = type === 'String' ? typeof value === 'string' : type === 'Boolean' ? typeof value === 'boolean'
+          : ['Int', 'Long', 'Double', 'Float', 'Short', 'Byte', 'Number'].includes(type) ? typeof value === 'number' : true;
+        if (!ok) throw new ClassCastException('class ' + (typeof value === 'string' ? 'java.lang.String' : typeof value === 'number' ? 'java.lang.Integer' : typeof value === 'boolean' ? 'java.lang.Boolean' : value.constructor?.name) + ' cannot be cast to ' + type);
+        return value;
+      };
+      // Identity hash text for Object.toString(): stable per object for the run, 8 hex digits like the JVM's (the value itself is arbitrary there too).
+      const __kt_identities = new WeakMap();
+      let __kt_nextIdentity = 0x1b6d3586;
+      const __kt_identityText = (obj) => {
+        if (!__kt_identities.has(obj)) { __kt_identities.set(obj, __kt_nextIdentity); __kt_nextIdentity = (__kt_nextIdentity + 0x2f6e9b1) >>> 0; }
+        return obj.constructor.name + '@' + __kt_identities.get(obj).toString(16);
+      };
       // Int/Long division and remainder by zero throw in Kotlin (java.lang.ArithmeticException: / by zero); in JS they give Infinity/NaN.
       // The typed lowering rewrites Int / Int to __kt_idiv(a / b): the quotient of two finite integers is non-finite only for a zero divisor.
       const __kt_idiv = (quotient) => {
@@ -4040,6 +4059,29 @@ export async function compileAndRunKotlin(
     // `foo is not defined` is Kotlin's "Unresolved reference" -- a compile-time error. Report it where the name is
     // written in the source (the JS stack line points into generated code), so the editor can underline it.
     const undefinedName = runtimeErr instanceof ReferenceError ? /^([A-Za-z_]\w*) is not defined$/.exec(errMessage)?.[1] : undefined;
+    // A member that does not exist (`text.with(...)`, `x.uppercase()` on Unit, `c.Entry(...)`) reaches JS as "... is not a function" or a
+    // read of `undefined`; Kotlin rejects it at compile time as an unresolved reference. Report it on the line where the member is written.
+    if (!undefinedName && runtimeErr instanceof TypeError) {
+      const missing = /(?:^|\.)([A-Za-z_]\w*) is not a function/.exec(errMessage)?.[1] ?? /of undefined \(reading '([A-Za-z_]\w*)'\)/.exec(errMessage)?.[1];
+      if (missing && !missing.startsWith('__kt')) {
+        const maskedLines = maskStringsAndComments(code).split('\n');
+        // Prefer a member access (`.name`), then a call that is not the declaration itself (`class Entry(`, `fun with(`).
+        const memberAccess = new RegExp(`\\.${missing}(?!\\w)`);
+        const call = new RegExp(`(?<![\\w.])(?<!\\b(?:class|fun|object|interface)\\s+)${missing}\\s*\\(`);
+        let at = maskedLines.findIndex((l) => memberAccess.test(l));
+        if (at < 0) at = maskedLines.findIndex((l) => call.test(l));
+        if (at >= 0) {
+          return {
+            success: false,
+            output: '',
+            logs: [],
+            error: { message: `Unresolved reference: ${missing}`, line: at + 1, token: missing, occurrence: 0, type: 'unresolved_reference' },
+            executionTimeMs: elapsed,
+            exitCode: 1,
+          };
+        }
+      }
+    }
     if (undefinedName) {
       const maskedLines = maskStringsAndComments(code).split('\n');
       const nameRe = new RegExp(`(?<!\\w)${undefinedName}(?!\\w)`);
