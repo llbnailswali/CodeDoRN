@@ -2809,3 +2809,26 @@ auto-indent, Apply fix plus a caret move) needed this too.
 ## Known Kotlin runner gaps: it can reject valid code or accept invalid code
 
 Verified runner gaps found during World 1–4 quiz validation are tracked in the central [Kotlin Runner Known Issues](KOTLIN_RUNNER_KNOWN_ISSUES.md) register. A suspected `continue` bug was a false lead: `w4q-set-ctl-4` asks for a count (`4`) while its predict-output validator compares the literal output (`xxxx`). Treat that as a quiz-item/validation mismatch, not evidence that the runner mishandles `continue`.
+
+## Keeping the simulator honest: `npm run improve` (simulator vs real kotlinc on programs that contain a mistake)
+
+Valid programs were never the risk: the simulator runs them well. The risk is a MISTAKE, where it must say what real Kotlin says (kind, line,
+token, exception, output). `npm run compare:errors` (scripts/compare-errors/) takes every valid reference program and the authored Debug
+`brokenCode`, injects ONE common learner mistake by rule (20 operators in mutations.ts: dropped bracket/quote, typo, val/var, `?.`/`!!`, wrong
+type, extra/missing argument, `=` for `==`, forgotten `return`/`else`/`override`/`open`, String minus, divide by zero, index out of range), runs
+each through real kotlinc (batched, cached) and the simulator (in a killable worker, so a simulator hang is reported, not suffered), and
+ranks the disagreements by the compiler's own message. State at the end of this work: 90.6% agreement over 1,676 programs (was 54.7%).
+
+- `npm run improve` = all tests and audits, then the comparison against `scripts/compare-errors/baseline.json` (fails if a mistake type gets
+  worse), then the top gaps each with its shortest reproducer. Add `-- --update-baseline` after a real improvement. `npm run check:all` is the
+  first step alone.
+- A new rule must pass `test:structure-no-false-positives` (the shape checks in `kotlinStructureChecks.ts` may never flag any of the 2,723 valid
+  reference programs, lessons + Explore + Predict + Practice). Three early rules did flag valid code (`class A(val a: Int = 1, val b: Int = 2)`,
+  `val m: Map<String, String?> = ...`, named arguments `f(name = 1)`, `val f = fun(x: Int) = x * 2`, `xs += x` on a val collection): run it first.
+- The real compiler is the authority. Reproduce with the K button / `npm run real-kotlin:serve`, add the case to a test with the REAL result,
+  then fix the simulator. minikotlin (M button) is only a second opinion: it accepts `val` reassignment and prints garbage for a null `.length`.
+- Deliberate differences, counted as agreement: for a dropped bracket or quote the simulator points at the unclosed opener, kotlinc at the spot
+  where it expected the closer (and sometimes reports an unrelated unresolved reference after recovering).
+- Still open (ranked by `npm run improve`): undeclared names the typo check cannot see (it only reports names one typo from a declared name),
+  `/ 0` and `% 0` inside lambdas (the lambda parameter `it` has no element type, so the division is not recognised as Int), an indexed Map
+  value used without a null check, a missing return in an anonymous function, assignment as a call argument (`println(a=b)`).
