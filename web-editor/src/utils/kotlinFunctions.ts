@@ -164,6 +164,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     return parts;
   };
   const aliases = new Map<string, Type>();
+  const genericAliases = new Map<string, { params: string[]; body: string | null }>();
   function readType(a: number, b: number): Type {
     if (a >= b) return unknown;
     if (at(b - 1) === '?' && top(a, b, '->') < 0) return { ...readType(a, b - 1), nullable: true };
@@ -182,6 +183,15 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       }), result: readType(arrow + 1, b) };
     }
     if (aliases.has(text(a, b))) return aliases.get(text(a, b))!;
+    if (genericAliases.has(at(a)) && at(a + 1) === '<') {
+      const alias = genericAliases.get(at(a))!;
+      const close = at(b - 1) === '?' ? b - 2 : b - 1;
+      if (!alias.body || at(close) !== '>') return unknown;
+      const args = split(a + 2, close).map(([x, y]) => readType(x, y).name);
+      let name = alias.body;
+      alias.params.forEach((param, k) => { if (args[k]) name = name.replace(new RegExp(`\\b${param}\\b`, 'g'), args[k]); });
+      return { name, ...(at(b - 1) === '?' ? { nullable: true } : {}) };
+    }
     // A USE-SITE variance annotation (`Array<in String>`, `Array<out
     // String>` -- as opposed to the DECLARATION-site `class Foo<out T>`
     // handled by `variantTypeNames` below) has no runtime meaning either,
@@ -327,8 +337,20 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   const constructorOpenParens = new Set<number>();
   for (let i = 0; i < t.length; i++) {
     if (at(i) === 'typealias') {
-      const end = expressionEnd(i + 3, t.length);
-      aliases.set(at(i + 1), readType(i + 3, end));
+      if (at(i + 2) === '<') {
+        // `typealias Bucket<T> = MutableList<T>`: a use (`Bucket<String>`) substitutes its arguments into the body.
+        let close = i + 3;
+        while (close < t.length && at(close) !== '>') close++;
+        if (at(close + 1) === '=') {
+          const end = expressionEnd(close + 2, t.length);
+          const body = readType(close + 2, end);
+          const params = split(i + 3, close).map(([x]) => at(x));
+          genericAliases.set(at(i + 1), { params, body: body.name === 'Function' ? null : body.name });
+        }
+      } else {
+        const end = expressionEnd(i + 3, t.length);
+        aliases.set(at(i + 1), readType(i + 3, end));
+      }
     }
     if (at(i) === 'class') {
       classes.add(at(i + 1));
@@ -656,6 +678,35 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   function check(expected: Type | undefined, actual: Type | undefined, i: number) {
     if (!compatible(expected, actual)) fail(`Type mismatch: expected ${typeName(expected)}, got ${typeName(actual)}`, i);
   }
+  /** The value of one branch of `if`/`when`/`try`: a `{ block }` gives its last statement (not a lambda), anything else is an expression. */
+  function branchType(a: number, b: number, ctx: Context): Type {
+    if (at(a) === '{' && pairs.get(a) === b - 1) {
+      const last = statements(a + 1, b - 1).at(-1);
+      if (!last) return unit;
+      // A block that ends in a declaration or a loop has no value the typer can read.
+      if (['val', 'var', 'for', 'while', 'do', 'fun', 'class'].includes(at(last[0]))) return unknown;
+      return infer(last[0], last[1], ctx);
+    }
+    return infer(a, b, ctx);
+  }
+  /**
+   * The type several branches share: a `throw` branch (Nothing) does not count, a literal `null` branch makes the result nullable, numbers
+   * promote (Int + Double is Double). When the branches do not agree, the result is unknown, never a guess. A nullable VARIABLE in a
+   * branch does not make the result nullable: `if (x != null) x else "-"` is smart-cast, which the typer cannot see here.
+   */
+  function joinBranches(types: Type[]): Type {
+    const values = types.filter((type) => type.name !== 'Nothing');
+    const nullable = types.some((type) => type.name === 'Nothing' && type.nullable);
+    if (!values.length) return types.some((type) => type.nullable) ? { name: 'Nothing', nullable: true } : { name: 'Nothing' };
+    if (values.some((type) => type.name === '?' || type.name === 'Function')) return unknown;
+    let joined: Type = values[0];
+    for (const type of values.slice(1)) {
+      const promoted = promoteNumeric(joined, type);
+      if (promoted) joined = promoted;
+      else if (type.name !== joined.name) return unknown;
+    }
+    return { name: joined.name, ...(nullable ? { nullable: true } : {}) };
+  }
   function infer(a: number, b: number, ctx: Context): Type {
     if (a >= b) return unit;
     if (at(a) === '(' && pairs.get(a) === b - 1) return infer(a + 1, b - 1, ctx);
@@ -687,14 +738,45 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const last = statements(arrow < 0 ? a + 1 : arrow + 1, end).at(-1);
       return { name: 'Function', params: params.map(p => p.type ?? unknown), result: last ? infer(last[0], last[1], inner) : unit };
     }
+    // `throw ...` never produces a value: its type is Nothing, which fits any branch.
+    if (at(a) === 'throw') return { name: 'Nothing' };
+    // A leading unary `+`/`-` keeps the operand's type (`return + number`).
+    if ((at(a) === '+' || at(a) === '-') && b - a >= 2 && !/^\d/.test(at(a + 1))) return infer(a + 1, b, ctx);
     // `if (c) A else B` used as a value has the type both branches share; a Double branch makes the whole
-    // expression a Double (so `if (odd) x.toDouble() else y / 2.0` prints as 70.0, not 70).
+    // expression a Double (so `if (odd) x.toDouble() else y / 2.0` prints as 70.0, not 70). A `null` branch makes it nullable,
+    // and a `throw` branch does not count.
     if (at(a) === 'if' && at(a + 1) === '(' && pairs.has(a + 1)) {
       const conditionEnd = pairs.get(a + 1)! + 1;
       const elseAt = top(conditionEnd, b, 'else');
-      if (elseAt > conditionEnd) {
-        const thenType = infer(conditionEnd, elseAt, ctx), elseType = infer(elseAt + 1, b, ctx);
-        return promoteNumeric(thenType, elseType) ?? (thenType.name === elseType.name ? { name: thenType.name } : unknown);
+      if (elseAt > conditionEnd) return joinBranches([branchType(conditionEnd, elseAt, ctx), branchType(elseAt + 1, b, ctx)]);
+    }
+    // `try { ... } catch (...) { ... }` used as a value: the last expression of the try block and of each catch block.
+    if (at(a) === 'try' && at(a + 1) === '{' && pairs.has(a + 1)) {
+      const types = [branchType(a + 1, pairs.get(a + 1)! + 1, ctx)];
+      let k = pairs.get(a + 1)! + 1;
+      while (at(k) === 'catch' && at(k + 1) === '(' && pairs.has(k + 1) && at(pairs.get(k + 1)! + 1) === '{') {
+        const open = pairs.get(k + 1)! + 1;
+        const inner = child(ctx);
+        const param = parameters(k + 2, pairs.get(k + 1)!)[0];
+        if (param) inner.vars.set(param.name, param.type ?? unknown);
+        types.push(branchType(open, pairs.get(open)! + 1, inner));
+        k = pairs.get(open)! + 1;
+      }
+      if (at(k) === 'finally' && at(k + 1) === '{' && pairs.has(k + 1)) k = pairs.get(k + 1)! + 1;
+      if (k === b && types.length > 1) return joinBranches(types);
+    }
+    // `when (x) { cond -> result ... }` used as a value: the type every branch result shares.
+    if (at(a) === 'when') {
+      let open = a + 1;
+      if (at(open) === '(' && pairs.has(open)) open = pairs.get(open)! + 1;
+      if (at(open) === '{' && pairs.get(open) === b - 1) {
+        const types: Type[] = [];
+        for (const [x, y] of statements(open + 1, b - 1)) {
+          const arrow = top(x, y, '->');
+          if (arrow < 0) return unknown;
+          types.push(branchType(arrow + 1, y, ctx));
+        }
+        if (types.length) return joinBranches(types);
       }
     }
     for (const op of ['==', '!=', '<', '>', '<=', '>=', '&&', '||', 'is']) if (top(a, b, op) >= 0) return { name: 'Boolean' };

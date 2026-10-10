@@ -12,7 +12,7 @@ import { scanKotlin } from './kotlinSource';
  * call result) is left to the runtime.
  */
 
-export interface ClassRuleError { message: string; line: number; type: 'compiler_error' | 'val_reassignment' | 'unresolved_reference' }
+export interface ClassRuleError { message: string; line: number; type: 'compiler_error' | 'val_reassignment' | 'unresolved_reference' | 'type_mismatch' }
 
 type Visibility = 'public' | 'private' | 'protected' | 'internal';
 interface Member {
@@ -373,6 +373,76 @@ export function checkClassMemberRules(source: string): ClassRuleError | null {
       }
       if (owners.every((r) => r.owner!.member.kind === 'var' && r.owner!.member.setterVisibility === 'private' && !(r.owner!.decl.start <= index && index <= r.owner!.decl.end))) {
         return { message: `Cannot assign to '${name}': the setter is private in '${owners[0].owner!.decl.name}'`, line: lineOf(m, index), type: 'compiler_error' };
+      }
+    }
+  }
+  return genericArgumentMismatch(source, m, decls);
+}
+
+/**
+ * A literal of the wrong kind passed to a generic class's method whose parameter is the class's own type parameter, on a receiver whose
+ * type argument is known: `val s = DataStore<Int>()` then `s.add("20")`, or `val l: Logger<String> = AnyLogger()` then `l.log(42)`.
+ * Silent whenever anything is ambiguous (a name declared twice, an overloaded method, a type argument that is not a plain value type).
+ */
+function genericArgumentMismatch(source: string, m: string, decls: Decl[]): ClassRuleError | null {
+  const PLAIN = new Set(['Int', 'Long', 'Double', 'Float', 'String', 'Boolean', 'Char']);
+  // class/interface name -> its type parameter names, and method name -> parameter positions typed by a type parameter
+  const generic = new Map<string, { params: string[]; methods: Map<string, (number | -1)[]> }>();
+  for (const head of m.matchAll(/\b(?:class|interface)\s+([A-Za-z_]\w*)\s*<([^>]*)>/g)) {
+    const params = splitTop(head[2]).map((p) => p.trim().replace(/^(?:in|out|reified)\s+/, '').split(/[\s:]/)[0]);
+    const decl = decls.find((d) => d.name === head[1]);
+    if (!decl || params.some((p) => !/^[A-Za-z_]\w*$/.test(p))) continue;
+    const body = m.slice(decl.start, decl.end);
+    const methods = new Map<string, (number | -1)[]>();
+    const counts = new Map<string, number>();
+    for (const fn of body.matchAll(/\bfun\s+([A-Za-z_]\w*)\s*\(([^)]*)\)/g)) {
+      counts.set(fn[1], (counts.get(fn[1]) ?? 0) + 1);
+      methods.set(fn[1], splitTop(fn[2]).map((p) => params.indexOf((p.split(':')[1] ?? '').trim())));
+    }
+    for (const [name, n] of counts) if (n > 1) methods.delete(name); // overloaded: cannot tell which one is called
+    generic.set(head[1], { params, methods });
+  }
+  if (!generic.size) return null;
+  // variable -> [class, type arguments]
+  const receivers = new Map<string, { cls: string; args: string[] } | null>();
+  const record = (name: string, cls: string, args: string) => {
+    const list = splitTop(args).map((a) => a.trim());
+    receivers.set(name, receivers.has(name) ? null : generic.has(cls) ? { cls, args: list } : null);
+  };
+  for (const d of m.matchAll(/\b(?:val|var)\s+([A-Za-z_]\w*)\s*(?::\s*([A-Za-z_]\w*)\s*<([^=]*)>\s*)?=\s*([A-Za-z_]\w*)\s*(?:<([^>()]*)>)?\s*\(/g)) {
+    if (d[2]) record(d[1], d[2], d[3]);
+    else if (d[5]) record(d[1], d[4], d[5]);
+    else receivers.set(d[1], null);
+  }
+  const literalKind = (text: string): string | null => {
+    const t = text.trim();
+    if (/^-?\d[\d_]*$/.test(t)) return 'Int';
+    if (/^-?\d[\d_]*L$/.test(t)) return 'Long';
+    if (/^-?\d[\d_]*\.\d+$/.test(t)) return 'Double';
+    if (/^-?\d[\d_]*(\.\d+)?[fF]$/.test(t)) return 'Float';
+    if (/^"([^"\\$]|\\.)*"$/.test(t)) return 'String';
+    if (t === 'true' || t === 'false') return 'Boolean';
+    if (/^'([^'\\]|\\.)'$/.test(t)) return 'Char';
+    return null;
+  };
+  for (const call of m.matchAll(/(?<![\w.])([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(([^()]*)\)/g)) {
+    const receiver = receivers.get(call[1]);
+    if (!receiver) continue;
+    const info = generic.get(receiver.cls)!;
+    const positions = info.methods.get(call[2]);
+    if (!positions) continue;
+    const argsStart = call.index! + call[0].lastIndexOf('(') + 1;
+    const rawArgs = splitTop(source.slice(argsStart, argsStart + call[3].length));
+    for (let k = 0; k < rawArgs.length && k < positions.length; k++) {
+      const typeParam = positions[k];
+      if (typeParam < 0) continue;
+      const expected = receiver.args[typeParam];
+      const actual = literalKind(rawArgs[k]);
+      if (!expected || !PLAIN.has(expected) || !actual) continue;
+      const fits = actual === expected || (actual === 'Int' && (expected === 'Long')) ;
+      if (!fits) {
+        const line = source.slice(0, call.index!).split('\n').length;
+        return { message: `Argument type mismatch: actual type is '${actual}', but '${expected}' was expected`, line, type: 'type_mismatch' };
       }
     }
   }

@@ -2893,3 +2893,22 @@ rules) silent wrong answers fell from 495 to 156 (`npm run compare:errors`).
 switching the check off. A new `looseShape` rule needs a valid look-alike in the test's accepted list (`a to b`, a declared `infix fun`,
 `println(message = ...)`, `abstract fun`), because the guard only covers shapes the lessons happen to use. The grammar does not see TYPE
 errors: those remain the engine's job.
+
+## `if`/`when`/`try` used as a value had no type, so a wrong return type ran silently
+
+`fun parseAge(text: String): String { return try { text.toInt() } catch (e: NumberFormatException) { 0 } }` ran and printed a number,
+though kotlinc rejects it (return type mismatch); the same for `return when (size) { Size.S -> "S" ... }` in a function declared `: Int`,
+`return if (id == 1) "admin" else null` in one declared `: Int?`, and `return + n`. `infer` (`kotlinFunctions.ts`) typed `if` only when
+both branches were plain expressions of one type, and had no rule for `try`/`when`/`throw`/unary `+`. Now `branchType` gives a branch's
+value (a `{ block }` is its last statement, never a lambda) and `joinBranches` joins them: a `throw` branch (Nothing) does not count,
+numbers promote, and branches that disagree give unknown (never a guess, so never a false rejection).
+
+**Only a literal `null` branch makes the result nullable.** A nullable VARIABLE in a branch does not: `if (x != null) x else "-"` is
+smart-cast in Kotlin, but the typer sees `x`'s declared `String?`, and treating the result as nullable would reject a valid `.length`.
+
+Also fixed: a generic `typealias Bucket<T> = MutableList<T>` was stored as if it had no type parameters, so `val names: Bucket<String> =
+mutableListOf(...)` (a World 12 Explore card) was rejected. Still unsupported: a two-parameter generic alias (the runner fails on the
+comma) and a generic alias for a function type. And `kotlinClassChecks.ts` now rejects a literal of the wrong kind passed to a generic
+class's method whose parameter is the class's own type parameter (`val s = Store<Int>()` then `s.add("20")`); it is silent for an
+overloaded method, a name declared twice, or a type argument that is not a plain value type. Pinned in `test:structure-rules`, whose cases
+are also checked against real kotlinc when `npm run real-kotlin:serve` is running.

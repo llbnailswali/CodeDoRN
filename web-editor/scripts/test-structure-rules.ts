@@ -103,6 +103,24 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['when branch result on the next line', wrap('  val n = 2\n  when (n) {\n    1 ->\n      println("one")\n    else ->\n      println("other")\n  }'), 'ok'],
   ['when conditions split across lines', wrap('  val n = 2\n  when (n) {\n    1,\n    2 -> println("small")\n    else -> println("big")\n  }'), 'ok'],
   ['subject-less when', wrap('  val n = 2\n  when {\n    n < 0 -> println("neg")\n    n == 0 -> println("zero")\n    else -> println("pos")\n  }'), 'ok'],
+  // --- if / when / try used as a value: the type of their branches (a throw branch does not count, a literal null makes it nullable)
+  ['try value returned as the wrong type', 'fun p(t: String): String {\n  return try {\n    t.toInt()\n  } catch (e: NumberFormatException) {\n    0\n  }\n}\nfun main() {\n  println(p("1"))\n}', 'error'],
+  ['try value of the right type', 'fun p(t: String): Int {\n  return try {\n    t.toInt()\n  } catch (e: NumberFormatException) {\n    0\n  }\n}\nfun main() {\n  println(p("x"))\n}', 'ok'],
+  ['when value returned as the wrong type', 'enum class Size { S, M }\nfun label(s: Size): Int {\n  return when (s) {\n    Size.S -> "S"\n    Size.M -> "M"\n  }\n}\nfun main() {\n  println(label(Size.S))\n}', 'error'],
+  ['when value with mixed branches into Any', 'fun f(n: Int): Any = when (n) {\n  1 -> "one"\n  else -> 2\n}\nfun main() {\n  println(f(1))\n}', 'ok'],
+  ['if with a null branch returned as the wrong nullable type', 'fun f(i: String): String? {\n  return if (i == "tea") 30 else null\n}\nfun main() {\n  println(f("tea"))\n}', 'error'],
+  ['if with a null branch of the right type', 'fun f(i: String): Int? {\n  return if (i == "tea") 30 else null\n}\nfun main() {\n  println(f("tea"))\n}', 'ok'],
+  ['if with a throw branch returned as the wrong type', 'fun v(q: Int): String {\n  return if (q > 0) q else throw IllegalArgumentException("x")\n}\nfun main() {\n  println(v(1))\n}', 'error'],
+  ['if with a throw branch of the right type', 'fun v(q: Int): Int {\n  return if (q > 0) q else throw IllegalArgumentException("x")\n}\nfun main() {\n  println(v(1))\n}', 'ok'],
+  ['smart-cast branch is not nullable', 'fun f(x: String?): Int {\n  val s = if (x != null) x else "-"\n  return s.length\n}\nfun main() {\n  println(f(null))\n}', 'ok'],
+  ['unary plus returned as a String', 'fun f(n: Int): String {\n  return + n\n}\nfun main() {\n  println(f(1))\n}', 'error'],
+  ['generic type alias', 'typealias Bucket<T> = MutableList<T>\nfun main() {\n  val names: Bucket<String> = mutableListOf("A", "B")\n  println(names.size)\n}', 'ok'],
+  // --- a literal of the wrong kind for a generic class's own type parameter
+  ['generic method given the wrong literal', 'class Store<T> {\n  private val items = mutableListOf<T>()\n  fun add(v: T) {\n    items.add(v)\n  }\n  fun first(): T? = items.firstOrNull()\n}\nfun main() {\n  val s = Store<Int>()\n  s.add("20")\n  println(s.first())\n}', 'error'],
+  ['generic method given the right literal', 'class Store<T> {\n  private val items = mutableListOf<T>()\n  fun add(v: T) {\n    items.add(v)\n  }\n  fun first(): T? = items.firstOrNull()\n}\nfun main() {\n  val s = Store<String>()\n  s.add("20")\n  println(s.first())\n}', 'ok'],
+  ['generic interface typed by declaration', 'interface Logger<in T> {\n  fun log(v: T)\n}\nclass AnyLogger : Logger<Any> {\n  override fun log(v: Any) = println(v)\n}\nfun main() {\n  val l: Logger<String> = AnyLogger()\n  l.log(42)\n}', 'error'],
+  ['generic interface given the right literal', 'interface Logger<in T> {\n  fun log(v: T)\n}\nclass AnyLogger : Logger<Any> {\n  override fun log(v: Any) = println(v)\n}\nfun main() {\n  val l: Logger<String> = AnyLogger()\n  l.log("hi")\n}', 'ok'],
+  ['Int literal for a Long type argument', 'class Store<T> {\n  private val items = mutableListOf<T>()\n  fun add(v: T) {\n    items.add(v)\n  }\n  fun first(): T? = items.firstOrNull()\n}\nfun main() {\n  val s = Store<Long>()\n  s.add(5)\n  println(s.first())\n}', 'ok'],
 ];
 
 (async () => {
