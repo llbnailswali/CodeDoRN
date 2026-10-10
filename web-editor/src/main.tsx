@@ -5,6 +5,7 @@ import {NativeStageHost} from './components/NativeStageHost.tsx';
 import {getNativeStageLaunch} from './utils/nativeScreens.ts';
 import {setStageVisible} from './utils/stageVisibility.ts';
 import './index.css';
+import './utils/kotlinSyntaxAssets.ts';
 
 // Inside the Android activity the React Native lesson screen opens for a web stage, show only that stage instead of the whole app.
 // The full app (and every World's lesson data) is loaded lazily: a stage launch never downloads or parses it.

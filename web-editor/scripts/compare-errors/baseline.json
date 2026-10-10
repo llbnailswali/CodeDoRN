@@ -2,11 +2,12 @@
  "authored-broken": {
   "total": 291,
   "agree": 265,
-  "false-accept": 6,
+  "silent-wrong": 3,
   "output-differs": 6,
   "compile-line-differs": 2,
   "compile-token-differs": 5,
   "extra-runtime": 6,
+  "false-accept": 3,
   "exception-differs": 1
  },
  "drop-close-bracket": {
@@ -24,25 +25,28 @@
  "typo-identifier": {
   "total": 120,
   "agree": 113,
-  "false-accept": 3,
+  "silent-wrong": 3,
   "compile-line-differs": 2,
   "compile-token-differs": 2
  },
  "typo-builtin": {
   "total": 120,
   "agree": 111,
-  "false-accept": 5,
+  "silent-wrong": 3,
+  "false-accept": 2,
   "compile-line-differs": 4
  },
  "var-to-val": {
   "total": 120,
   "agree": 118,
-  "false-accept": 2
+  "false-accept": 1,
+  "silent-wrong": 1
  },
  "remove-safe-call": {
   "total": 19,
-  "false-accept": 10,
-  "agree": 9
+  "silent-wrong": 8,
+  "agree": 9,
+  "false-accept": 2
  },
  "remove-not-null-assert": {
   "total": 4,
@@ -50,7 +54,7 @@
  },
  "annotation-type-swap": {
   "total": 44,
-  "false-accept": 9,
+  "silent-wrong": 9,
   "agree": 34,
   "compile-line-differs": 1
  },
@@ -65,7 +69,7 @@
  "extra-argument": {
   "total": 120,
   "agree": 117,
-  "false-accept": 1,
+  "silent-wrong": 1,
   "compile-token-differs": 2
  },
  "missing-argument": {
@@ -75,24 +79,26 @@
  },
  "equals-to-assign": {
   "total": 63,
-  "agree": 53,
-  "false-accept": 10
+  "agree": 54,
+  "false-accept": 6,
+  "silent-wrong": 3
  },
  "remove-return": {
   "total": 80,
   "agree": 70,
-  "false-accept": 9,
+  "silent-wrong": 8,
+  "false-accept": 1,
   "compile-line-differs": 1
  },
  "remove-else": {
   "total": 80,
-  "agree": 67,
-  "false-accept": 13
+  "agree": 79,
+  "silent-wrong": 1
  },
  "string-minus": {
   "total": 85,
   "agree": 73,
-  "false-accept": 8,
+  "silent-wrong": 8,
   "compile-token-differs": 2,
   "compile-line-differs": 2
  },
@@ -116,24 +122,25 @@
  "wrong-argument-type": {
   "total": 70,
   "agree": 64,
-  "false-accept": 5,
+  "silent-wrong": 5,
   "compile-line-differs": 1
  },
  "wrong-return-type": {
   "total": 80,
   "agree": 50,
-  "false-accept": 30
+  "silent-wrong": 30
  },
  "private-access": {
   "total": 45,
   "agree": 31,
-  "false-accept": 14
+  "silent-wrong": 14
  },
  "remove-import": {
   "total": 44,
   "agree": 30,
   "missed-runtime": 1,
-  "false-accept": 13
+  "false-accept": 12,
+  "silent-wrong": 1
  },
  "loop-variable-after-loop": {
   "total": 80,
@@ -141,16 +148,56 @@
  },
  "generic-type-argument": {
   "total": 2,
-  "false-accept": 2
+  "silent-wrong": 2
  },
  "call-without-parentheses": {
   "total": 59,
-  "false-accept": 8,
+  "silent-wrong": 1,
+  "false-accept": 7,
   "agree": 51
  },
+ "generic-delete-token": {
+  "total": 1105,
+  "agree": 975,
+  "false-accept": 81,
+  "silent-wrong": 31,
+  "compile-token-differs": 7,
+  "compile-line-differs": 6,
+  "output-differs": 1,
+  "extra-runtime": 3,
+  "missed-runtime": 1
+ },
+ "generic-operator-char": {
+  "total": 545,
+  "false-accept": 77,
+  "agree": 443,
+  "silent-wrong": 18,
+  "extra-runtime": 2,
+  "compile-token-differs": 1,
+  "compile-line-differs": 3,
+  "other": 1
+ },
+ "generic-duplicate-token": {
+  "total": 1500,
+  "agree": 1103,
+  "false-accept": 194,
+  "silent-wrong": 132,
+  "extra-runtime": 11,
+  "compile-line-differs": 50,
+  "compile-token-differs": 9,
+  "false-reject": 1
+ },
+ "generic-swap-tokens": {
+  "total": 1354,
+  "agree": 1223,
+  "false-accept": 100,
+  "silent-wrong": 13,
+  "compile-line-differs": 7,
+  "compile-token-differs": 11
+ },
  "remove-open": {
-  "total": 15,
-  "compile-token-differs": 6,
-  "agree": 9
+  "total": 10,
+  "compile-token-differs": 4,
+  "agree": 6
  }
 }

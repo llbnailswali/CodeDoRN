@@ -16,7 +16,8 @@ for (const r of rows) {
   g.push(r);
   groups.set(key(r), g);
 }
-const ranked = [...groups].sort((a, b) => b[1].length - a[1].length).slice(0, count);
+// Silent wrong answers (the simulator runs a program real Kotlin rejects) come first, then by size.
+const ranked = [...groups].sort((a, b) => (Number(b[0].startsWith('silent-wrong')) - Number(a[0].startsWith('silent-wrong'))) || b[1].length - a[1].length).slice(0, count);
 for (const [k, g] of ranked) {
   const shortest = g.reduce((a, b) => (b.code.length < a.code.length ? b : a));
   console.log(`\n${g.length} x ${k}`);

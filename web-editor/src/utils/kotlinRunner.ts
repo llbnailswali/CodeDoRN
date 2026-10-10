@@ -4,6 +4,7 @@ import { KotlinList, KotlinPair, KotlinSequence, outOfBounds } from './kotlinCol
 import { lowerKotlinFunctions, KotlinFunctionError } from './kotlinFunctions';
 import { maskStringsAndComments } from './errorSpan';
 import { checkStructureRules } from './kotlinStructureChecks';
+import { checkKotlinSyntax, ensureKotlinSyntax } from './kotlinSyntaxCheck';
 import { insertLineMarkers, expressionBodyLines, wrapFunctionsForLines, braceSingleStatementLoops } from './kotlinLineMarkers';
 import {
   kotlinAsync,
@@ -3187,6 +3188,7 @@ export async function compileAndRunKotlin(
   const startTime = performance.now();
   const timeoutMs = options?.timeoutMs || 2000;
 
+  const originalCode = code;
   try { code = prepareKotlinSource(code); }
   catch (err) {
     return { success: false, output: '', logs: [], error: { message: `Syntax error: ${(err as Error).message}`, line: err instanceof KotlinSourceError ? err.line : 1, unlocated: !(err instanceof KotlinSourceError), type: 'syntax_error' }, executionTimeMs: 0, exitCode: 1 };
@@ -3207,39 +3209,16 @@ export async function compileAndRunKotlin(
   // when the ORIGINAL source actually references coroutines.
   const usesCoroutines = /\bkotlinx\.coroutines\b|\brunBlocking\b|\blaunch\s*\(|\basync\s*\(|\bcoroutineScope\s*\{|\bsupervisorScope\s*\{|\bwithContext\s*\(|\bcoroutineContext\b|\bCoroutineStart\b|\bCoroutineName\s*\(|\bDispatchers\./.test(code);
 
-  // 1. Static Validation (Lexical, Syntax, Immutability, Type Constraints)
-  const validationError = staticValidateKotlin(code);
-  if (validationError) {
-    const elapsed = Math.round(performance.now() - startTime);
-    return {
-      success: false,
-      output: '',
-      logs: [],
-      error: validationError,
-      executionTimeMs: elapsed,
-      exitCode: 1,
-    };
-  }
-  const readOnlyError = checkReadOnlyCollectionMutation(code);
-  if (readOnlyError) {
-    return { success: false, output: '', logs: [], error: readOnlyError, executionTimeMs: Math.round(performance.now() - startTime), exitCode: 1 };
-  }
-  const inheritanceError = checkFinalClassInheritance(code);
-  if (inheritanceError) {
-    const elapsed = Math.round(performance.now() - startTime);
-    return { success: false, output: '', logs: [], error: inheritanceError, executionTimeMs: elapsed, exitCode: 1 };
-  }
-  const structureError = checkStructureRules(code);
-  if (structureError) {
-    return { success: false, output: '', logs: [], error: structureError, executionTimeMs: Math.round(performance.now() - startTime), exitCode: 1 };
-  }
-  const classRuleError = checkClassMemberRules(code);
-  if (classRuleError) {
-    return {
-      success: false, output: '', logs: [],
-      error: { message: `Compilation error: ${classRuleError.message}`, line: classRuleError.line, type: classRuleError.type },
-      executionTimeMs: Math.round(performance.now() - startTime), exitCode: 1,
-    };
+  // 1. Static Validation (Lexical, Syntax, Immutability, Type Constraints). The real Kotlin grammar (kotlinSyntaxCheck.ts) checks the
+  // syntax; the engine's own rules give more specific messages, so one of them wins when it reports the same line or an earlier one.
+  await ensureKotlinSyntax();
+  const syntax = checkKotlinSyntax(originalCode);
+  const syntaxError: KotlinDiagnostic | null = syntax ? { message: `Syntax error: ${syntax.message}`, line: syntax.line, column: syntax.column, token: syntax.token, type: 'syntax_error' } : null;
+  const classRule = () => { const e = checkClassMemberRules(code); return e ? { message: `Compilation error: ${e.message}`, line: e.line, type: e.type } as KotlinDiagnostic : null; };
+  const ruleError = staticValidateKotlin(code) ?? checkReadOnlyCollectionMutation(code) ?? checkFinalClassInheritance(code) ?? checkStructureRules(code) ?? classRule();
+  const firstError = syntaxError && (!ruleError || ruleError.unlocated || ruleError.line > syntaxError.line) ? syntaxError : ruleError;
+  if (firstError) {
+    return { success: false, output: '', logs: [], error: firstError, executionTimeMs: Math.round(performance.now() - startTime), exitCode: 1 };
   }
   // Note: the "printed a literal instead of computing it" static check
   // (`detectHardcodedOutput`) deliberately does NOT run here unconditionally

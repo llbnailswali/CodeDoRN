@@ -17,13 +17,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { Worker } from 'node:worker_threads';
-import { AVAILABLE_FIVE_STAGE_LESSONS } from '../../src/data/lessonStagesData';
-import { PRACTICE_DEBUG_BANK, PRACTICE_WRITE_RUN_BANK } from '../../src/data/practiceBank';
-import { OPERATORS, applyEdit, lineOf, maskStringsAndComments, rng } from './mutations';
+import { OPERATORS } from './mutations';
+import { type Program, buildPrograms } from './programs';
 
 const run = promisify(execFile);
 const arg = (name: string, fallback: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const PER_OP = Number(arg('per-op', '120'));
+const GENERIC_PER_OP = Number(arg('generic-per-op', '1500'));
 const SEED = Number(arg('seed', '1'));
 const WORLDS = arg('worlds', '').split(',').filter(Boolean).map(Number);
 const CHUNK = Number(arg('chunk', '200'));
@@ -34,54 +34,6 @@ const KOTLINC = path.join(TOOLS, 'kotlinc', 'bin', 'kotlinc');
 const STDLIB = path.join(TOOLS, 'kotlinc', 'lib', 'kotlin-stdlib.jar');
 const COROUTINES = fs.readdirSync(TOOLS).filter((f) => /^kotlinx-coroutines-core-jvm.*\.jar$/.test(f)).map((f) => path.join(TOOLS, f))[0];
 if (!fs.existsSync(KOTLINC)) { console.error('tools/kotlinc is missing. Run `npm run kotlinc:fetch` first.'); process.exit(1); }
-
-// ---------------------------------------------------------------- programs under test
-interface Program { id: string; op: string; code: string; baseId: string; world: number; mutation?: { line: number; desc: string; before: string; after: string } }
-
-function worldOf(id: string): number {
-  const m = /world-(\d+)/.exec(id);
-  return m ? Number(m[1]) : 0;
-}
-
-function collect() {
-  const valid: { id: string; code: string }[] = [];
-  const broken: { id: string; code: string }[] = [];
-  const add = (list: { id: string; code: string }[], id: string, code?: string) => { if (code && /\bfun\s+main\s*\(/.test(code)) list.push({ id, code }); };
-  for (const lesson of Object.values(AVAILABLE_FIVE_STAGE_LESSONS)) {
-    add(valid, `${lesson.id}:solution`, lesson.writeRun?.solutionCode);
-    add(valid, `${lesson.id}:fixed`, lesson.debug?.fixedCode);
-    add(broken, `${lesson.id}:broken`, lesson.debug?.brokenCode);
-  }
-  for (const list of Object.values(PRACTICE_WRITE_RUN_BANK)) for (const p of list) add(valid, `${p.id}:solution`, p.solutionCode);
-  for (const list of Object.values(PRACTICE_DEBUG_BANK)) for (const p of list) { add(valid, `${p.id}:fixed`, p.fixedCode); add(broken, `${p.id}:broken`, p.brokenCode); }
-  const keep = (x: { id: string }) => !WORLDS.length || WORLDS.includes(worldOf(x.id));
-  return { valid: valid.filter(keep), broken: broken.filter(keep) };
-}
-
-function buildPrograms(): Program[] {
-  const { valid, broken } = collect();
-  const programs: Program[] = broken.map((b) => ({ id: b.id, op: 'authored-broken', code: b.code, baseId: b.id, world: worldOf(b.id) }));
-  const random = rng(SEED);
-  for (const op of OPERATORS) {
-    const candidates: Program[] = [];
-    for (const base of valid) {
-      const masked = maskStringsAndComments(base.code);
-      const edits = op.edits(base.code, masked);
-      // up to 2 sites per program, chosen by the seeded generator
-      for (let n = 0; n < Math.min(2, edits.length); n++) {
-        const e = edits.splice(Math.floor(random() * edits.length), 1)[0];
-        const code = applyEdit(base.code, e);
-        if (code === base.code) continue;
-        const line = lineOf(base.code, e.start);
-        candidates.push({ id: `${base.id}#${op.name}#${candidates.length}`, op: op.name, code, baseId: base.id, world: worldOf(base.id), mutation: { line, desc: e.desc, before: base.code.split('\n')[line - 1] ?? '', after: code.split('\n')[line - 1] ?? '' } });
-      }
-    }
-    for (let i = candidates.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [candidates[i], candidates[j]] = [candidates[j], candidates[i]]; }
-    const seen = new Set<string>();
-    for (const c of candidates) { if (seen.has(c.code)) continue; seen.add(c.code); programs.push(c); if (seen.size >= PER_OP) break; }
-  }
-  return programs;
-}
 
 // ---------------------------------------------------------------- real kotlinc
 type Kind = 'compile' | 'runtime' | 'ok' | 'timeout' | 'crash' | 'hang';
@@ -181,7 +133,7 @@ function toOutcome(m: { output: string; error: { message: string; line: number; 
   return { kind: 'runtime', errors: [], out: m.output, exc: jsNull ? 'NullPointerException' : exc, message: msg, rtLine: m.error.line };
 }
 
-type Verdict = 'agree' | 'simulator-hang' | 'false-accept' | 'false-reject' | 'missed-runtime' | 'extra-runtime' | 'compile-line-differs' | 'compile-token-differs' | 'exception-differs' | 'runtime-line-differs' | 'output-differs' | 'other' | 'skipped';
+type Verdict = 'agree' | 'simulator-hang' | 'silent-wrong' | 'false-accept' | 'false-reject' | 'missed-runtime' | 'extra-runtime' | 'compile-line-differs' | 'compile-token-differs' | 'exception-differs' | 'runtime-line-differs' | 'output-differs' | 'other' | 'skipped';
 
 function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict; detail: string } {
   if (sim.kind === 'hang') return { verdict: 'simulator-hang', detail: `kotlinc: ${real.kind}${real.errors[0] ? ' ' + real.errors[0].msg : ''}` };
@@ -213,6 +165,8 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
     }
     return { verdict: 'agree', detail: '' };
   }
+  // The worst case: real Kotlin rejects it, but the simulator runs it to the end without any error (a silent wrong answer).
+  if (real.kind === 'compile' && sim.kind === 'ok') return { verdict: 'silent-wrong', detail: `kotlinc: ${real.errors[0]?.msg} (line ${real.errors[0]?.line}) | simulator runs it and prints ${JSON.stringify(sim.out.slice(0, 60))}` };
   if (real.kind === 'compile') return { verdict: 'false-accept', detail: `kotlinc: ${real.errors[0]?.msg} (line ${real.errors[0]?.line}) | simulator: ${sim.kind}${sim.exc ? ' ' + sim.exc : ''}` };
   if (sim.kind === 'compile') return { verdict: 'false-reject', detail: `simulator: ${sim.errors[0].msg} (line ${sim.simLine}) | kotlinc: ${real.kind}${real.exc ? ' ' + normExc(real.exc) : ''}` };
   if (real.kind === 'runtime' && sim.kind === 'ok') return { verdict: 'missed-runtime', detail: `kotlinc throws ${normExc(real.exc)}: ${real.message ?? ''}`.slice(0, 160) };
@@ -223,7 +177,7 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
 // ---------------------------------------------------------------- main
 (async () => {
   const started = Date.now();
-  const programs = buildPrograms();
+  const programs = buildPrograms({ seed: SEED, perOp: PER_OP, genericPerOp: GENERIC_PER_OP, worlds: WORLDS });
   console.log(`${programs.length} programs (${programs.filter((p) => p.op === 'authored-broken').length} authored broken, the rest mutants). Seed ${SEED}.`);
 
   // The real compiler pass is the slow part: results are cached per program text (a hash), so only new or changed programs are compiled.
@@ -259,7 +213,7 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
 
   // ---- report
   const ops = ['authored-broken', ...OPERATORS.map((o) => o.name)];
-  const verdicts: Verdict[] = ['agree', 'simulator-hang', 'false-accept', 'false-reject', 'missed-runtime', 'extra-runtime', 'compile-line-differs', 'compile-token-differs', 'exception-differs', 'runtime-line-differs', 'output-differs', 'other', 'skipped'];
+  const verdicts: Verdict[] = ['agree', 'simulator-hang', 'silent-wrong', 'false-accept', 'false-reject', 'missed-runtime', 'extra-runtime', 'compile-line-differs', 'compile-token-differs', 'exception-differs', 'runtime-line-differs', 'output-differs', 'other', 'skipped'];
   const count = (f: (r: (typeof rows)[number]) => boolean) => rows.filter(f).length;
   const scored = rows.filter((r) => r.verdict !== 'skipped');
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 1000) / 10}%` : '-');
@@ -267,7 +221,7 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
   md += `**Overall agreement: ${pct(count((r) => r.verdict === 'agree'), scored.length)}** (same kind of outcome, same line, same token or exception, same output)\n\n`;
   md += '| Verdict | Count | Meaning |\n| --- | ---: | --- |\n';
   const meaning: Record<string, string> = {
-    agree: 'same result', 'simulator-hang': 'the simulator never returned on this program (would freeze the app)', 'false-accept': 'kotlinc rejects, simulator runs it (teaches wrong Kotlin)', 'false-reject': 'simulator rejects, kotlinc accepts (tells a learner correct code is wrong)',
+    agree: 'same result', 'simulator-hang': 'the simulator never returned on this program (would freeze the app)', 'silent-wrong': 'kotlinc rejects it, the simulator runs it with no error at all (the worst case)', 'false-accept': 'kotlinc rejects, simulator runs it (teaches wrong Kotlin)', 'false-reject': 'simulator rejects, kotlinc accepts (tells a learner correct code is wrong)',
     'missed-runtime': 'kotlinc throws at runtime, simulator does not', 'extra-runtime': 'simulator throws, kotlinc does not', 'compile-line-differs': 'both reject, but on different lines',
     'compile-token-differs': 'both reject on the same line, but we underline a different token', 'exception-differs': 'both throw, different exception type', 'runtime-line-differs': 'both throw the same exception, but report different lines', 'output-differs': 'both run, different output', other: 'other kind mismatch (e.g. timeout)', skipped: 'kotlinc crashed',
   };

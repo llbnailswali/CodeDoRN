@@ -2852,3 +2852,30 @@ receiver-member rewriting (otherwise `apply { }` / extension bodies turn it into
 Real Kotlin rejects `runBlocking`/`launch`/`delay` without `import kotlinx.coroutines.*`; the simulator does not. A rule for it was tried
 and removed: Explore cards are fragments that rely on an implied import (the real-kotlinc checker adds it), so the rule broke their Try it.
 The comparison's `remove-import` mistake type keeps measuring this gap (68% agreement).
+
+## Syntax is checked by a real Kotlin grammar (tree-sitter), not by shape rules
+
+The simulator translates line by line, so it ran (or crashed at runtime on) malformed programs that kotlinc refuses to compile: a `when`
+branch missing `->`, `(println"hi")`, `val x: ? = null`, `mapOf("pear" to )`, `a & b`. One rule per shape never caught up: a mechanical
+mutation audit (delete, duplicate or swap one token) found 495 silent wrong answers. `src/utils/kotlinSyntaxCheck.ts` now parses every
+program with tree-sitter-kotlin (MIT, `src/assets/tree-sitter/`, loaded through `web-tree-sitter` 0.25.10) before it runs. Agreement with
+kotlinc on 6,556 broken programs went from 59.5% to 85.4%; syntax mistakes that ran or crashed went from 1,439 to 76.
+
+How it fits in `compileAndRunKotlin`: the engine's own rules still run (their messages are more specific); the earlier line wins, and on the
+same line the rule's message wins. Until the parser has loaded, or if WebAssembly is unavailable, the check returns null and nothing changes.
+The app loads it at start (`kotlinSyntaxAssets.ts`, Vite `?url` assets); Node scripts read the file from disk (`kotlinSyntaxAssets.node.ts`).
+
+Where it reports: tree-sitter's ERROR node often wraps the whole function, so its position is useless. The check blanks one line at a time
+and reports the first line whose removal lets the program parse, then the token whose removal fixes that line (`Unexpected 'x'`). A line
+whose brackets do not balance is only blamed when the program's do not balance either (blanking `fun main() {` makes the body parse as
+top-level script code).
+
+**The grammar rejects some valid Kotlin.** `prepareForParse` rewrites these before parsing, never moving a line (columns are mapped back):
+a member followed by `}` on the same line (`class K { val x = 1 }`), a `catch`/`finally` on the line after `}`, an anonymous function with
+an untyped parameter (`fun(word) = ...`), and a statement that is only a parenthesized name (`{ (it) }`). Note also that `*x` is valid
+syntax (spread), so `n +* 2` parses. fwcd's tree-sitter-kotlin 0.3.8 was built and compared: same gaps, nothing gained.
+
+**Rule:** a new Kotlin shape in lesson content that the grammar rejects shows up as a failure in `test:structure-no-false-positives`
+(every valid program in the app). Fix it with a line-preserving rewrite in `prepareForParse` plus a case in `test:kotlin-syntax`; never by
+switching the check off. The grammar does not see TYPE errors or duplicated keywords it happens to accept (`fun fun main`,
+`var counter counter = 0`): those remain the shape rules' job.

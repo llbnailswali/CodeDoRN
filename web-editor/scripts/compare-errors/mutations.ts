@@ -4,9 +4,10 @@
  * (same length), so an operator never edits inside a string or a comment.
  */
 import { maskStringsAndComments } from '../../src/utils/errorSpan';
+import { scanKotlin } from '../../src/utils/kotlinSource';
 
 export interface Edit { start: number; end: number; text: string; desc: string }
-export interface Operator { name: string; describe: string; edits: (code: string, masked: string) => Edit[] }
+export interface Operator { name: string; describe: string; edits: (code: string, masked: string) => Edit[]; generic?: boolean }
 
 const KEYWORDS = new Set(['val', 'var', 'fun', 'class', 'if', 'else', 'for', 'while', 'when', 'return', 'in', 'is', 'as', 'null', 'true', 'false', 'println', 'print', 'object', 'interface', 'this', 'it', 'override', 'open', 'data', 'enum', 'try', 'catch', 'finally', 'throw', 'main', 'init', 'constructor', 'by', 'lazy']);
 
@@ -44,6 +45,12 @@ function topLevelCommas(masked: string, open: number, close: number): number[] {
 }
 
 const del = (start: number, end: number, desc: string): Edit => ({ start, end, text: '', desc });
+
+/** Tokens of the program outside comments (strings are single tokens, so an edit never lands inside one). */
+function codeTokens(code: string) {
+  try { return scanKotlin(code).filter((t) => t.kind !== 'comment'); } catch { return []; }
+}
+const TWO_CHAR_OPERATORS = ['->', '==', '!=', '<=', '>=', '&&', '||', '..', '?.', '?:', '!!', '+=', '-=', '*=', '/=', '++', '--', '::'];
 
 export const OPERATORS: Operator[] = [
   { name: 'drop-close-bracket', describe: 'delete a ) } or ]', edits: (c, m) => all(m, /[)}\]]/).map((x) => del(x.index!, x.index! + 1, `delete "${x[0]}"`)) },
@@ -222,6 +229,44 @@ export const OPERATORS: Operator[] = [
     name: 'call-without-parentheses',
     describe: 'call a method without its parentheses',
     edits: (c, m) => all(m, /\.(uppercase|lowercase|trim|reversed|sorted|toInt|toDouble|toString|isEmpty|first|last|size\b)\(\)/).filter((x) => x[1] !== 'size').map((x) => del(x.index! + x[0].length - 2, x.index! + x[0].length, `.${x[1]}() -> .${x[1]}`)),
+  },
+  // ---- generic, mechanical mistakes: no guessing about which mistakes learners make
+  {
+    name: 'generic-delete-token', generic: true, describe: 'delete any one token',
+    edits: (c) => codeTokens(c).filter((t) => t.text !== 'main' && t.text !== 'fun').map((t) => del(t.start, t.end, `delete ${t.text.slice(0, 20)}`)),
+  },
+  {
+    name: 'generic-operator-char', generic: true, describe: 'drop one character of a two-character operator (-> becomes -, == becomes =)',
+    edits: (c) => {
+      const toks = codeTokens(c);
+      const out: Edit[] = [];
+      for (let i = 0; i + 1 < toks.length; i++) {
+        const a = toks[i], b = toks[i + 1];
+        if (a.kind !== 'symbol' || b.kind !== 'symbol' || b.start !== a.end) continue;
+        const op = a.text + b.text;
+        if (!TWO_CHAR_OPERATORS.includes(op)) continue;
+        out.push(del(a.start, a.end, `${op} -> ${b.text}`), del(b.start, b.end, `${op} -> ${a.text}`));
+      }
+      return out;
+    },
+  },
+  {
+    name: 'generic-duplicate-token', generic: true, describe: 'type one token twice',
+    edits: (c) => codeTokens(c).filter((t) => t.kind === 'symbol' || t.kind === 'word').map((t) => ({ start: t.end, end: t.end, text: (t.kind === 'word' ? ' ' : '') + t.text, desc: `${t.text} twice` })),
+  },
+  {
+    name: 'generic-swap-tokens', generic: true, describe: 'swap two neighbouring tokens on a line',
+    edits: (c) => {
+      const toks = codeTokens(c);
+      const out: Edit[] = [];
+      for (let i = 0; i + 1 < toks.length; i++) {
+        const a = toks[i], b = toks[i + 1];
+        if (c.slice(a.end, b.start).includes('\n') || a.text === b.text) continue;
+        const between = c.slice(a.end, b.start);
+        out.push({ start: a.start, end: b.end, text: b.text + between + a.text, desc: `${a.text.slice(0, 12)} <-> ${b.text.slice(0, 12)}` });
+      }
+      return out;
+    },
   },
   { name: 'remove-open', describe: 'forget open on a class or member', edits: (c, m) => all(m, /\bopen\s+(?=class|fun|val|var)/).map((x) => del(x.index!, x.index! + x[0].length, 'delete open')) },
 ];

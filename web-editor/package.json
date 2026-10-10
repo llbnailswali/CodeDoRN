@@ -26,6 +26,7 @@
     "test:int-zero-division": "tsx scripts/test-int-zero-division.ts",
     "test:structure-rules": "tsx scripts/test-structure-rules.ts",
     "test:structure-no-false-positives": "tsx scripts/test-structure-no-false-positives.ts",
+    "test:kotlin-syntax": "tsx scripts/test-kotlin-syntax.ts",
     "compare:errors": "tsx scripts/compare-errors/run.ts",
     "check:content": "tsx scripts/compare-errors/check-content.ts",
     "check:all": "bash scripts/run-all-checks.sh",
@@ -92,7 +93,8 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "web-tree-sitter": "0.25.10"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",
