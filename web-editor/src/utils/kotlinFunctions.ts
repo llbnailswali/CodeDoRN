@@ -23,6 +23,8 @@ const literalType = (first: string, second?: string): Type | undefined => {
   return undefined;
 };
 const unit: Type = { name: 'Unit' };
+/** Collection calls whose trailing lambda takes ONE element (so `it` has the element type). */
+const ELEMENT_CALLBACKS = new Set(['forEach', 'map', 'filter', 'filterNot', 'any', 'all', 'none', 'count', 'first', 'firstOrNull', 'last', 'lastOrNull', 'find', 'takeWhile', 'dropWhile', 'sumOf', 'maxByOrNull', 'minByOrNull', 'sortedBy', 'sortedByDescending', 'onEach', 'mapNotNull', 'partition']);
 const isName = (text: string) => /^[A-Za-z_][A-Za-z_0-9]*$/.test(text);
 
 export class KotlinFunctionError extends Error {
@@ -606,7 +608,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   // the Kotlin-level collection-factory names it recognizes before they are
   // renamed to their `__kt_`-prefixed runtime equivalents, and a few bare
   // keywords/literals that can appear in an expression position.
-  const receiverExcludedNames = new Set(['println', 'print', 'listOf', 'mutableListOf', 'arrayOf', 'setOf', 'mutableSetOf', 'mapOf', 'mutableMapOf', 'emptyList', 'Pair', 'TODO', 'true', 'false', 'null', 'it', 'this', 'super']);
+  const receiverExcludedNames = new Set(['println', 'print', 'listOf', 'mutableListOf', 'arrayOf', 'setOf', 'mutableSetOf', 'mapOf', 'mutableMapOf', 'emptyList', 'Pair', 'TODO', 'true', 'false', 'null', 'it', 'this', 'super', '__kt_line']);
   let serial = 0;
   const child = (ctx: Context): Context => ({ ...ctx, vars: new Map(ctx.vars), frames: [...ctx.frames] });
   const frame = (kind: Frame['kind'], result?: Type, label?: string, inline = false): Frame => ({ token: `__kt_target_${++serial}`, label, kind, inline, used: false, result });
@@ -635,6 +637,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const baseName = (n: string) => { const i = n.indexOf('<'); return i === -1 ? n : n.slice(0, i); };
       const be = baseName(expected.name), ba = baseName(actual.name);
       if (be === ba && GENERIC_BUILTINS.has(be)) return true;
+      // A mutable collection is also its read-only kind (MutableList<T> is a List<T>), and every list or set is a Collection/Iterable.
+      const readOnly: Record<string, string[]> = { List: ['MutableList', 'ArrayList'], Set: ['MutableSet', 'HashSet', 'LinkedHashSet'], Map: ['MutableMap', 'HashMap', 'LinkedHashMap'], Collection: ['List', 'MutableList', 'Set', 'MutableSet'], Iterable: ['List', 'MutableList', 'Set', 'MutableSet'] };
+      if (readOnly[be]?.includes(ba)) return true;
       return false;
     }
     if (expected.name === 'Function') {
@@ -746,7 +751,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     if (['listOf', 'mutableListOf', 'setOf', 'mutableSetOf'].includes(at(a)) && at(a + 1) === '(' && pairs.get(a + 1) === b - 1 && b - a > 3) {
       const elementTypes = split(a + 2, b - 1).map(([x, y]) => infer(x, y, ctx));
       const first = elementTypes[0];
-      if (first && classProps.has(first.name) && !first.nullable && elementTypes.every(type => type.name === first.name && !type.nullable)) {
+      if (first && (classProps.has(first.name) || ['Int', 'Long', 'Double', 'String', 'Boolean', 'Char'].includes(first.name)) && !first.nullable && elementTypes.every(type => type.name === first.name && !type.nullable)) {
         return { name: `${({ listOf: 'List', mutableListOf: 'MutableList', setOf: 'Set', mutableSetOf: 'MutableSet' } as Record<string, string>)[at(a)]}<${first.name}>` };
       }
     }
@@ -1327,7 +1332,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const element = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(infer(i + 4, closeParen, ctx).name);
         const inner = (element?.[1] ?? element?.[2] ?? '').trim();
         if (inner.endsWith('?') && !inner.includes('<')) ctx.vars.set(at(i + 2), { name: inner.slice(0, -1), nullable: true });
-        else if (classProps.has(inner)) ctx.vars.set(at(i + 2), { name: inner });
+        else if (classProps.has(inner) || ['Int', 'Long', 'Double', 'String', 'Boolean', 'Char'].includes(inner)) ctx.vars.set(at(i + 2), { name: inner });
       }
       // Arithmetic on a nullable number that was never null-checked is a compile error (`n + 1`, `total += score`).
       {
@@ -1448,7 +1453,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // receiver property -- Kotlin has no bare, undeclared assignment
       // target otherwise. Rewriting just the LHS token is enough; the `=`
       // and the RHS lower normally on the following iterations.
-      if (ctx.receiver && isName(at(i)) && at(i + 1) === '=' && !['.', '?.'].includes(at(i - 1)) && !ctx.vars.has(at(i)) && !['val', 'var', 'fun'].includes(at(i - 1)) && !functions.has(at(i)) && !classes.has(at(i))) {
+      if (ctx.receiver && isName(at(i)) && at(i + 1) === '=' && !['.', '?.'].includes(at(i - 1)) && !ctx.vars.has(at(i)) && !['val', 'var', 'fun'].includes(at(i - 1)) && !functions.has(at(i)) && !classes.has(at(i)) && !receiverExcludedNames.has(at(i))) {
         emit(i, i + 1, `${ctx.receiver}.${at(i)}`);
       }
       if (isName(at(i)) && at(i + 1) === '=' && ctx.vars.has(at(i))) {
@@ -1695,7 +1700,17 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const trailing = !declarationBodies.has(i) && isName(at(i - 1)) && !['else', 'try', 'finally', 'do', 'init', 'when'].includes(at(i - 1)) && at(i - 2) !== 'class' && at(i - 2) !== 'object' && at(i - 2) !== 'interface' && at(i - 2) !== 'companion';
         if (trailing) {
           const info = callInfo(i, ctx), param = info.signature?.params.at(-1);
-          emit(i, end + 1, `(${lambda(i, end, ctx, param?.type, info.name, info.inline && !param?.mode)})`);
+          // `xs.forEach { ... }` on a List/Set/Array of a known element type: the lambda's single parameter (`it`) is that element type, so
+          // e.g. `10 / it` is Int division (and throws on zero) like in Kotlin.
+          let expectedLambda = param?.type;
+          if (!expectedLambda && at(i - 2) === '.' && ELEMENT_CALLBACKS.has(at(i - 1))) {
+            let r = i - 3;
+            while (r > a && (at(r - 1) === '.' || at(r - 1) === '?.' || (pairs.has(r) && pairs.get(r)! < r))) r = pairs.has(r) && pairs.get(r)! < r ? pairs.get(r)! - 1 : r - 2;
+            const container = /^(?:Mutable)?(?:List|Set)<(\w+)>$|^Array<(\w+)>$/.exec(infer(Math.max(a, r), i - 2, ctx).name);
+            const element = container?.[1] ?? container?.[2];
+            if (element && ['Int', 'Long', 'Double', 'String', 'Boolean', 'Char'].includes(element)) expectedLambda = { name: 'Function', params: [{ name: element }], result: unknown };
+          }
+          emit(i, end + 1, `(${lambda(i, end, ctx, expectedLambda, info.name, info.inline && !param?.mode)})`);
         } else if (literal) {
           emit(i, end + 1, lambda(i, end, ctx, expected, callLabel, inline));
         } else {

@@ -22,6 +22,7 @@
     "test:error-span": "tsx scripts/test-error-span.ts",
     "test:smart-cast": "tsx scripts/test-smart-cast-stability.ts",
     "test:compile-fixes": "tsx scripts/test-compile-fixes.ts",
+    "test:runtime-lines": "tsx scripts/test-runtime-lines.ts",
     "test:int-zero-division": "tsx scripts/test-int-zero-division.ts",
     "test:structure-rules": "tsx scripts/test-structure-rules.ts",
     "test:structure-no-false-positives": "tsx scripts/test-structure-no-false-positives.ts",

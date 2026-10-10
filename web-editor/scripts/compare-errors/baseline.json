@@ -1,9 +1,9 @@
 {
  "authored-broken": {
   "total": 291,
-  "agree": 263,
+  "agree": 264,
   "false-accept": 6,
-  "output-differs": 6,
+  "output-differs": 5,
   "compile-line-differs": 4,
   "compile-token-differs": 5,
   "extra-runtime": 6,
@@ -64,9 +64,8 @@
  },
  "extra-argument": {
   "total": 120,
-  "agree": 115,
+  "agree": 117,
   "false-accept": 1,
-  "compile-line-differs": 2,
   "compile-token-differs": 2
  },
  "missing-argument": {
@@ -99,16 +98,15 @@
  },
  "divide-by-zero": {
   "total": 56,
-  "agree": 36,
+  "agree": 39,
   "output-differs": 1,
-  "missed-runtime": 16,
+  "missed-runtime": 13,
   "other": 2,
   "exception-differs": 1
  },
  "index-out-of-bounds": {
   "total": 13,
-  "agree": 12,
-  "missed-runtime": 1
+  "agree": 13
  },
  "remove-override": {
   "total": 32,

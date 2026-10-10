@@ -2832,3 +2832,17 @@ ranks the disagreements by the compiler's own message. State at the end of this 
 - Still open (ranked by `npm run improve`): undeclared names the typo check cannot see (it only reports names one typo from a declared name),
   `/ 0` and `% 0` inside lambdas (the lambda parameter `it` has no element type, so the division is not recognised as Int), an indexed Map
   value used without a null check, a missing return in an anonymous function, assignment as a call argument (`println(a=b)`).
+
+## Runtime error lines: line markers, and the function wrapper that keeps them right across calls
+
+A runtime error reports the Kotlin line that was running (`src/utils/kotlinLineMarkers.ts`). Before translation, `__kt_line = N;` is
+inserted on its OWN line above each statement line inside a code block (function, method, lambda, init, if/else/loop/try body); a prefix on
+the same line would break the runner's start-of-line passes, and the `;` is required (a next line starting with `(` would otherwise be
+parsed as `5(n--)`). No marker goes into class/object/interface/enum bodies, `when` bodies, or on a line that continues the previous one
+(`.map {`, `?:`, `else`, an `if (...)` body without braces, a trailing operator or comma; but `i++`, `x!!`, `String?`, `List<Int>` at the end
+of a line ARE complete). Compile errors found during translation are mapped back through `lineMap`.
+After translation `wrapFunctionsForLines` wraps every named function and class method/getter: it saves the caller's line, sets the
+declaration line for an expression body or getter (no statement to mark), restores the caller's line on return (so `findUser(2)!!` reports
+the caller's line, not the last line inside findUser), and tags a thrown error once with the innermost line. `__kt_line` is excluded from
+receiver-member rewriting (otherwise `apply { }` / extension bodies turn it into `this.__kt_line`). Pinned by `npm run test:runtime-lines`
+(15 cases, each checked against the first `Main.kt:N` frame of real kotlinc's stack trace) and by the comparison's `runtime-line-differs`.

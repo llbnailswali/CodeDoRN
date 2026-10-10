@@ -4,6 +4,7 @@ import { KotlinList, KotlinPair, KotlinSequence, outOfBounds } from './kotlinCol
 import { lowerKotlinFunctions, KotlinFunctionError } from './kotlinFunctions';
 import { maskStringsAndComments } from './errorSpan';
 import { checkStructureRules } from './kotlinStructureChecks';
+import { insertLineMarkers, expressionBodyLines, wrapFunctionsForLines } from './kotlinLineMarkers';
 import {
   kotlinAsync,
   KotlinCoroutineStart,
@@ -1323,12 +1324,14 @@ function matchingBracket(text: string, open: number): number {
  */
 function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'map' = 'list'): string {
   for (const name of names) {
-    const re = new RegExp(String.raw`(?<![\w.$])${name}\s*\[`, 'g');
+    // `this.items[i]` too: inside a class, a property is reached through `this.` after the OOP pass.
+    const re = new RegExp(String.raw`(?<![\w.$])((?:this\.)?)${name}\s*\[`, 'g');
     let match: RegExpExecArray | null;
     let searchFrom = 0;
     while ((match = re.exec(line)) !== null) {
       if (match.index < searchFrom) continue;
       if (findStringRanges(line).some(([from, to]) => match!.index > from && match!.index < to)) continue;
+      const target = `${match[1]}${name}`;
       const open = match.index + match[0].length - 1;
       const close = matchingBracket(line, open);
       if (close < 0) break;
@@ -1349,16 +1352,16 @@ function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'ma
         }
         const value = line.slice(valueStart, valueEnd).trim();
         replacement = mode === 'map'
-          ? (assign[1] === '=' ? `${name}.set(${index}, ${value})` : `${name}.set(${index}, ${name}.get(${index}) ${assign[1][0]} (${value}))`)
-          : (assign[1] === '=' ? `__kt_setAt(${name}, ${index}, ${value})` : `__kt_setAt(${name}, ${index}, __kt_at(${name}, ${index}) ${assign[1][0]} (${value}))`);
+          ? (assign[1] === '=' ? `${target}.set(${index}, ${value})` : `${target}.set(${index}, ${target}.get(${index}) ${assign[1][0]} (${value}))`)
+          : (assign[1] === '=' ? `__kt_setAt(${target}, ${index}, ${value})` : `__kt_setAt(${target}, ${index}, __kt_at(${target}, ${index}) ${assign[1][0]} (${value}))`);
         end = valueEnd;
       } else if (step) {
         replacement = mode === 'map'
-          ? `${name}.set(${index}, ${name}.get(${index}) ${step[1][0]} 1)`
-          : `__kt_setAt(${name}, ${index}, __kt_at(${name}, ${index}) ${step[1][0]} 1)`;
+          ? `${target}.set(${index}, ${target}.get(${index}) ${step[1][0]} 1)`
+          : `__kt_setAt(${target}, ${index}, __kt_at(${target}, ${index}) ${step[1][0]} 1)`;
         end = close + 1 + step[0].length;
       } else {
-        replacement = mode === 'map' ? `${name}.get(${index})` : `__kt_at(${name}, ${index})`;
+        replacement = mode === 'map' ? `${target}.get(${index})` : `__kt_at(${target}, ${index})`;
         end = close + 1;
       }
       line = line.slice(0, match.index) + replacement + line.slice(end);
@@ -2889,6 +2892,8 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   const sourceMutableListVars = inferMutableListVars(kotlinCode);
   // Class headers (`class Sensor(var celsius: Int)`) are gone after the OOP lowering, so Int-typed names are read from the source too.
   const sourceIntVars = inferIntTypedVars(kotlinCode);
+  // Read before the OOP pass rewrites class headers: `class Box(val items: List<Int>)` must still mark `items` as an indexed list.
+  const sourceIndexedVars = inferIndexedVars(kotlinCode);
   kotlinCode = transpileExtensionProperties(kotlinCode);
   kotlinCode = stripCollectionGenerics(kotlinCode);
   const protectedCompanions = protectCompanionBlocks(kotlinCode);
@@ -2933,7 +2938,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   const intVars = new Set([...sourceIntVars, ...inferIntTypedVars(kotlinCode)]);
   const mapVars = new Set([...sourceMapVars, ...inferMapVars(kotlinCode)]);
   const mutableListVars = new Set([...sourceMutableListVars, ...inferMutableListVars(kotlinCode)]);
-  const indexedVars = inferIndexedVars(kotlinCode);
+  const indexedVars = new Set([...sourceIndexedVars, ...inferIndexedVars(kotlinCode)]);
   const mutableSetVars = inferMutableSetVars(kotlinCode);
   const varReadOnlyLists = inferVarReadOnlyLists(kotlinCode);
 
@@ -3246,9 +3251,11 @@ export async function compileAndRunKotlin(
   // is unambiguously wrong. See `runKotlinCode` below.
 
   // 2. Transpilation to Safe JS
+  const marked = insertLineMarkers(code);
   let transpiledJS = '';
   try {
-    transpiledJS = transpileKotlinToJS(code);
+    // Line markers (`__kt_line = N`) let a runtime error report the Kotlin line that was running; see kotlinLineMarkers.ts.
+    transpiledJS = wrapFunctionsForLines(transpileKotlinToJS(marked.code), expressionBodyLines(code));
   } catch (err: any) {
     const elapsed = Math.round(performance.now() - startTime);
     return {
@@ -3257,7 +3264,7 @@ export async function compileAndRunKotlin(
       logs: [],
       error: {
         message: `Compilation error: ${err?.message || 'Failed to parse Kotlin code'}`,
-        line: err instanceof KotlinFunctionError ? err.line : 1,
+        line: err instanceof KotlinFunctionError ? marked.lineMap[err.line - 1] ?? err.line : 1,
         token: err instanceof KotlinFunctionError ? err.token : undefined,
         occurrence: err instanceof KotlinFunctionError ? err.occurrence : undefined,
         unlocated: !(err instanceof KotlinFunctionError),
@@ -3929,12 +3936,21 @@ export async function compileAndRunKotlin(
       const Dispatchers = kotlinDispatchers;
       ` : ''}
 
+      let __kt_line = 0;
+      // Tag an error with the Kotlin line that was running, once (the innermost function that sees it first wins).
+      const __kt_tag = (error) => { if (error && typeof error === 'object' && error.__kt_line === undefined) { try { error.__kt_line = __kt_line; } catch (__kt_ignored) {} } };
       //__KT_USER_BEGIN__
       ${transpiledJS}
 
       let __lastResult = undefined;
       if (typeof main === 'function') {
-        __lastResult = main();
+        try {
+          __lastResult = main();
+        } catch (__kt_error) {
+          // Remember which Kotlin line was running (set by the line markers) for the error report.
+          __kt_tag(__kt_error);
+          throw __kt_error;
+        }
       }
     `;
 
@@ -4046,15 +4062,8 @@ export async function compileAndRunKotlin(
     // The stack line is inside the generated script (a long helper prelude, then the transpiled program). Map it back to the
     // Kotlin line only when the transpiled program kept the source's line count, so line N is still line N. Otherwise report no
     // line (0) rather than a number that points into generated code.
-    let line = 0;
-    const stackMatch = runtimeErr?.stack?.match(/<anonymous>:(\d+):(\d+)/);
-    if (stackMatch) {
-      const markerAt = runnerScript.indexOf('//__KT_USER_BEGIN__');
-      const headerLines = markerAt < 0 ? -1 : runnerScript.slice(0, markerAt).split('\n').length; // the marker's own line is headerLines
-      const mapped = parseInt(stackMatch[1], 10) - 2 - headerLines;
-      const sourceLines = code.split('\n').length;
-      if (headerLines > 0 && transpiledJS.split('\n').length === sourceLines && mapped >= 1 && mapped <= sourceLines) line = mapped;
-    }
+    // The Kotlin line that was running when it failed, recorded by the line markers (0 when unknown, e.g. a failure outside main).
+    const line = typeof runtimeErr?.__kt_line === 'number' && runtimeErr.__kt_line > 0 ? runtimeErr.__kt_line : 0;
 
     // `foo is not defined` is Kotlin's "Unresolved reference" -- a compile-time error. Report it where the name is
     // written in the source (the JS stack line points into generated code), so the editor can underline it.

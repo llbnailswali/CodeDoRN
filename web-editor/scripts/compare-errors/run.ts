@@ -84,7 +84,7 @@ function buildPrograms(): Program[] {
 
 // ---------------------------------------------------------------- real kotlinc
 type Kind = 'compile' | 'runtime' | 'ok' | 'timeout' | 'crash' | 'hang';
-interface Outcome { kind: Kind; errors: { line: number; col: number; msg: string }[]; out: string; exc?: string; message?: string }
+interface Outcome { kind: Kind; errors: { line: number; col: number; msg: string }[]; out: string; exc?: string; message?: string; rtLine?: number }
 
 const USES_COROUTINES = /\b(runBlocking|launch|async|delay|coroutineScope|supervisorScope|withContext|Flow|flow|Job|Deferred|Dispatchers)\b/;
 
@@ -135,7 +135,7 @@ async function realChunk(chunk: Program[], results: Map<string, Outcome>) {
     } catch (e: any) {
       const text = String(e.stderr ?? '');
       if (e.killed || e.signal) results.set(chunk[k].id, { kind: 'timeout', errors: [], out: e.stdout ?? '' });
-      else results.set(chunk[k].id, { kind: 'runtime', errors: [], out: e.stdout ?? '', exc: /Exception in thread "main" ([\w.$]+)/.exec(text)?.[1], message: text.split('\n')[0] });
+      else results.set(chunk[k].id, { kind: 'runtime', errors: [], out: e.stdout ?? '', exc: /Exception in thread "main" ([\w.$]+)/.exec(text)?.[1], message: text.split('\n')[0], rtLine: Number(/\(Main\.kt:(\d+)\)/.exec(text)?.[1] ?? 0) });
     }
   });
   fs.rmSync(dir, { recursive: true, force: true });
@@ -177,10 +177,10 @@ function toOutcome(m: { output: string; error: { message: string; line: number; 
   if (/timed out|infinite loop/i.test(msg)) return { kind: 'timeout', errors: [], out: m.output };
   const exc = /\b([A-Z]\w*(?:Exception|Error))\b/.exec(msg.replace(/^Runtime error: /, ''))?.[1];
   const jsNull = /Cannot read propert(?:y|ies) of (?:null|undefined)/.test(msg);
-  return { kind: 'runtime', errors: [], out: m.output, exc: jsNull ? 'NullPointerException' : exc, message: msg };
+  return { kind: 'runtime', errors: [], out: m.output, exc: jsNull ? 'NullPointerException' : exc, message: msg, rtLine: m.error.line };
 }
 
-type Verdict = 'agree' | 'simulator-hang' | 'false-accept' | 'false-reject' | 'missed-runtime' | 'extra-runtime' | 'compile-line-differs' | 'compile-token-differs' | 'exception-differs' | 'output-differs' | 'other' | 'skipped';
+type Verdict = 'agree' | 'simulator-hang' | 'false-accept' | 'false-reject' | 'missed-runtime' | 'extra-runtime' | 'compile-line-differs' | 'compile-token-differs' | 'exception-differs' | 'runtime-line-differs' | 'output-differs' | 'other' | 'skipped';
 
 function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict; detail: string } {
   if (sim.kind === 'hang') return { verdict: 'simulator-hang', detail: `kotlinc: ${real.kind}${real.errors[0] ? ' ' + real.errors[0].msg : ''}` };
@@ -201,7 +201,10 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
       return { verdict: 'agree', detail: '' };
     }
     if (real.kind === 'runtime') {
-      return normExc(real.exc) === normExc(sim.exc) ? { verdict: 'agree', detail: '' } : { verdict: 'exception-differs', detail: `simulator ${normExc(sim.exc)} | kotlinc ${normExc(real.exc)}` };
+      if (normExc(real.exc) !== normExc(sim.exc)) return { verdict: 'exception-differs', detail: `simulator ${normExc(sim.exc)} | kotlinc ${normExc(real.exc)}` };
+      // Same exception: the reported line must match the first Main.kt frame of real Kotlin's stack trace.
+      if (real.rtLine && real.rtLine !== sim.rtLine) return { verdict: 'runtime-line-differs', detail: `simulator line ${sim.rtLine || 'none'} | kotlinc line ${real.rtLine} (${normExc(real.exc)})` };
+      return { verdict: 'agree', detail: '' };
     }
     if (real.kind === 'ok') {
       const a = real.out.replace(/\r\n/g, '\n').trimEnd(), b = sim.out.replace(/\r\n/g, '\n').trimEnd();
@@ -255,7 +258,7 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
 
   // ---- report
   const ops = ['authored-broken', ...OPERATORS.map((o) => o.name)];
-  const verdicts: Verdict[] = ['agree', 'simulator-hang', 'false-accept', 'false-reject', 'missed-runtime', 'extra-runtime', 'compile-line-differs', 'compile-token-differs', 'exception-differs', 'output-differs', 'other', 'skipped'];
+  const verdicts: Verdict[] = ['agree', 'simulator-hang', 'false-accept', 'false-reject', 'missed-runtime', 'extra-runtime', 'compile-line-differs', 'compile-token-differs', 'exception-differs', 'runtime-line-differs', 'output-differs', 'other', 'skipped'];
   const count = (f: (r: (typeof rows)[number]) => boolean) => rows.filter(f).length;
   const scored = rows.filter((r) => r.verdict !== 'skipped');
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 1000) / 10}%` : '-');
@@ -265,7 +268,7 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
   const meaning: Record<string, string> = {
     agree: 'same result', 'simulator-hang': 'the simulator never returned on this program (would freeze the app)', 'false-accept': 'kotlinc rejects, simulator runs it (teaches wrong Kotlin)', 'false-reject': 'simulator rejects, kotlinc accepts (tells a learner correct code is wrong)',
     'missed-runtime': 'kotlinc throws at runtime, simulator does not', 'extra-runtime': 'simulator throws, kotlinc does not', 'compile-line-differs': 'both reject, but on different lines',
-    'compile-token-differs': 'both reject on the same line, but we underline a different token', 'exception-differs': 'both throw, different exception type', 'output-differs': 'both run, different output', other: 'other kind mismatch (e.g. timeout)', skipped: 'kotlinc crashed',
+    'compile-token-differs': 'both reject on the same line, but we underline a different token', 'exception-differs': 'both throw, different exception type', 'runtime-line-differs': 'both throw the same exception, but report different lines', 'output-differs': 'both run, different output', other: 'other kind mismatch (e.g. timeout)', skipped: 'kotlinc crashed',
   };
   for (const v of verdicts) md += `| ${v} | ${count((r) => r.verdict === v)} | ${meaning[v]} |\n`;
   md += '\n## By mistake type\n\n| Mistake | Programs | Agree | false-accept | false-reject | missed-runtime | extra-runtime | line differs | token differs | exception differs | output differs |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n';
