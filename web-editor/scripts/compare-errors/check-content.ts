@@ -54,6 +54,8 @@ const isOutputQuestion = (p: string) => /what (will|does) (this|the) (code|progr
   type Finding = { severity: 'WRONG KEY' | 'CHECK' ; item: Item; detail: string };
   const findings: Finding[] = [];
   let checked = 0, notCheckable = 0, nondeterministic = 0;
+  // Predict questions whose marked answer is a sentence no script can grade (written to content-statement-questions.json for review).
+  const statementQuestions: { lesson: string; id: string; prompt?: string; key: string; options: string[]; code: string; kotlinc: { stage: string; output: string; error?: string } }[] = [];
   for (const it of items) {
     const r = cache[hash(it.code)];
     if (!r) continue;
@@ -106,6 +108,7 @@ const isOutputQuestion = (p: string) => /what (will|does) (this|the) (code|progr
       continue;
     }
     notCheckable++;
+    statementQuestions.push({ lesson: it.lesson, id: it.id, prompt: it.prompt, key, options: it.options!.map((o) => o.label), code: it.code, kotlinc: { stage: r.stage, output: realOut, error: r.errors?.[0] } });
   }
   // Findings reviewed by a person and accepted, with the reason (scripts/compare-errors/content-accepted.json).
   const acceptedFile = path.resolve('scripts/compare-errors/content-accepted.json');
@@ -117,6 +120,7 @@ const isOutputQuestion = (p: string) => /what (will|does) (this|the) (code|progr
   md += `- **WRONG KEY**: real Kotlin contradicts the marked answer or stored output (${findings.filter((f) => f.severity === 'WRONG KEY').length})\n- **CHECK**: needs a human look, often a code fragment that only runs inside a larger program, or wording the script cannot match (${findings.filter((f) => f.severity === 'CHECK').length})\n\n`;
   for (const f of findings) md += `- **${f.severity}** \`${f.item.lesson}\` ${f.item.kind} \`${f.item.id}\`${f.item.prompt ? ` (“${f.item.prompt.slice(0, 70)}”)` : ''}\n  - ${f.detail}\n`;
   fs.writeFileSync(path.join(OUT, 'content-check.md'), md);
+  fs.writeFileSync(path.join(OUT, 'content-statement-questions.json'), JSON.stringify(statementQuestions, null, 1));
   fs.writeFileSync(path.join(OUT, 'content-check.json'), JSON.stringify(findings.map((f) => ({ severity: f.severity, lesson: f.item.lesson, kind: f.item.kind, id: f.item.id, prompt: f.item.prompt, detail: f.detail, code: f.item.code })), null, 1));
   console.log(`\n${checked} checked · WRONG KEY ${findings.filter((f) => f.severity === 'WRONG KEY').length} · CHECK ${findings.filter((f) => f.severity === 'CHECK').length} · not checkable ${notCheckable} · nondeterministic ${nondeterministic}`);
   console.log(`Report: ${path.join(OUT, 'content-check.md')}`);

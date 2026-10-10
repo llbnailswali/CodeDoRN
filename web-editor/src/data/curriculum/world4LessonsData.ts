@@ -2574,14 +2574,14 @@ export const CONTINUE_LESSON: FiveStageLesson = {
         topicMeta: 'break vs continue',
         language: 'Kotlin',
         code: ['fun main() {', '  for (i in 1..5) {', '    if (i == 3) {', '      break', '    }', '    println(i)', '  }', '}'],
-        prompt: 'This is the exact same loop as the previous question, but continue has been replaced with break. What does it print now?',
+        prompt: "When i reaches 3, this loop runs break. What does it print?",
         options: [
           { id: 'A', label: '1\n2', isCorrect: true },
           { id: 'B', label: '1\n2\n4\n5', isCorrect: false },
           { id: 'C', label: '1\n2\n3', isCorrect: false },
           { id: 'D', label: '1\n2\n3\n4\n5', isCorrect: false }
         ],
-        explanation: { codeRef: 'if (i == 3) { break }', detail: 'Unlike continue, break exits the loop immediately the moment i == 3 -- so i = 4 and i = 5 are never reached at all. This is the key contrast with the previous question: continue produced "1\n2\n4\n5" because the loop kept going, while break produces only "1\n2" because the loop stopped completely.' }
+        explanation: { codeRef: 'if (i == 3) { break }', detail: "break exits the loop immediately the moment i == 3, so i = 4 and i = 5 are never reached. Compare continue, which only skips the rest of one pass: the same loop with continue prints \"1\n2\n4\n5\"." }
       },
       {
         id: 'pred-continue-6',

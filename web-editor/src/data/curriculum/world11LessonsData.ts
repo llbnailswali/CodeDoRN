@@ -1529,16 +1529,7 @@ export const DELEGATION_LESSON: FiveStageLesson = {
       "  println(W(D()).f())",
       "}"
     ], prompt: "Dispatch question: which result is correct?", options: [{ id: "A", label: "The wrapper override runs and prints 8.", isCorrect: true }, { id: "B", label: "The delegate always wins and prints 3.", isCorrect: false }, { id: "C", label: "Both run.", isCorrect: false }, { id: "D", label: "Compilation is ambiguous.", isCorrect: false }], explanation: { codeRef: "Override", detail: "Explicit wrapper overrides take precedence for calls on W." } },
-    { id: "world-11-delegation-predict-3", questionNumber: 3, totalQuestions: 6, title: "Identity", topicMeta: "equality", language: 'Kotlin', code: [
-      "interface X",
-      "class D : X",
-      "class W(val d: D) : X by d",
-      "",
-      "fun main() {",
-      "  val d = D()",
-      "  println(W(d) === d)",
-      "}"
-    ], prompt: "Equality question: which result is correct?", options: [{ id: "A", label: "false", isCorrect: true }, { id: "B", label: "true", isCorrect: false }, { id: "C", label: "null", isCorrect: false }, { id: "D", label: "Compilation error", isCorrect: false }], explanation: { codeRef: "Identity", detail: "Delegation does not merge wrapper and delegate identity." } },
+    { id: "world-11-delegation-predict-3", questionNumber: 3, totalQuestions: 6, title: "Identity", topicMeta: "equality", language: 'Kotlin', code: ["interface X", "class D : X", "class W(val d: D) : X by d", "", "fun main() {", "  val d = D()", "  val w: X = W(d)", "  println(w === d)", "}"], prompt: "What does this print?", options: [{ id: "A", label: "false", isCorrect: true }, { id: "B", label: "true", isCorrect: false }, { id: "C", label: "null", isCorrect: false }, { id: "D", label: "Compilation error", isCorrect: false }], explanation: { codeRef: "Identity", detail: "w is a new W object that forwards the members of X to d. Delegation does not make the wrapper the same object as its delegate, so the identity check is false. (Writing W(d) === d directly does not compile: Kotlin rejects === between the unrelated classes W and D.)" } },
     { id: "world-11-delegation-predict-4", questionNumber: 4, totalQuestions: 6, title: "Manual forwarding", topicMeta: "output", language: 'Kotlin', code: [
       "interface X {",
       "  fun f(): Int",

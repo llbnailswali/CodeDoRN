@@ -150,7 +150,7 @@ const lesson11Cases: ProgramCase[] = [
 const lesson12Cases: ProgramCase[] = [
   { id: 'lesson-12.learn', code: lesson12.learn.codeSnippet.join('\n'), expected: '42', success: true },
   ...lesson12.explore.cards.map((card, index) => ({ id: `lesson-12.${card.id}`, code: card.code.join('\n'), expected: ['42', 'cpu', 'true', 'A,B', 'failed', 'A,fallback', 'loaded'][index], success: true })),
-  ...lesson12.predict.questions.map((question, index) => ({ id: `lesson-12.${question.id}`, code: (question.code ?? []).join('\n'), expected: ['42', '', 'AB', 'child\ndone', '', '', ''][index], success: index !== 6 })),
+  ...lesson12.predict.questions.map((question, index) => ({ id: `lesson-12.${question.id}`, code: (question.code ?? []).join('\n'), expected: ['42', '', 'AB', 'child\ndone', '', '', '42'][index], success: true })),
   { id: 'lesson-12.write.solution', code: lesson12.writeRun!.solutionCode, expected: 'A,B', success: true },
   { id: 'lesson-12.write.starter', code: lesson12.writeRun!.initialCode, expected: '', success: true },
   { id: 'lesson-12.debug.fixed', code: lesson12.debug!.fixedCode, expected: 'A,fallback', success: true },
