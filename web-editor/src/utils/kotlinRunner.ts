@@ -549,6 +549,18 @@ function findStringRanges(line: string): Array<[number, number]> {
  * complex (parenthesized sub-expressions, chained arithmetic) is left
  * untouched rather than guessed at.
  */
+/**
+ * `i % 0` / `n / 0` with a LITERAL integer zero and a simple operand (a name, a member, a number): routed through `__kt_divZero`, which
+ * throws ArithmeticException for an integer operand. Typed Int operands are already handled by the lowerer (`__kt_idiv`/`__kt_irem`);
+ * this covers the operands it cannot type, such as a lambda's `it` or a range loop variable. String contents are never touched.
+ */
+function guardLiteralZeroDivisor(line: string): string {
+  if (!/[%/]\s*0(?![\w.])/.test(line)) return line;
+  return splitCodeAndStrings(line)
+    .map((chunk) => chunk.isString ? chunk.text : chunk.text.replace(/(?<![\w$.)\]])([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*|\d+)\s*([%/])\s*0(?![\w.])/g, (_m, operand, op) => `__kt_divZero(${operand}, '${op}')`))
+    .join('');
+}
+
 function wrapIntDivision(line: string, intVars: Set<string>): string {
   if (!line.includes('/')) return line;
   const stringRanges = findStringRanges(line);
@@ -2976,6 +2988,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     // `wrapIntDivision` above) -- must run after suffix-stripping so a
     // literal like `100L` is already bare `100` by the time we classify it.
     line = wrapIntDivision(line, intVars);
+    line = guardLiteralZeroDivisor(line);
 
     // `is`/`!is` type checks and `in`/`!in` range checks -- see
     // `transformTypeChecks`/`transformRanges` above.
@@ -3872,6 +3885,12 @@ export async function compileAndRunKotlin(
       const __kt_irem = (dividend, divisor) => {
         if (divisor === 0) throw new ArithmeticException('/ by zero');
         return dividend % divisor;
+      };
+      // \`x % 0\` / \`x / 0\` with a literal zero, where the typer did not know x is an Int (a lambda's \`it\`, a loop variable): an
+      // integer operand throws like Kotlin; a fractional one gives NaN/Infinity, as a Double does.
+      const __kt_divZero = (x, op) => {
+        if (typeof x === 'number' && Number.isInteger(x)) throw new ArithmeticException('/ by zero');
+        return op === '%' ? x % 0 : x / 0;
       };
       // with(receiver) { block } -- registered as a plain builtins entry
       // in kotlinFunctions.ts (same as run/repeat above), which already

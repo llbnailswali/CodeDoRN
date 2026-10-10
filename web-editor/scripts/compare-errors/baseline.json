@@ -24,17 +24,15 @@
  },
  "typo-identifier": {
   "total": 120,
-  "agree": 113,
-  "silent-wrong": 3,
+  "agree": 115,
+  "silent-wrong": 1,
   "compile-line-differs": 2,
   "compile-token-differs": 2
  },
  "typo-builtin": {
   "total": 120,
-  "agree": 113,
-  "silent-wrong": 3,
-  "compile-line-differs": 3,
-  "false-accept": 1
+  "agree": 119,
+  "compile-line-differs": 1
  },
  "var-to-val": {
   "total": 120,
@@ -99,10 +97,8 @@
  },
  "divide-by-zero": {
   "total": 56,
-  "agree": 39,
+  "agree": 54,
   "output-differs": 1,
-  "missed-runtime": 13,
-  "other": 2,
   "exception-differs": 1
  },
  "index-out-of-bounds": {

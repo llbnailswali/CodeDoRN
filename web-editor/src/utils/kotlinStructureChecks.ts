@@ -162,6 +162,12 @@ function ifChainEndsInElse(tokens: SourceToken[], i: number, code: string): bool
   return true;
 }
 
+/** Standard type names a program's own class may sit one letter from (`class Strings` and `String`): never reported as a typo. */
+const STANDARD_TYPES = new Set(['String', 'Strings', 'Int', 'Long', 'Short', 'Byte', 'Double', 'Float', 'Boolean', 'Char', 'Unit', 'Any', 'Nothing',
+  'List', 'MutableList', 'Set', 'MutableSet', 'Map', 'MutableMap', 'Array', 'Pair', 'Triple', 'Sequence', 'Result', 'Exception', 'Error',
+  'Throwable', 'Iterable', 'Collection', 'Comparable', 'Comparator', 'Number', 'Regex', 'Lazy', 'Flow', 'Job', 'Deferred', 'Random', 'Math',
+  'StringBuilder', 'IntArray', 'ArrayList', 'HashMap', 'HashSet', 'Enum', 'Range', 'IntRange', 'CharSequence', 'Function']);
+
 const BARE_BUILTINS = ['println', 'print', 'readln', 'readLine', 'listOf', 'mutableListOf', 'arrayOf', 'intArrayOf', 'setOf', 'mutableSetOf', 'mapOf',
   'mutableMapOf', 'emptyList', 'emptyMap', 'emptySet', 'maxOf', 'minOf', 'repeat', 'require', 'check', 'error', 'buildString', 'sequenceOf',
   'generateSequence', 'runBlocking', 'launch', 'delay', 'coroutineScope', 'supervisorScope', 'withContext', 'arrayListOf', 'hashMapOf'];
@@ -176,6 +182,7 @@ function unresolvedTypo(code: string, masked: string, tokens: SourceToken[]): Ko
   // Every name the program declares or imports, plus lambda parameters and names after `.`, counts as known. So do the common bare
   // standard-library functions, so `printn(...)` or `mutableListf<T>()` is caught too (not `yield`: one letter from a getter's `field`).
   const known = new Set([...declared, ...BARE_BUILTINS]);
+  const declaredTypes = [...masked.matchAll(/\b(?:class|object|interface)\s+([A-Z]\w{3,})/g)].map((m) => m[1]);
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     if (t.kind !== 'word') continue;
@@ -191,7 +198,9 @@ function unresolvedTypo(code: string, masked: string, tokens: SourceToken[]): Ko
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     // A capitalised word is a type, an enum entry or an object (`Double`, `List`, `SHIPPED`, `Dispatchers`): far too many are not declared in the program.
-    if (t.kind !== 'word' || t.text.length < 4 || known.has(t.text) || KEYWORDS.has(t.text) || /^[A-Z]/.test(t.text)) continue;
+    // A capitalised word is only judged against the program's own class/object/interface names (`Rcetangle` for `Rectangle`).
+    if (t.kind !== 'word' || t.text.length < 4 || known.has(t.text) || KEYWORDS.has(t.text)) continue;
+    if (/^[A-Z]/.test(t.text) && (STANDARD_TYPES.has(t.text) || declaredTypes.includes(t.text) || !declaredTypes.some((n) => distance(n.toLowerCase(), t.text.toLowerCase()) <= 1))) continue;
     const prev = tokens[i - 1]?.text;
     if (prev === '.' || prev === '?.' || prev === '::' || prev === '@') continue;
     if (tokens[i + 1]?.text === '@') continue;
@@ -207,7 +216,7 @@ function unresolvedTypo(code: string, masked: string, tokens: SourceToken[]): Ko
   const all = [...candidates, ...templateUses].sort((a, b) => a.offset - b.offset);
   for (const use of all) {
     if (known.has(use.name)) continue;
-    const close = [...known].filter((n) => n.length >= 4 && !KEYWORDS.has(n) && distance(use.name.toLowerCase(), n.toLowerCase()) <= Math.max(1, Math.floor(use.name.length / 5)));
+    const close = [...known].filter((n) => n.length >= 4 && (!KEYWORDS.has(n) || BARE_BUILTINS.includes(n)) && distance(use.name.toLowerCase(), n.toLowerCase()) <= Math.max(1, Math.floor(use.name.length / 5)));
     if (!close.length) continue;
     const line = lineOfOffset(code, use.offset);
     const lineStart = masked.lastIndexOf('\n', use.offset - 1) + 1;

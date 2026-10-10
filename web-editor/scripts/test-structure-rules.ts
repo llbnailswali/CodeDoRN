@@ -133,6 +133,10 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['same name public in another class', 'class A(private val v: Int)\nclass B(val v: Int)\nfun main() {\n  println(B(2).v)\n}', 'ok'],
   ['private property of another instance inside the class', 'class P(private val x: Int) {\n  fun same(o: P) = o.x == x\n}\nfun main() {\n  println(P(1).same(P(1)))\n}', 'ok'],
   ['repeated modifier', 'class F(private private val p: String)\nfun main() {\n  println(1)\n}', 'error'],
+  // --- misspelled names that never run, and a member name one typo from the declared one
+  ['misspelled println in a branch that never runs', wrap('  val ok = false\n  if (ok) {\n    printn("x")\n  }\n  println("done")'), 'error'],
+  ['misspelled member', 'class Address(val city: String)\nclass User(val adrdess: Address?)\nfun main() {\n  val u = User(Address("Pune"))\n  println("City: ${u.address?.city}")\n}', 'error'],
+  ['class one letter from a standard type is fine', 'class Strings(val n: Int)\nfun main() {\n  val s: String = "a"\n  println(s + Strings(2).n)\n}', 'ok'],
 ];
 
 (async () => {

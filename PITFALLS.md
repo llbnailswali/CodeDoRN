@@ -2830,7 +2830,7 @@ ranks the disagreements by the compiler's own message. State at the end of this 
 - Deliberate differences, counted as agreement: for a dropped bracket or quote the simulator points at the unclosed opener, kotlinc at the spot
   where it expected the closer (and sometimes reports an unrelated unresolved reference after recovering).
 - Still open (ranked by `npm run improve`): undeclared names the typo check cannot see (it only reports names one typo from a declared name),
-  `/ 0` and `% 0` inside lambdas (the lambda parameter `it` has no element type, so the division is not recognised as Int), an indexed Map
+  an indexed Map
   value used without a null check, a missing return in an anonymous function, assignment as a call argument (`println(a=b)`).
 
 ## Runtime error lines: line markers, and the function wrapper that keeps them right across calls
@@ -2920,3 +2920,12 @@ that is private in EVERY class declaring it is rejected wherever it is reached f
 (`Move.RIGHT.dx`, `customer.address?.city`, a loop variable); the receiver-typed rule above could not see these. Names standard types
 also have (`name`, `size`, `value`, ...) and names an extension declares are skipped. A repeated modifier (`private private val`) is
 a tree rule in `kotlinSyntaxCheck.ts`.
+
+Then: `x % 0` / `x / 0` with a LITERAL integer zero and an operand the typer cannot type (a lambda's `it`, a range loop variable) gave
+NaN instead of ArithmeticException; `guardLiteralZeroDivisor` (`kotlinRunner.ts`) routes it through `__kt_divZero`, which throws for an
+integer operand and keeps Double's NaN/Infinity otherwise (a whole-valued Double divided by literal 0 is the one inexact case). A member
+used as `x.address` where only `adrdess` is declared is now an unresolved reference (`memberTypo`), and a capitalised word one letter
+from the program's own class is a typo unless it is a standard type (`class Strings` next to `String` is fine). **Trap:** the typo rule's
+built-in targets never matched `println`/`print`, because the shared `KEYWORDS` set (`compileFixes.ts`) contains them and the target
+filter dropped every keyword; `printn(...)` stayed silent although the previous commit claimed it was caught. A rule's claim needs a test
+case, not only a probe.

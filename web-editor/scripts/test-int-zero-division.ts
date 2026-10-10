@@ -22,6 +22,10 @@ const cases: Array<[string, string, 'throws' | string]> = [
   ['normal division still truncates', wrap('  println(47 / 5)\n  println(-7 / 2)'), '9\n-3'],
   ['normal remainder keeps the dividend sign', wrap('  println(17 % 5)\n  println(-7 % 3)\n  println(7 % -3)'), '2\n-1\n1'],
   ['zero dividend is fine', wrap('  println(0 / 5)\n  println(0 % 5)'), '0\n0'],
+  ['lambda it % 0 (untyped operand)', wrap('  println(listOf(1, 2, 3).filter { it % 0 == 0 })'), 'throws'],
+  ['range loop variable % 0', wrap('  for (i in 1..3) {\n    if (i % 0 == 0) println(i)\n  }'), 'throws'],
+  ['Double variable / literal 0 is Infinity', wrap('  val d = 2.5\n  println(d / 0)'), 'Infinity'],
+  ['a "/ 0" inside a string is text', wrap('  println("a / 0 and b % 0")'), 'a / 0 and b % 0'],
   ['a sum divided by a count', wrap('  val s = 10 + 20\n  val c = 4\n  println(s / c)\n  println(s % c)'), '7\n2'],
 ];
 

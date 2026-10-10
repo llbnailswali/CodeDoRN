@@ -1,4 +1,5 @@
 import { scanKotlin } from './kotlinSource';
+import { distance } from './compileFixes';
 
 /**
  * Compile-time class rules that the JavaScript lowering would otherwise silently ignore (World 8, Object Kingdom):
@@ -376,7 +377,7 @@ export function checkClassMemberRules(source: string): ClassRuleError | null {
       }
     }
   }
-  return privateMemberAnywhere(m, decls) ?? genericArgumentMismatch(source, m, decls);
+  return privateMemberAnywhere(m, decls) ?? memberTypo(m, decls) ?? genericArgumentMismatch(source, m, decls);
 }
 
 /** Member names that also exist on standard-library types, so `x.name` may be a String's or an enum's, not the private one. */
@@ -469,6 +470,29 @@ function genericArgumentMismatch(source: string, m: string, decls: Decl[]): Clas
         return { message: `Argument type mismatch: actual type is '${actual}', but '${expected}' was expected`, line, type: 'type_mismatch' };
       }
     }
+  }
+  return null;
+}
+
+/**
+ * `user.address` where no `address` is declared anywhere in the program, but a class declares a member one typo away (`val adrdess`).
+ * Real Kotlin rejects the use; the simulator read `undefined` (printed "null") or ran a different branch. Names standard types have
+ * (`name`, `size`, ...) and any name the program declares in any form are never reported.
+ */
+function memberTypo(m: string, decls: Decl[]): ClassRuleError | null {
+  const members = new Set<string>();
+  for (const d of decls) for (const member of d.members) members.add(member.name);
+  if (!members.size) return null;
+  const declaredAnywhere = new Set<string>();
+  for (const w of m.matchAll(/\b(?:val|var|fun|class|object|interface)\s+(?:<[^>]*>\s*)?(?:[A-Za-z_][\w<>?, ]*\.)?([A-Za-z_]\w*)/g)) declaredAnywhere.add(w[1]);
+  for (const w of m.matchAll(/[(,]\s*(?:(?:val|var|vararg)\s+)?([A-Za-z_]\w*)\s*:/g)) declaredAnywhere.add(w[1]);
+  for (const w of m.matchAll(/^\s*([A-Z_][A-Z0-9_]*)\s*[(,;{]?\s*$/gm)) declaredAnywhere.add(w[1]); // enum constants
+  for (const use of m.matchAll(/(?:\?\.|(?<!\.)\.)\s*([a-z_]\w*)\b(?!\s*[({])/g)) {
+    const name = use[1];
+    if (name.length < 4 || declaredAnywhere.has(name) || members.has(name) || STDLIB_MEMBER_NAMES.has(name) || BUILTIN_MEMBERS.has(name)) continue;
+    const close = [...members].find((member) => member.length >= 4 && distance(member.toLowerCase(), name.toLowerCase()) <= 1);
+    if (!close) continue;
+    return { message: `Unresolved reference: ${name}`, line: lineOf(m, use.index!), type: 'unresolved_reference' };
   }
   return null;
 }
