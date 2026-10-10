@@ -623,7 +623,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           )}
         </div>
 
-        {/* Center: Lesson name in Try it, otherwise practice task position. */}
+        {/* Normal Stage 4 hides the lesson name; Try It keeps the context visible. */}
         {tryItMode ? (
           <div
             className={`absolute left-14 right-14 min-w-0 truncate text-center font-['Outfit'] text-base font-bold tracking-tight ${

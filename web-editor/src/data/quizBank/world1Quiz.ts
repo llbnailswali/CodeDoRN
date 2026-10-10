@@ -1,11 +1,11 @@
-import { QuizQuestion } from '../../utils/quizQuestions';
+import { formatQuizCodeQuestion, QuizQuestion } from '../../utils/quizQuestions';
 import { WORLD_1_QUIZ_SETS } from './quizSets';
 
 /**
  * World 1 (Kotlin Awakening) quiz bank. Work in progress: Int & Long, Strings and String Templates are expanded (see
  * QUIZ_WORLD_1_CONCEPT_MAP.md); the other lessons still have 2-4 questions each.
  * `lessonId` and `concept` are internal tags (analytics, spreading a session across lessons); `topic` is the lesson's name, shown to
- * the learner as the question's concept tag. Code is 2-space indented. Every predict_output / fill_blank answer is run through the real engine by
+ * the learner as the question's concept tag. Program snippets use readable multiline Kotlin. Every predict_output / fill_blank answer is run through the real engine by
  * `npm run test:quiz-bank`, and the answer positions are spread so no option position dominates.
  */
 const T = {
@@ -1215,4 +1215,4 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     hint: 'Check both the keyword and the type of each line.',
     explanation: 'b = 3 works: a var gets an Int. b = a also works, because a is an Int and reading a val is always allowed. a = 3 fails because a is a val, and b = "3" fails because b is an Int.',
   },
-];
+].map((question) => formatQuizCodeQuestion(question as QuizQuestion));

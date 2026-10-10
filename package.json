@@ -20,6 +20,7 @@
     "@react-native/new-app-screen": "0.81.5",
     "react": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-pager-view": "^8.0.5",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-svg": "^15.15.5"
   },

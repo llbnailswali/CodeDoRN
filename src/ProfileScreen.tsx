@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BW, Icon, fz } from './shell';
 import { FONT, Palette } from './theme';
-import { QuizProgress, getQuizWorlds, worldStats } from './quizData';
+import { QuizProgress, quizProgressStats } from './quizData';
 import type { JourneyVariant } from './App';
 
 const AVATAR_COLOR = '#6366F1';
@@ -23,18 +23,7 @@ export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress
   const panel = dark ? { backgroundColor: '#151B28', borderColor: 'rgba(255,255,255,0.10)' } : { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' };
   const row = dark ? { backgroundColor: '#0F1422', borderColor: 'rgba(255,255,255,0.06)' } : { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' };
 
-  const stats = React.useMemo(() => {
-    const entries = Object.values(quizProgress);
-    const correct = entries.reduce((sum, e) => sum + e.correct, 0);
-    const wrong = entries.reduce((sum, e) => sum + e.wrong, 0);
-    const worlds = getQuizWorlds().map((world) => ({ world, ...worldStats(world, quizProgress) }));
-    return {
-      answered: entries.length,
-      accuracy: correct + wrong === 0 ? null : Math.round((correct / (correct + wrong)) * 100),
-      mistakes: worlds.reduce((sum, w) => sum + w.missed, 0),
-      worlds,
-    };
-  }, [quizProgress]);
+  const stats = React.useMemo(() => quizProgressStats(quizProgress), [quizProgress]);
 
   return <ScrollView style={{ flex: 1, backgroundColor: p.page }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
     {/* Account */}
@@ -45,19 +34,19 @@ export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress
         <Text style={[s.sub, { color: muted }]}>Junior Kotlin Developer</Text>
       </View>
     </View>
-    {/* Stats: opens the totals screen */}
+    {/* Stats: opens the learner insights screen */}
     <Pressable onPress={onOpenStats} accessibilityRole="button" accessibilityLabel="Stats" style={[s.row, row]}>
       <Icon name="insights" size={20} exact color="#818CF8" />
-      <View style={{ flex: 1 }}><Text style={[s.rowTitle, { color: title }]}>Stats</Text><Text style={[s.sub, { color: muted }]}>Worlds, lessons, quiz and practice totals</Text></View>
+      <View style={{ flex: 1 }}><Text style={[s.rowTitle, { color: title }]}>Stats</Text><Text style={[s.sub, { color: muted }]}>Your quiz progress and available learning content</Text></View>
       <Icon name="chevron_right" size={20} exact color={muted} />
     </Pressable>
 
     {/* Quiz progress (only what the app really records) */}
     <Section title="Quiz progress" titleColor={muted}>
       <View style={s.statGrid}>
-        <Stat label="Questions answered" value={String(stats.answered)} row={row} title={title} muted={muted} />
+        <Stat label="Questions answered" value={String(stats.answeredQuestions)} row={row} title={title} muted={muted} />
         <Stat label="Accuracy" value={stats.accuracy === null ? '-' : `${stats.accuracy}%`} row={row} title={title} muted={muted} />
-        <Stat label="To review" value={String(stats.mistakes)} row={row} title={title} muted={muted} />
+        <Stat label="To review" value={String(stats.toReview)} row={row} title={title} muted={muted} />
       </View>
       {stats.worlds.map(({ world, total, seen, correct }) => <View key={world.order} style={[s.worldRow, row]}>
         <View style={s.worldHead}><Text style={[s.rowTitle, { color: title, flex: 1 }]} numberOfLines={1}>World {world.order}: {world.title}</Text><Text style={[s.sub, { color: muted }]}>{seen} / {total} seen</Text></View>
@@ -68,7 +57,7 @@ export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress
     <Section title="Card styling" titleColor={muted}>
       <View style={[s.row, row]}>
         <View style={{ flex: 1 }}>
-          <Text style={[s.rowTitle, { color: title }]}>Coder accent border</Text>
+          <Text style={[s.rowTitle, { color: title }]}>Color accent border</Text>
           <Text style={[s.sub, { color: muted }]}>Show the colored left edge on Quiz and Practice cards</Text>
         </View>
         <Pressable onPress={() => onAccentBorder(!showAccentBorder)} style={[s.variant, showAccentBorder && { backgroundColor: '#6366F1' }]}>

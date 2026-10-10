@@ -4,6 +4,7 @@
  * of a World belongs to exactly one set. A set quiz is every question of its lessons plus the set's own questions, which combine concepts
  * from more than one of those lessons (they carry `setId`).
  *
+ * The number of sets is not fixed: group related lessons into a sensible learning sequence, then create one set per group.
  * A set question's `lessonId` is the LAST lesson of its set: the point at which every concept it uses has been taught.
  *
  * The World's boss lesson is NOT in a set: it has its own entry (QuizBoss below), shown as a separate "Boss quiz" card, and the full quiz
@@ -67,4 +68,213 @@ export const WORLD_1_QUIZ_BOSS: QuizBoss = {
   title: 'Personal Profile Program',
   subtitle: 'Questions that combine everything in World 1.',
   lessonId: 'world-1-boss',
+};
+
+export const WORLD_2_QUIZ_SETS: QuizSet[] = [
+  {
+    id: 'w2-set-arithmetic-comparisons',
+    worldId: 'world-2',
+    title: 'Arithmetic & Comparisons',
+    subtitle: 'Calculate values, then compare them.',
+    lessonIds: ['world-2-arithmetic-operators', 'world-2-comparison-operators'],
+  },
+  {
+    id: 'w2-set-logic-assignment',
+    worldId: 'world-2',
+    title: 'Logic & Assignment',
+    subtitle: 'Update values and combine conditions.',
+    lessonIds: ['world-2-logical-operators', 'world-2-assignment-operators'],
+  },
+  {
+    id: 'w2-set-updates-precedence',
+    worldId: 'world-2',
+    title: 'Updates & Precedence',
+    subtitle: 'Track changing values and evaluate combined expressions.',
+    lessonIds: ['world-2-increment-decrement', 'world-2-operator-precedence'],
+  },
+];
+
+export const WORLD_2_QUIZ_BOSS: QuizBoss = {
+  id: 'w2-boss',
+  worldId: 'world-2',
+  title: 'Smart Calculator',
+  subtitle: 'Questions that combine everything in World 2.',
+  lessonId: 'world-2-boss',
+};
+
+export const WORLD_3_QUIZ_SETS: QuizSet[] = [
+  {
+    id: 'w3-set-branching',
+    worldId: 'world-3',
+    title: 'Branching Basics',
+    subtitle: 'Choose paths with if, if/else and ordered else-if chains.',
+    lessonIds: ['world-3-if', 'world-3-if-else', 'world-3-else-if'],
+  },
+  {
+    id: 'w3-set-when',
+    worldId: 'world-3',
+    title: 'when & Ranges',
+    subtitle: 'Match values and ranges, then return a result from when.',
+    lessonIds: ['world-3-when', 'world-3-when-with-ranges', 'world-3-when-as-an-expression'],
+  },
+  {
+    id: 'w3-set-combined-conditions',
+    worldId: 'world-3',
+    title: 'Combined Conditions',
+    subtitle: 'Combine Boolean rules, nested decisions and runtime type checks.',
+    lessonIds: ['world-3-multiple-conditions-and-nested-condition', 'world-3-type-checks-with-is-where-appropriate'],
+  },
+];
+
+export const WORLD_3_QUIZ_BOSS: QuizBoss = {
+  id: 'w3-boss',
+  worldId: 'world-3',
+  title: 'Grade & Eligibility System',
+  subtitle: 'Combine branching, ranges, type checks and eligibility rules.',
+  lessonId: 'world-3-boss',
+};
+
+export const WORLD_4_QUIZ_SETS: QuizSet[] = [
+  {
+    id: 'w4-set-repetition-basics', worldId: 'world-4', title: 'Repetition Basics',
+    subtitle: 'Repeat known and condition-driven work with for, while and do-while.',
+    lessonIds: ['world-4-for', 'world-4-while', 'world-4-do-while'],
+  },
+  {
+    id: 'w4-set-ranges-progressions', worldId: 'world-4', title: 'Ranges & Progressions',
+    subtitle: 'Choose inclusive or exclusive bounds and trace a progression.',
+    lessonIds: ['world-4-ranges', 'world-4-progressions'],
+  },
+  {
+    id: 'w4-set-direction-steps', worldId: 'world-4', title: 'Direction & Step Size',
+    subtitle: 'Count down and control the interval between values.',
+    lessonIds: ['world-4-downto', 'world-4-step'],
+  },
+  {
+    id: 'w4-set-loop-control-nesting', worldId: 'world-4', title: 'Loop Control & Nesting',
+    subtitle: 'Skip or exit iterations and trace loops inside loops.',
+    lessonIds: ['world-4-break', 'world-4-continue', 'world-4-nested-loops'],
+  },
+];
+
+export const WORLD_4_QUIZ_BOSS: QuizBoss = {
+  id: 'w4-boss', worldId: 'world-4', title: 'Pattern & Number Analyzer',
+  subtitle: 'Combine loop forms, progressions and loop control in one challenge.',
+  lessonId: 'world-4-boss',
+};
+
+export const WORLD_5_QUIZ_SETS: QuizSet[] = [
+  {
+    id: 'w5-set-function-foundations', worldId: 'world-5', title: 'Function Foundations',
+    subtitle: 'Define functions, pass inputs and return useful results.',
+    lessonIds: ['world-5-defining-functions', 'world-5-function-parameters', 'world-5-return-values'],
+  },
+  {
+    id: 'w5-set-flexible-concise-calls', worldId: 'world-5', title: 'Flexible & Concise Calls',
+    subtitle: 'Use defaults, named arguments and concise function bodies.',
+    lessonIds: ['world-5-default-parameters', 'world-5-named-arguments', 'world-5-single-expression-functions'],
+  },
+  {
+    id: 'w5-set-local-flexible-functions', worldId: 'world-5', title: 'Local & Flexible Functions',
+    subtitle: 'Keep helpers local and accept a flexible number of values.',
+    lessonIds: ['world-5-local-functions', 'world-5-vararg'],
+  },
+];
+
+export const WORLD_5_QUIZ_BOSS: QuizBoss = {
+  id: 'w5-boss', worldId: 'world-5', title: 'Utility Toolkit',
+  subtitle: 'Combine World 5 function skills in a reusable toolkit.',
+  lessonId: 'world-5-boss',
+};
+
+export const WORLD_6_QUIZ_SETS: QuizSet[] = [
+  {
+    id: 'w6-set-ordered-unique', worldId: 'world-6', title: 'Ordered and Unique Collections',
+    subtitle: 'Store ordered values and prevent duplicates.',
+    lessonIds: ['world-6-arrays', 'world-6-lists', 'world-6-sets'],
+  },
+  {
+    id: 'w6-set-maps-mutability', worldId: 'world-6', title: 'Maps and Mutability',
+    subtitle: 'Look up values by key and choose whether collections can change.',
+    lessonIds: ['world-6-maps', 'world-6-mutable-vs-read-only-collections'],
+  },
+  {
+    id: 'w6-set-create-change-iterate', worldId: 'world-6', title: 'Creating, Changing, and Iterating',
+    subtitle: 'Create collections, update their contents, and loop through values.',
+    lessonIds: ['world-6-creating-and-accessing-collections', 'world-6-adding-removing-updating-mutable-element', 'world-6-iterating-over-collections'],
+  },
+  {
+    id: 'w6-set-common-choose', worldId: 'world-6', title: 'Common Operations and Choosing a Type',
+    subtitle: 'Use shared operations and pick a collection for the task.',
+    lessonIds: ['world-6-basic-collection-operations', 'world-6-choosing-the-right-collection-type'],
+  },
+];
+
+export const WORLD_6_QUIZ_BOSS: QuizBoss = {
+  id: 'w6-boss', worldId: 'world-6', title: 'Student Records',
+  subtitle: 'Combine World 6 collections to organize student information.',
+  lessonId: 'world-6-boss',
+};
+
+export const WORLD_7_QUIZ_SETS: QuizSet[] = [
+  { id: 'w7-set-nullable-foundations', worldId: 'world-7', title: 'Nullable Foundations', subtitle: 'Understand nullable types and variables that may hold null.', lessonIds: ['world-7-nullable-types', 'world-7-nullable-variables'] },
+  { id: 'w7-set-safe-access-fallbacks', worldId: 'world-7', title: 'Safe Access & Fallbacks', subtitle: 'Use safe calls and choose a fallback when a value is missing.', lessonIds: ['world-7-safe-call', 'world-7-elvis-operator'] },
+  { id: 'w7-set-assertions-null-checks', worldId: 'world-7', title: 'Assertions & Null Checks', subtitle: 'Compare an explicit null check with a non-null assertion.', lessonIds: ['world-7-non-null-assertion', 'world-7-null-checks'] },
+  { id: 'w7-set-smart-safe-casts', worldId: 'world-7', title: 'Smart Casts & Safe Casts', subtitle: 'Narrow a checked value and safely try a type conversion.', lessonIds: ['world-7-smart-casts', 'world-7-safe-casts-as'] },
+  { id: 'w7-set-collections-chains', worldId: 'world-7', title: 'Nullable Collections & Chains', subtitle: 'Handle nullable lists, elements, and chained safe calls.', lessonIds: ['world-7-nullable-collections-and-collection-valu', 'world-7-chaining-nullable-operations'] },
+];
+
+export const WORLD_7_QUIZ_BOSS: QuizBoss = {
+  id: 'w7-boss', worldId: 'world-7', title: 'Safe Data Processor',
+  subtitle: 'Handle missing profile data with null-safe Kotlin.', lessonId: 'world-7-boss',
+};
+
+export const WORLD_8_QUIZ_SETS: QuizSet[] = [
+  {
+    id: 'w8-set-classes-state', worldId: 'world-8', title: 'Classes & State',
+    subtitle: 'Classes, named objects, and properties.',
+    lessonIds: ['world-8-classes', 'world-8-objects', 'world-8-properties'],
+  },
+  {
+    id: 'w8-set-methods-construction', worldId: 'world-8', title: 'Methods & Construction',
+    subtitle: 'Methods, constructors, primary properties, and init.',
+    lessonIds: ['world-8-methods', 'world-8-constructors', 'world-8-primary-constructors', 'world-8-init'],
+  },
+  {
+    id: 'w8-set-type-design-access', worldId: 'world-8', title: 'Type Design & Access',
+    subtitle: 'Visibility, data classes, and enums.',
+    lessonIds: ['world-8-visibility-modifiers', 'world-8-data-classes', 'world-8-enums'],
+  },
+  {
+    id: 'w8-set-inheritance-contracts', worldId: 'world-8', title: 'Inheritance & Contracts',
+    subtitle: 'Inheritance, interfaces, and overriding members.',
+    lessonIds: ['world-8-basic-inheritance', 'world-8-interfaces', 'world-8-overriding-members'],
+  },
+];
+
+export const WORLD_8_QUIZ_BOSS: QuizBoss = {
+  id: 'w8-boss', worldId: 'world-8', title: 'Student Grade Manager',
+  subtitle: 'Combine classes and earlier Kotlin skills to manage students.',
+  lessonId: 'world-8-boss',
+};
+
+export const WORLD_9_QUIZ_SETS: QuizSet[] = [
+  { id: 'w9-set-callable-values', worldId: 'world-9', title: 'Callable Values', subtitle: 'Create, type, store and invoke callable values.', lessonIds: ['world-9-lambda-expressions', 'world-9-anonymous-functions', 'world-9-function-types'] },
+  { id: 'w9-set-function-composition', worldId: 'world-9', title: 'Function Composition', subtitle: 'Pass functions, use it, and reference named functions.', lessonIds: ['world-9-higher-order-functions', 'world-9-it', 'world-9-function-references'] },
+  { id: 'w9-set-return-control', worldId: 'world-9', title: 'Return Control', subtitle: 'Trace lambda results and labelled returns.', lessonIds: ['world-9-returning-from-lambdas', 'world-9-local-returns'] },
+  { id: 'w9-set-inline-boundaries', worldId: 'world-9', title: 'Inline Boundaries', subtitle: 'Understand inline, noinline and crossinline compiler rules.', lessonIds: ['world-9-inline-functions', 'world-9-noinline', 'world-9-crossinline'] },
+];
+
+export const WORLD_9_QUIZ_BOSS: QuizBoss = {
+  id: 'w9-boss', worldId: 'world-9', title: 'Functional Utility Engine', subtitle: 'Combine function values and higher-order operations.', lessonId: 'world-9-boss',
+};
+
+export const WORLD_10_QUIZ_SETS: QuizSet[] = [
+  { id: 'w10-set-transform-select', worldId: 'world-10', title: 'Transform & Select', subtitle: 'Transform values, filter results, flatten data, and accumulate.', lessonIds: ['world-10-map-mapnotnull-filter', 'world-10-filternot-filterisinstance-flatmap', 'world-10-flatten-reduce-fold'] },
+  { id: 'w10-set-organize-pair', worldId: 'world-10', title: 'Organize & Pair', subtitle: 'Group, pair, batch, deduplicate, and order collection data.', lessonIds: ['world-10-groupby-associate-partition', 'world-10-zip-chunked-windowed', 'world-10-distinct-sorted'] },
+  { id: 'w10-set-analyze-pipeline', worldId: 'world-10', title: 'Analyze & Pipeline', subtitle: 'Sort by keys, summarize values, test predicates, and find results.', lessonIds: ['world-10-sortedby-min-max', 'world-10-sum-average-any-all-none', 'world-10-first-find-collection-pipelines-and-chai'] },
+];
+
+export const WORLD_10_QUIZ_BOSS: QuizBoss = {
+  id: 'w10-boss', worldId: 'world-10', title: 'Data Transformation Engine', subtitle: 'Combine collection transformations and analysis.', lessonId: 'world-10-boss',
 };

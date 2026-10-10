@@ -34,7 +34,6 @@ const QUIZ_PASS_KEY = 'codedo_native_quiz_pass';
 const USE_PERSISTENT_LESSON = true;
 // Keep the current direct quiz flow available; switch to true to test the lesson-wise variant.
 const USE_QUIZ_HUB = true;
-
 /** Tabs that are not built in React Native yet (Profile). */
 function Placeholder({ label, dark }: { label: string; dark: boolean }) {
   return (
@@ -51,7 +50,7 @@ export function App({ dark = true }: { dark?: boolean }) {
   const [visitedTabs, setVisitedTabs] = React.useState<Set<TabId>>(() => new Set(['learn']));
   const [gap, setGap] = React.useState(12);
   const [journeyVariant, setJourneyVariant] = React.useState<JourneyVariant>('milestones');
-  const [showAccentBorder, setShowAccentBorder] = React.useState(true);
+  const [showAccentBorder, setShowAccentBorder] = React.useState(false);
   const [helpLevel, setHelpLevel] = React.useState<HelpLevel>('beginner');
   const [helpOpen, setHelpOpen] = React.useState(false);
   // The help level is the learner's default for Practice, saved on the device (set from the Practice sheet or the Profile tab).
@@ -67,7 +66,7 @@ export function App({ dark = true }: { dark?: boolean }) {
   // The World whose task list is open (it is a full screen over the shell, like the web's separate route).
   const [taskWorld, setTaskWorld] = React.useState<{ order: number; mode: 'writeRun' | 'debug'; single?: boolean } | null>(null);
   // A quiz being played (full screen over the shell). `world` is absent for the Quick quiz.
-  const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[]; label?: string; /** Counts toward the current pass (sets and the full quiz), unlike a review or a quick quiz. */ track?: boolean; /** Practice on a finished set: nothing is saved, so it stays finished. */ explore?: boolean; /** Questions already answered before this session, and the whole quiz's length, for the position shown. */ offset?: number; total?: number } | null>(null);
+  const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[]; label?: string; /** Counts toward the current pass (sets and the full quiz), unlike a review or a quick quiz. */ track?: boolean; /** Practice on a finished set: nothing is saved, so it stays finished. */ explore?: boolean; /** Starting page and already-passed question IDs when resuming an ordered quiz. */ startIndex?: number; lockedQuestionIds?: string[]; total?: number } | null>(null);
   const [quizHub, setQuizHub] = React.useState<{ order: number; title: string } | null>(null);
   // Lifetime results per question (never reset by a retake) and the questions answered in the current pass through the ordered quizzes.
   // Both are saved on the device, each answer as it is given, so a quiz can be left at any point and continued later.
@@ -183,18 +182,20 @@ export function App({ dark = true }: { dark?: boolean }) {
     if (track) setQuizPass((previous) => (previous[question.id] ? previous : { ...previous, [question.id]: true }));
   }, []);
   // Starts an ordered quiz (a set or the full quiz) where the learner left off. When everything in it is answered it is a retake: its
-  // questions are cleared from the pass and it starts again from the first one. The order is fixed, never shuffled.
+  // questions are cleared from the pass and it starts again from the first one. Previously passed pages stay in the pager, locked. The order is fixed, never shuffled.
   const startOrdered = React.useCallback((world: { order: number; title: string }, ordered: QuizQuestion[], label: string) => {
-    let remaining = ordered.filter((q) => !quizPass[q.id]);
-    if (remaining.length === 0) {
+    let startIndex = ordered.findIndex((q) => !quizPass[q.id]);
+    let lockedQuestionIds = ordered.filter((q) => quizPass[q.id]).map((q) => q.id);
+    if (startIndex === -1) {
       setQuizPass((previous) => {
         const next = { ...previous };
         ordered.forEach((q) => delete next[q.id]);
         return next;
       });
-      remaining = ordered;
+      startIndex = 0;
+      lockedQuestionIds = [];
     }
-    if (remaining.length) setQuiz({ world, questions: remaining, label, track: true, offset: ordered.length - remaining.length, total: ordered.length });
+    if (ordered.length) setQuiz({ world, questions: ordered, label, track: true, startIndex, lockedQuestionIds, total: ordered.length });
   }, [quizPass]);
   // What to offer when a set ends: the next unfinished set (later ones first, then earlier ones), then the Boss quiz once every set is answered.
   const nextAfterQuiz = React.useMemo(() => {
@@ -294,7 +295,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       </View>
       {statsOpen && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
-          <StatsScreen p={p} topInset={topInset} onBack={() => setStatsOpen(false)} onToggleTheme={toggleTheme} />
+          <StatsScreen p={p} topInset={topInset} onBack={() => setStatsOpen(false)} onToggleTheme={toggleTheme} quizProgress={quizProgress} />
         </View>
       )}
       {curriculumWorld !== null && (
@@ -336,6 +337,7 @@ export function App({ dark = true }: { dark?: boolean }) {
             worldOrder={taskWorld.order}
             mode={taskWorld.mode}
             showTabs={!taskWorld.single}
+            showAccentBorder={showAccentBorder}
             helpLevel={helpLevel}
             topInset={topInset}
             onBack={() => setTaskWorld(null)}
@@ -345,7 +347,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       )}
       {quiz !== null && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 110, backgroundColor: p.page }]}>
-          <QuizSessionScreen key={`${quiz.label}-${quiz.offset ?? 0}`} p={p} world={quiz.world} label={quiz.label} questions={quiz.questions} nextLabel={nextAfterQuiz?.label} onNext={nextAfterQuiz && quiz.world ? () => startOrdered(quiz.world!, nextAfterQuiz.questions, nextAfterQuiz.label) : undefined} stepOffset={quiz.offset} totalOverride={quiz.total} topInset={topInset} onExit={() => setQuiz(null)} onAnswer={(question, correct) => { if (!quiz.explore) recordAnswer(question, correct, !!quiz.track); }} />
+          <QuizSessionScreen key={`${quiz.label}-${quiz.startIndex ?? 0}`} p={p} world={quiz.world} label={quiz.label} questions={quiz.questions} nextLabel={nextAfterQuiz?.label} onNext={nextAfterQuiz && quiz.world ? () => startOrdered(quiz.world!, nextAfterQuiz.questions, nextAfterQuiz.label) : undefined} startIndex={quiz.startIndex} lockedQuestionIds={quiz.lockedQuestionIds} totalOverride={quiz.total} topInset={topInset} onExit={() => setQuiz(null)} onAnswer={(question, correct) => { if (!quiz.explore) recordAnswer(question, correct, !!quiz.track); }} />
         </View>
       )}
       {quizHub !== null && (

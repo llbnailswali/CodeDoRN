@@ -1,12 +1,21 @@
 import { CURRICULUM_WORLDS } from './curriculumData';
 import { QuizQuestion } from './quizQuestions';
-import { QuizBoss, QuizSet, WORLD_1_QUIZ_BOSS, WORLD_1_QUIZ_SETS } from './quizSets';
+import { QuizBoss, QuizSet, WORLD_1_QUIZ_BOSS, WORLD_1_QUIZ_SETS, WORLD_2_QUIZ_BOSS, WORLD_2_QUIZ_SETS, WORLD_3_QUIZ_BOSS, WORLD_3_QUIZ_SETS, WORLD_4_QUIZ_BOSS, WORLD_4_QUIZ_SETS, WORLD_5_QUIZ_BOSS, WORLD_5_QUIZ_SETS, WORLD_6_QUIZ_BOSS, WORLD_6_QUIZ_SETS, WORLD_7_QUIZ_BOSS, WORLD_7_QUIZ_SETS, WORLD_8_QUIZ_BOSS, WORLD_8_QUIZ_SETS, WORLD_9_QUIZ_BOSS, WORLD_9_QUIZ_SETS, WORLD_10_QUIZ_BOSS, WORLD_10_QUIZ_SETS } from './quizSets';
 import { WORLD_1_QUIZ } from './world1Quiz';
+import { WORLD_2_BOSS_QUIZ, WORLD_2_QUIZ } from './world2Quiz';
+import { WORLD_3_BOSS_QUIZ, WORLD_3_QUIZ } from './world3Quiz';
+import { WORLD_4_BOSS_QUIZ, WORLD_4_QUIZ } from './world4Quiz';
+import { WORLD_5_BOSS_QUIZ, WORLD_5_QUIZ } from './world5Quiz';
+import { WORLD_6_BOSS_QUIZ, WORLD_6_QUIZ } from './world6Quiz';
+import { WORLD_7_BOSS_QUIZ, WORLD_7_QUIZ } from './world7Quiz';
+import { WORLD_8_BOSS_QUIZ, WORLD_8_QUIZ } from './world8Quiz';
+import { WORLD_9_BOSS_QUIZ, WORLD_9_QUIZ } from './world9Quiz';
+import { WORLD_10_BOSS_QUIZ, WORLD_10_QUIZ } from './world10Quiz';
 
 /** A quiz set with the questions a set quiz asks: every question of its lessons plus the set's own cross-lesson questions. */
 export interface QuizSetWithQuestions extends QuizSet { questions: QuizQuestion[] }
 
-const SETS_BY_WORLD: Record<number, QuizSet[]> = { 1: WORLD_1_QUIZ_SETS };
+const SETS_BY_WORLD: Record<number, QuizSet[]> = { 1: WORLD_1_QUIZ_SETS, 2: WORLD_2_QUIZ_SETS, 3: WORLD_3_QUIZ_SETS, 4: WORLD_4_QUIZ_SETS, 5: WORLD_5_QUIZ_SETS, 6: WORLD_6_QUIZ_SETS, 7: WORLD_7_QUIZ_SETS, 8: WORLD_8_QUIZ_SETS, 9: WORLD_9_QUIZ_SETS, 10: WORLD_10_QUIZ_SETS };
 
 const DIFFICULTY_RANK: Record<string, number> = { easy: 0, medium: 1, hard: 2 };
 
@@ -35,7 +44,7 @@ export function getQuizSets(order: number, bank: QuizQuestion[]): QuizSetWithQue
 /** The boss quiz of a World: the boss lesson's questions in a fixed order (easy to hard). It is separate from the sets and from the full quiz. */
 export interface QuizBossWithQuestions extends QuizBoss { questions: QuizQuestion[] }
 
-const BOSS_BY_WORLD: Record<number, QuizBoss> = { 1: WORLD_1_QUIZ_BOSS };
+const BOSS_BY_WORLD: Record<number, QuizBoss> = { 1: WORLD_1_QUIZ_BOSS, 2: WORLD_2_QUIZ_BOSS, 3: WORLD_3_QUIZ_BOSS, 4: WORLD_4_QUIZ_BOSS, 5: WORLD_5_QUIZ_BOSS, 6: WORLD_6_QUIZ_BOSS, 7: WORLD_7_QUIZ_BOSS, 8: WORLD_8_QUIZ_BOSS, 9: WORLD_9_QUIZ_BOSS, 10: WORLD_10_QUIZ_BOSS };
 
 export function getQuizBoss(order: number, bank: QuizQuestion[]): QuizBossWithQuestions | null {
   const boss = BOSS_BY_WORLD[order];
@@ -79,12 +88,12 @@ export type QuizPass = Record<string, true>;
 
 // The lesson catalog is the single source of truth for the native quiz bank.
 /** EVERY question of a World's bank, unfiltered (the review filter below hides some lessons from the Quiz): used to reset all of a World's stats. */
-export const getQuizWorldBank = (order: number): QuizQuestion[] => (order === 1 ? WORLD_1_QUIZ : []);
+export const getQuizWorldBank = (order: number): QuizQuestion[] => ({ 1: WORLD_1_QUIZ, 2: [...WORLD_2_QUIZ, ...WORLD_2_BOSS_QUIZ], 3: [...WORLD_3_QUIZ, ...WORLD_3_BOSS_QUIZ], 4: [...WORLD_4_QUIZ, ...WORLD_4_BOSS_QUIZ], 5: [...WORLD_5_QUIZ, ...WORLD_5_BOSS_QUIZ], 6: [...WORLD_6_QUIZ, ...WORLD_6_BOSS_QUIZ], 7: [...WORLD_7_QUIZ, ...WORLD_7_BOSS_QUIZ], 8: [...WORLD_8_QUIZ, ...WORLD_8_BOSS_QUIZ], 9: [...WORLD_9_QUIZ, ...WORLD_9_BOSS_QUIZ], 10: [...WORLD_10_QUIZ, ...WORLD_10_BOSS_QUIZ] }[order] ?? []);
 
 export function getQuizWorlds(): QuizWorld[] {
   // Only authored quiz banks belong in QuizTab. Lesson prediction questions are
   // used by the lesson flow and must not be presented as a separate quiz bank.
-  const banks: Record<number, QuizQuestion[]> = { 1: WORLD_1_QUIZ };
+  const banks: Record<number, QuizQuestion[]> = { 1: WORLD_1_QUIZ, 2: [...WORLD_2_QUIZ, ...WORLD_2_BOSS_QUIZ], 3: [...WORLD_3_QUIZ, ...WORLD_3_BOSS_QUIZ], 4: [...WORLD_4_QUIZ, ...WORLD_4_BOSS_QUIZ], 5: [...WORLD_5_QUIZ, ...WORLD_5_BOSS_QUIZ], 6: [...WORLD_6_QUIZ, ...WORLD_6_BOSS_QUIZ], 7: [...WORLD_7_QUIZ, ...WORLD_7_BOSS_QUIZ], 8: [...WORLD_8_QUIZ, ...WORLD_8_BOSS_QUIZ], 9: [...WORLD_9_QUIZ, ...WORLD_9_BOSS_QUIZ], 10: [...WORLD_10_QUIZ, ...WORLD_10_BOSS_QUIZ] };
   return CURRICULUM_WORLDS
     .filter((world) => Boolean(banks[world.order]))
     .map((world) => ({ order: world.order, title: world.title, questions: banks[world.order] }));
@@ -95,6 +104,29 @@ export function worldStats(world: QuizWorld, progress: QuizProgress) {
   const correct = world.questions.filter((q) => (progress[q.id]?.correct ?? 0) > 0).length;
   const missed = world.questions.filter((q) => isMissedAnswer(progress[q.id])).length;
   return { total: world.questions.length, seen, correct, missed };
+}
+
+export function quizProgressStats(progress: QuizProgress) {
+  const worlds = getQuizWorlds().map((world) => {
+    const stats = worldStats(world, progress);
+    const correctAnswers = world.questions.reduce((sum, question) => sum + (progress[question.id]?.correct ?? 0), 0);
+    const wrongAnswers = world.questions.reduce((sum, question) => sum + (progress[question.id]?.wrong ?? 0), 0);
+    return { world, ...stats, correctAnswers, wrongAnswers };
+  });
+  const correctAnswers = worlds.reduce((sum, item) => sum + item.correctAnswers, 0);
+  const wrongAnswers = worlds.reduce((sum, item) => sum + item.wrongAnswers, 0);
+  const totalAnswers = correctAnswers + wrongAnswers;
+
+  return {
+    worlds,
+    totalQuestions: worlds.reduce((sum, item) => sum + item.total, 0),
+    answeredQuestions: worlds.reduce((sum, item) => sum + item.seen, 0),
+    correctAnswers,
+    wrongAnswers,
+    totalAnswers,
+    accuracy: totalAnswers === 0 ? null : Math.round((correctAnswers / totalAnswers) * 100),
+    toReview: worlds.reduce((sum, item) => sum + item.missed, 0),
+  };
 }
 
 const shuffle = <T,>(items: T[]) => [...items].sort(() => Math.random() - 0.5);

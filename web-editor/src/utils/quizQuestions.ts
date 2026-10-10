@@ -95,6 +95,114 @@ export type QuizQuestion =
   | TrueFalseQuestion
   | CodeComparisonQuestion;
 
+/** Format authored Kotlin snippets for readable quiz code panels, preserving error-line targets. */
+export function formatQuizCodeQuestion(question: QuizQuestion, indentSpaces = 2): QuizQuestion {
+  const formatted = { ...question } as QuizQuestion;
+  const fields = formatted as unknown as Record<string, unknown>;
+  for (const key of ['code', 'a', 'b']) {
+    const lines = fields[key];
+    if (!Array.isArray(lines) || !lines.every((line) => typeof line === 'string')) continue;
+    const expanded: string[] = [];
+    const originalLineStarts: number[] = [];
+    let depth = 0;
+    let buffer = '';
+    let quoted = false;
+    let escaped = false;
+    const flush = () => {
+      const text = buffer.trim();
+      if (text) expanded.push(`${' '.repeat(Math.max(0, depth) * indentSpaces)}${text}`);
+      buffer = '';
+    };
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      originalLineStarts[lineIndex] = expanded.length;
+      if (!(lines[lineIndex] as string).trim()) {
+        flush();
+        if (expanded.length > 0 && expanded[expanded.length - 1] !== '') expanded.push('');
+        continue;
+      }
+      for (const char of lines[lineIndex] as string) {
+        if (quoted) {
+          buffer += char;
+          if (escaped) escaped = false;
+          else if (char === '\\') escaped = true;
+          else if (char === '"') quoted = false;
+          continue;
+        }
+        if (char === '"') { quoted = true; buffer += char; continue; }
+        if (char === '{') { buffer = `${buffer.trimEnd()} {`; flush(); depth++; continue; }
+        if (char === '}') {
+          flush(); depth = Math.max(0, depth - 1);
+          expanded.push(`${'    '.repeat(depth)}}`);
+          continue;
+        }
+        if (char === ';') { flush(); continue; }
+        buffer += char;
+      }
+      flush();
+    }
+    fields[key] = expanded;
+    if (key === 'code' && formatted.type === 'find_error') {
+      formatted.errorLine = originalLineStarts[formatted.errorLine] ?? formatted.errorLine;
+    }
+  }
+  return formatted;
+}
+
+/** Add the same inline-code emphasis used by World 1 to important syntax in newer quiz prompts. */
+export function emphasizeQuizPrompt(worldId: string, prompt: string): string {
+  const terms: Record<string, string[]> = {
+    'world-2': ['val', 'var', 'true', 'false', 'Boolean', 'Int', 'Double', 'String'],
+    'world-3': ['else-if', 'else', 'true', 'false', 'Any', 'Int', 'String', 'Boolean'],
+    'world-4': ['do-while', 'downTo', 'step', 'break', 'continue', 'true', 'false'],
+    'world-5': ['fun', 'return', 'vararg', 'String', 'Int', 'Unit'],
+    'world-7': ['null', 'String', 'Int', 'Any', 'List', 'true', 'false'],
+    'world-8': ['class', 'object', 'val', 'var', 'init', 'private', 'public', 'open', 'override', 'interface', 'enum', 'data', 'String', 'Int', 'true', 'false'],
+  };
+  const keywords = terms[worldId] ?? [];
+  if (!keywords.length) return prompt;
+
+  const inline = /(`[^`]*`)/g;
+  return prompt.split(inline).map((part, index) => {
+    if (index % 2 === 1) return part;
+    const protectedParts: string[] = [];
+    let value = part;
+    const protect = (pattern: RegExp) => {
+      value = value.replace(pattern, (match) => {
+        const token = String.fromCharCode(0xE100 + protectedParts.length);
+        protectedParts.push(`\`${match}\``);
+        return token;
+      });
+    };
+
+    // Keep expressions and literal output values together as one readable code chip.
+    protect(/"(?:\\.|[^"\\])*"/g);
+    protect(/\b\d+\s*(?:\.\.|until|downTo)\s*\d+(?:\s+step\s+-?\d+)?\b/g);
+    protect(/\b[A-Za-z_]\w*\s*(?:\+=|-=|\*=|\/=|%=|\+\+|--|==|!=|>=|<=|&&|\|\||=|>|<)\s*(?:[A-Za-z_]\w*|\d+(?:\.\d+)?|true|false)\b/g);
+
+    if (worldId === 'world-8') {
+      protect(/\b(?:data|enum|open)\s+class\b/g);
+      protect(/\boverride\s+fun\b/g);
+    }
+
+    if (worldId === 'world-4') {
+      protect(/\bfor(?=\s*(?:\(|-loop|\s+loop))\b/g);
+      protect(/\bin(?=\s*(?:\d|[A-Za-z_]\w*\s*(?:\.\.|until|downTo)))/g);
+      protect(/\bwhile(?=\s+(?:condition|loop|can|checks|body|statement))/g);
+    }
+    if (worldId === 'world-3') {
+      protect(/\bif(?=\s*(?:block|condition|expression|statement|\/else|\())/g);
+      protect(/\bwhen(?=\s*(?:branch|expression|matches|\())/g);
+    }
+    for (const term of keywords.sort((a, b) => b.length - a.length)) {
+      protect(new RegExp(`\\b${term}\\b`, 'g'));
+    }
+    // Standalone numeric values are often the boundary or expected output being tested.
+    protect(/\b\d+(?:\.\d+)?\b/g);
+
+    return value.replace(/[\uE100-\uF8FF]/g, (token) => protectedParts[token.charCodeAt(0) - 0xE100] ?? token);
+  }).join('');
+}
+
 export type QuizAnswer = number | number[] | string | boolean | null;
 
 export const hasAnswer = (value: QuizAnswer): boolean =>

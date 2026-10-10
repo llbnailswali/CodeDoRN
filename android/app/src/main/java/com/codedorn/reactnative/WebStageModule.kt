@@ -1,6 +1,9 @@
 package com.codedorn.reactnative
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -35,6 +38,18 @@ class WebStageModule(private val reactContext: ReactApplicationContext) : ReactC
     }
 
     override fun getName() = "WebStage"
+
+    /** Copies quiz code from the React Native screens to the system clipboard. */
+    @ReactMethod
+    fun copyToClipboard(value: String, promise: Promise) {
+        try {
+            val manager = reactContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            manager.setPrimaryClip(ClipData.newPlainText("code", value))
+            promise.resolve(true)
+        } catch (error: Throwable) {
+            promise.reject("clipboard_error", "Could not copy code to the clipboard.", error)
+        }
+    }
 
     // A throwaway WebView, created ahead of the stage. Every WebView in the app shares one browser (renderer) process, so having one
     // alive means the real stage's WebView does not pay for starting the browser engine when it opens.

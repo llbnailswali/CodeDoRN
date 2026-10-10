@@ -38,9 +38,9 @@ export const DARK: Palette = {
   navBorder: 'rgba(255,255,255,0.10)',
   title: '#F1F5F9',
   titleLocked: '#CBD5E1',
-  tagBg: 'rgba(30,41,59,0.5)',
-  tagBorder: 'rgba(255,255,255,0.05)',
-  tagText: '#94A3B8',
+  tagBg: 'rgba(30,41,59,0.75)',
+  tagBorder: 'rgba(148,163,184,0.18)',
+  tagText: '#CBD5E1',
 };
 
 export const LIGHT: Palette = {
@@ -60,9 +60,9 @@ export const LIGHT: Palette = {
   navBorder: 'rgba(255,255,255,0.5)',
   title: '#0F172A',
   titleLocked: '#334155',
-  tagBg: 'rgba(241,245,249,0.9)',
-  tagBorder: 'rgba(226,232,240,0.8)',
-  tagText: '#64748B',
+  tagBg: 'rgba(241,245,249,0.95)',
+  tagBorder: 'rgba(203,213,225,0.95)',
+  tagText: '#475569',
 };
 
 export const INDIGO_400 = '#818CF8';

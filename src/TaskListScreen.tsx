@@ -117,10 +117,11 @@ function Details({ task, mode, dark, helpLevel }: { task: PracticeTask; mode: Mo
 }
 
 export function TaskListScreen({
-  p, worldOrder, mode: startMode, helpLevel, topInset, onBack, onToggleTheme, showTabs = true,
+  p, worldOrder, mode: startMode, helpLevel, topInset, onBack, onToggleTheme, showTabs = true, showAccentBorder = false,
 }: {
   /** False when opened from one Home chip: only that mode is shown, so the Write & Run / Debug switch is hidden. */
   showTabs?: boolean;
+  showAccentBorder?: boolean;
   p: Palette;
   worldOrder: number;
   mode: Mode;
@@ -217,7 +218,7 @@ export function TaskListScreen({
         <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
           <View>
             <ShadowStack r={12} shadows={panelShadow} />
-            <View style={[s.progressCard, panel, { borderLeftColor: darkAccent }]}>
+            <View style={[s.progressCard, panel, { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0 }]}>
               <View style={s.progressRow}>
                 <Text style={[s.mono11, { color: muted }]}>
                   {'completed = '}
@@ -265,7 +266,7 @@ export function TaskListScreen({
                           s.task,
                           panel,
                           isOpen && { borderTopColor: openBorder, borderRightColor: openBorder, borderBottomColor: openBorder },
-                          { borderLeftColor: stripe },
+                          { borderLeftColor: stripe, borderLeftWidth: showAccentBorder ? 2.91 : 0 },
                           { overflow: 'hidden' },
                         ]}
                       >

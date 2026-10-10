@@ -12,6 +12,58 @@ import { FONT, Palette, mix } from './theme';
 
 const TOTAL_WORLDS_DONE = 16;
 
+// Highlight only code terms that help explain a descriptive lesson title. Titles
+// that are just a keyword/API name stay plain, so the whole title is not emphasized.
+const LESSON_TITLE_HIGHLIGHTS: Record<number, Record<number, string[]>> = {
+  1: { 1: ['main()'], 3: ['print()', 'println()'], 4: ['val', 'var'] },
+  3: { 4: ['when'], 5: ['when'], 7: ['is'] },
+  7: { 2: ['?.'], 3: ['?:'], 4: ['!!'], 7: ['as?'] },
+  9: { 8: ['inline'] },
+  11: { 2: ['sealed'], 3: ['data', 'enum'], 5: ['inner'], 6: ['object'], 7: ['companion'] },
+  12: { 5: ['in'], 6: ['out'], 11: ['reified'] },
+  13: { 4: ['this', 'it'] },
+  15: { 0: ['try'], 4: ['catch'], 5: ['try'] },
+  16: { 3: ['suspend'] },
+  19: { 5: ['inline'], 10: ['infix'], 12: ['sealed', 'data'] },
+  20: { 4: ['@JvmStatic', '@JvmOverloads'], 5: ['@JvmField'] },
+  21: { 4: ['inline'] },
+};
+
+function titleParts(title: string, terms: string[]) {
+  const parts: Array<{ text: string; highlighted: boolean }> = [];
+  let cursor = 0;
+
+  while (cursor < title.length) {
+    let nextStart = -1;
+    let nextTerm = '';
+    for (const term of terms) {
+      let at = title.indexOf(term, cursor);
+      while (at !== -1) {
+        const before = at === 0 ? '' : title[at - 1];
+        const after = title[at + term.length] ?? '';
+        const isWordTerm = /^[a-z0-9_]+$/i.test(term);
+        if (!isWordTerm || ((!before || !/[a-z0-9_]/i.test(before)) && (!after || !/[a-z0-9_]/i.test(after)))) {
+          if (nextStart === -1 || at < nextStart || (at === nextStart && term.length > nextTerm.length)) {
+            nextStart = at;
+            nextTerm = term;
+          }
+          break;
+        }
+        at = title.indexOf(term, at + term.length);
+      }
+    }
+
+    if (nextStart === -1) {
+      parts.push({ text: title.slice(cursor), highlighted: false });
+      break;
+    }
+    if (nextStart > cursor) parts.push({ text: title.slice(cursor, nextStart), highlighted: false });
+    parts.push({ text: nextTerm, highlighted: true });
+    cursor = nextStart + nextTerm.length;
+  }
+  return parts;
+}
+
 /** Sample progress: Worlds up to 16 are finished, World 17 is 4 lessons in, the rest have not been started. */
 const completedFor = (order: number, total: number) => (order <= TOTAL_WORLDS_DONE ? total : order === TOTAL_WORLDS_DONE + 1 ? Math.min(4, total) : 0);
 
@@ -132,8 +184,8 @@ const Hero = React.memo(function Hero({ world, completed, total, dark }: { world
 });
 
 const LessonRow = React.memo(function LessonRow({
-  title, index, count, status, dark, onPress,
-}: { title: string; index: number; count: number; status: 'completed' | 'current' | 'upcoming'; dark: boolean; onPress?: () => void }) {
+  title, highlightTerms, index, count, status, dark, onPress,
+}: { title: string; highlightTerms?: string[]; index: number; count: number; status: 'completed' | 'current' | 'upcoming'; dark: boolean; onPress?: () => void }) {
   const t = tokens(dark);
   const first = index === 0;
   const last = index === count - 1;
@@ -183,7 +235,19 @@ const LessonRow = React.memo(function LessonRow({
             current && { borderColor: '#A855F7', borderWidth: 1.82 - 1 + BW },
           ]}
         >
-          <Text style={[s.lessonTitle, { color: t.pageText }]}>{title}</Text>
+          {highlightTerms?.length ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+              {titleParts(title, highlightTerms).map((part, partIndex) => part.highlighted ? (
+                <View key={`${part.text}-${partIndex}`} style={{ marginRight: 5, marginVertical: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: BW, borderColor: dark ? 'rgba(129,140,248,0.35)' : '#C7D2FE', backgroundColor: dark ? '#0D1322' : '#EEF2FF' }}>
+                  <Text style={{ fontFamily: FONT.mono.sb, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.4), color: dark ? '#E2E8F0' : '#4338CA', includeFontPadding: false }}>{part.text}</Text>
+                </View>
+              ) : (
+                <Text key={`${part.text}-${partIndex}`} style={[s.lessonTitle, { color: t.pageText }]}>{part.text}</Text>
+              ))}
+            </View>
+          ) : (
+            <Text style={[s.lessonTitle, { color: t.pageText }]}>{title}</Text>
+          )}
           <View style={s.lessonFoot}>
             <View style={s.lessonFootLeft}>
               <Text style={[s.status, { color: completed ? '#10B981' : current ? '#6366F1' : dark ? '#94A3B8' : '#64748B' }]}>
@@ -300,6 +364,7 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
             {index === 0 && <View style={{ marginBottom: 16 }}><Hero world={world} completed={completed} total={total} dark={dark} /></View>}
             <LessonRow
               title={title}
+              highlightTerms={LESSON_TITLE_HIGHLIGHTS[world.order]?.[index]}
               index={index}
               count={world.lessons.length}
               status={index < completed ? 'completed' : index === completed && completed < total ? 'current' : 'upcoming'}

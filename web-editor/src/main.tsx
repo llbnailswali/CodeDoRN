@@ -2,14 +2,14 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {ErrorBoundary} from './components/ErrorBoundary.tsx';
 import {NativeStageHost} from './components/NativeStageHost.tsx';
+import {BrowserEditorHost} from './components/BrowserEditorHost.tsx';
 import {getNativeStageLaunch} from './utils/nativeScreens.ts';
 import {setStageVisible} from './utils/stageVisibility.ts';
 import './index.css';
 import './utils/kotlinSyntaxAssets.ts';
 
-// Inside the Android activity the React Native lesson screen opens for a web stage, show only that stage instead of the whole app.
-// The full app (and every World's lesson data) is loaded lazily: a stage launch never downloads or parses it.
-getNativeStageLaunch().then(async (launch) => {
+// This web bundle now serves only editor stages embedded in the React Native app.
+getNativeStageLaunch().then((launch) => {
   const root = createRoot(document.getElementById('root')!);
   if (launch) {
     // The native loading overlay covers the stage until it reports ready (NativeStageHost); things that wait for "visible" start after.
@@ -23,11 +23,10 @@ getNativeStageLaunch().then(async (launch) => {
     );
     return;
   }
-  const {default: App} = await import('./App.tsx');
   root.render(
     <StrictMode>
       <ErrorBoundary>
-        <App />
+        <BrowserEditorHost />
       </ErrorBoundary>
     </StrictMode>,
   );

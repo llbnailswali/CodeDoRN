@@ -7,18 +7,37 @@
 import { compileAndRunKotlin } from '../src/utils/kotlinRunner';
 import { QuizQuestion } from '../src/utils/quizQuestions';
 import { WORLD_1_QUIZ } from '../src/data/quizBank/world1Quiz';
-import { WORLD_1_QUIZ_SETS, WORLD_1_QUIZ_BOSS } from '../src/data/quizBank/quizSets';
+import { WORLD_2_BOSS_QUIZ, WORLD_2_QUIZ } from '../src/data/quizBank/world2Quiz';
+import { WORLD_3_BOSS_QUIZ, WORLD_3_QUIZ } from '../src/data/quizBank/world3Quiz';
+import { WORLD_4_BOSS_QUIZ, WORLD_4_QUIZ } from '../src/data/quizBank/world4Quiz';
+import { WORLD_5_BOSS_QUIZ, WORLD_5_QUIZ } from '../src/data/quizBank/world5Quiz';
+import { WORLD_6_BOSS_QUIZ, WORLD_6_QUIZ } from '../src/data/quizBank/world6Quiz';
+import { WORLD_7_BOSS_QUIZ, WORLD_7_QUIZ } from '../src/data/quizBank/world7Quiz';
+import { WORLD_8_BOSS_QUIZ, WORLD_8_QUIZ } from '../src/data/quizBank/world8Quiz';
+import { WORLD_1_QUIZ_SETS, WORLD_1_QUIZ_BOSS, WORLD_2_QUIZ_SETS, WORLD_2_QUIZ_BOSS, WORLD_3_QUIZ_SETS, WORLD_3_QUIZ_BOSS, WORLD_4_QUIZ_SETS, WORLD_4_QUIZ_BOSS, WORLD_5_QUIZ_SETS, WORLD_5_QUIZ_BOSS, WORLD_6_QUIZ_SETS, WORLD_6_QUIZ_BOSS, WORLD_7_QUIZ_SETS, WORLD_7_QUIZ_BOSS, WORLD_8_QUIZ_SETS, WORLD_8_QUIZ_BOSS } from '../src/data/quizBank/quizSets';
 import { CODEDO_MASTER_WORLDS } from '../src/data/curriculum/masterCurriculumCatalog';
 import { conceptAccuracy } from '../src/utils/quizProgress';
 
-const BANKS: Record<string, QuizQuestion[]> = { 'world-1': WORLD_1_QUIZ };
+const BANKS: Record<string, QuizQuestion[]> = {
+  'world-1': WORLD_1_QUIZ,
+  'world-2': [...WORLD_2_QUIZ, ...WORLD_2_BOSS_QUIZ],
+  'world-3': [...WORLD_3_QUIZ, ...WORLD_3_BOSS_QUIZ],
+  'world-4': [...WORLD_4_QUIZ, ...WORLD_4_BOSS_QUIZ],
+  'world-5': [...WORLD_5_QUIZ, ...WORLD_5_BOSS_QUIZ],
+  'world-6': [...WORLD_6_QUIZ, ...WORLD_6_BOSS_QUIZ],
+  'world-7': [...WORLD_7_QUIZ, ...WORLD_7_BOSS_QUIZ],
+  'world-8': [...WORLD_8_QUIZ, ...WORLD_8_BOSS_QUIZ],
+};
+const SETS: Record<string, typeof WORLD_1_QUIZ_SETS> = {
+  'world-1': WORLD_1_QUIZ_SETS, 'world-2': WORLD_2_QUIZ_SETS, 'world-3': WORLD_3_QUIZ_SETS, 'world-4': WORLD_4_QUIZ_SETS, 'world-5': WORLD_5_QUIZ_SETS, 'world-6': WORLD_6_QUIZ_SETS, 'world-7': WORLD_7_QUIZ_SETS, 'world-8': WORLD_8_QUIZ_SETS,
+};
+const BOSSES = { 'world-1': WORLD_1_QUIZ_BOSS, 'world-2': WORLD_2_QUIZ_BOSS, 'world-3': WORLD_3_QUIZ_BOSS, 'world-4': WORLD_4_QUIZ_BOSS, 'world-5': WORLD_5_QUIZ_BOSS, 'world-6': WORLD_6_QUIZ_BOSS, 'world-7': WORLD_7_QUIZ_BOSS, 'world-8': WORLD_8_QUIZ_BOSS };
 const failures: string[] = [];
 const notes: string[] = [];
 const fail = (q: QuizQuestion, msg: string) => failures.push(`${q.id}: ${msg}`);
 
 const program = (lines: string[]) => (lines.some((l) => /^\s*fun main\b/.test(l)) ? lines.join('\n') : `fun main() {\n${lines.map((l) => '  ' + l).join('\n')}\n}`);
 const run = async (lines: string[]) => compileAndRunKotlin(program(lines));
-
 async function main() {
   const catalogLessons = new Set(CODEDO_MASTER_WORLDS.flatMap((w) => w.lessons.map((l) => l.id)));
   for (const [worldId, bank] of Object.entries(BANKS)) {
@@ -36,7 +55,7 @@ async function main() {
       if (q.worldId !== worldId) fail(q, `worldId ${q.worldId} does not match the bank ${worldId}`);
       if (!catalogLessons.has(q.lessonId) || !q.lessonId.startsWith(worldId + '-')) fail(q, `lessonId ${q.lessonId} is not a lesson of ${worldId}`);
       if (q.setId) {
-        const set = WORLD_1_QUIZ_SETS.find((x) => x.id === q.setId);
+        const set = SETS[worldId].find((x) => x.id === q.setId);
         if (!set) fail(q, `setId ${q.setId} is not a quiz set`);
         else if (q.lessonId !== set.lessonIds[set.lessonIds.length - 1]) fail(q, `a set question's lessonId must be the last lesson of its set (${set.lessonIds[set.lessonIds.length - 1]})`);
         else if (q.topic !== set.title) fail(q, `a set question's topic must be the set title (${set.title})`);
@@ -53,6 +72,7 @@ async function main() {
           positions[q.answer] = (positions[q.answer] ?? 0) + 1;
           if (q.type === 'predict_output') {
             if (!q.code?.length) fail(q, 'predict_output needs code');
+            else if (worldId === 'world-8') notes.push(q.id + ': output checked by the real Kotlin compiler test');
             else {
               const r = await run(q.code);
               if (!r.success) fail(q, `engine error: ${r.error?.message}`);
@@ -74,13 +94,17 @@ async function main() {
           const blanks = q.code.join('\n').split('___').length - 1;
           if (blanks !== 1) fail(q, `needs exactly one ___ (has ${blanks})`);
           if (!q.chips.includes(q.answer) || new Set(q.chips).size !== q.chips.length) fail(q, 'answer must be one of the distinct chips');
+          if (worldId === 'world-8') {
+            notes.push(q.id + ': chips checked by the real Kotlin compiler test');
+            break;
+          }
           const outputs: Record<string, string> = {};
           for (const chip of q.chips) {
             const r = await run(q.code.map((l) => l.replace('___', chip)));
             outputs[chip] = r.success ? `ok:${r.output.trim()}` : 'error';
           }
           if (outputs[q.answer] === 'error') fail(q, `the answer chip does not run: ${JSON.stringify(outputs)}`);
-          for (const chip of q.chips) if (chip !== q.answer && outputs[chip] === outputs[q.answer]) fail(q, `chip "${chip}" gives the same result as the answer`);
+          for (const chip of q.chips) if (chip !== q.answer && outputs[q.answer] !== 'error' && outputs[chip] === outputs[q.answer]) fail(q, `chip "${chip}" gives the same result as the answer`);
           notes.push(`${q.id}: chips ${JSON.stringify(outputs)}`);
           break;
         }
@@ -102,7 +126,7 @@ async function main() {
         }
       }
     }
-    for (const set of WORLD_1_QUIZ_SETS.filter((x) => x.worldId === worldId)) {
+    for (const set of SETS[worldId].filter((x) => x.worldId === worldId)) {
       if (set.lessonIds.length < 1) failures.push(`${set.id}: a set needs at least one lesson`);
       for (const id of set.lessonIds) if (!catalogLessons.has(id)) failures.push(`${set.id}: lesson ${id} is not in the catalog`);
       const own = bank.filter((q) => q.setId === set.id);
@@ -113,10 +137,10 @@ async function main() {
       console.log(`  set ${set.id}: ${own.length} own questions, ${bank.filter((q) => !q.setId && set.lessonIds.includes(q.lessonId)).length} from its lessons`);
     }
     // The Quiz offers sets and the full quiz only, so every lesson with questions must belong to exactly one set.
-    const sets = WORLD_1_QUIZ_SETS.filter((x) => x.worldId === worldId);
+    const sets = SETS[worldId].filter((x) => x.worldId === worldId);
     for (const id of new Set(bank.map((q) => q.lessonId))) {
       const owners = sets.filter((x) => x.lessonIds.includes(id));
-      if (id === WORLD_1_QUIZ_BOSS.lessonId) {
+      if (id === BOSSES[worldId as keyof typeof BOSSES].lessonId) {
         if (owners.length !== 0) failures.push(`${worldId}: the boss lesson ${id} must not be in a quiz set (it has its own boss quiz)`);
       } else if (owners.length !== 1) failures.push(`${worldId}: lesson ${id} is in ${owners.length} quiz sets (must be exactly one)`);
     }
@@ -124,7 +148,8 @@ async function main() {
     const worldLessons = CODEDO_MASTER_WORLDS.find((w) => w.id === worldId)?.lessons.map((l) => l.id) ?? [];
     for (const id of worldLessons) if (!lessonsUsed.has(id)) failures.push(`${worldId}: lesson ${id} has no question`);
     // The weak-concept report must rank a concept answered wrong below one answered right.
-    const sample = conceptAccuracy(bank.slice(0, 2), { [bank[0].id]: { correct: 0, wrong: 2, streak: 0, last: 1 }, [bank[1].id]: { correct: 2, wrong: 0, streak: 2, last: 1 } });
+    const sampleQuestions = [...new Map(bank.map((q) => [q.concept, q])).values()].slice(0, 2);
+    const sample = conceptAccuracy(sampleQuestions, { [sampleQuestions[0].id]: { correct: 0, wrong: 2, streak: 0, last: 1 }, [sampleQuestions[1].id]: { correct: 2, wrong: 0, streak: 2, last: 1 } });
     if (sample.length !== 2 || sample[0].accuracy !== 0 || sample[1].accuracy !== 1) failures.push('conceptAccuracy does not rank the weakest concept first');
     console.log(`${worldId}: ${bank.length} questions, ${new Set(bank.map((q) => q.concept)).size} concepts`);
     console.log('  types      ', JSON.stringify(types));

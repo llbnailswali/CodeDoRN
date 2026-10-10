@@ -3,41 +3,67 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BW, Header, fz } from './shell';
 import { FONT, Palette } from './theme';
 import { CONTENT_STATS as C } from './contentStats';
+import { QuizProgress, quizProgressStats } from './quizData';
 
 // Totals of what the app contains: worlds, lessons, the five lesson stages, the Quiz tab and the Practice tab.
 // The numbers are generated from the web lesson data (web-editor: npm run generate:native-data), so they follow the content.
-export function StatsScreen({ p, topInset, onBack, onToggleTheme }: { p: Palette; topInset: number; onBack: () => void; onToggleTheme: () => void }) {
+export function StatsScreen({ p, topInset, onBack, onToggleTheme, quizProgress }: { p: Palette; topInset: number; onBack: () => void; onToggleTheme: () => void; quizProgress: QuizProgress }) {
   const dark = p.isDark;
   const title = dark ? '#F1F5F9' : '#2E3040';
   const muted = dark ? '#94A3B8' : '#64748B';
   const row = dark ? { backgroundColor: '#0F1422', borderColor: 'rgba(255,255,255,0.06)' } : { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' };
   const total = { title, muted };
+  const stats = React.useMemo(() => quizProgressStats(quizProgress), [quizProgress]);
   return <View style={{ flex: 1, backgroundColor: p.page }}>
     <Header p={p} title="Stats" onBack={onBack} onToggleTheme={onToggleTheme} topInset={topInset} showGap={false} />
     <ScrollView contentContainerStyle={s.content}>
-      <View style={s.grid}>
-        <BigStat value={C.worlds} label="Worlds" row={row} {...total} />
-        <BigStat value={C.lessons} label="Lessons" note={`${C.stages.learn.lessons} ready to play`} row={row} {...total} />
-      </View>
-      <Group label="The 5 stages of a lesson" muted={muted}>
+      <Group label="Your quiz progress" muted={muted}>
+        <View style={s.grid}>
+          <BigStat value={`${stats.answeredQuestions} / ${stats.totalQuestions}`} label="Questions answered" row={row} {...total} />
+          <BigStat value={stats.accuracy === null ? '-' : `${stats.accuracy}%`} label="Accuracy" note={stats.totalAnswers ? `${stats.correctAnswers} correct of ${stats.totalAnswers} answers` : 'No answers yet'} row={row} {...total} />
+        </View>
         <View style={[s.list, row]}>
-          <TotalRow name="Learn" value={C.stages.learn.items} unit="lessons" {...total} />
-          <TotalRow name="Explore" value={C.stages.explore.items} unit="examples" {...total} />
-          <TotalRow name="Predict" value={C.stages.predict.items} unit="questions" {...total} />
-          <TotalRow name="Write & Run" value={C.stages.writeRun.items} unit="tasks" {...total} />
-          <TotalRow name="Debug" value={C.stages.debug.items} unit="tasks" last {...total} />
+          <TotalRow name="Total answers" value={stats.totalAnswers} unit="answers" {...total} />
+          <TotalRow name="Questions to review" value={stats.toReview} unit="questions" last {...total} />
         </View>
       </Group>
-      <Group label="Quiz tab" muted={muted}>
+      <Group label="Quiz progress by world" muted={muted}>
         <View style={[s.list, row]}>
-          <TotalRow name="Quiz questions" value={C.quizQuestions} unit="questions" last {...total} />
+          {stats.worlds.map(({ world, seen, total: worldTotal, correct, missed }, index) => <View key={world.order} style={[s.worldRow, index < stats.worlds.length - 1 && { borderBottomWidth: BW, borderBottomColor: 'rgba(148,163,184,0.25)' }]}>
+            <View style={s.worldHead}>
+              <Text style={[s.rowTitle, { color: title, flex: 1 }]} numberOfLines={1}>World {world.order}: {world.title}</Text>
+              <Text style={[s.sub, { color: muted }]}>{seen} / {worldTotal} answered</Text>
+            </View>
+            <View style={[s.track, { backgroundColor: p.barTrack }]}><View style={[s.fill, { width: `${worldTotal ? (seen / worldTotal) * 100 : 0}%` }]} /></View>
+            <Text style={[s.sub, { color: muted }]}>{correct} correct at least once · {missed} to review</Text>
+          </View>)}
         </View>
       </Group>
-      <Group label="Practice tab" muted={muted}>
-        <View style={[s.list, row]}>
-          <TotalRow name="Write & Run" value={C.practice.writeRun} unit="problems" {...total} />
-          <TotalRow name="Debug" value={C.practice.debug} unit="problems" last {...total} />
+      <Group label="Available content" muted={muted}>
+        <View style={s.grid}>
+          <BigStat value={C.worlds} label="Worlds" row={row} {...total} />
+          <BigStat value={C.lessons} label="Lessons" note={`${C.stages.learn.lessons} ready to play`} row={row} {...total} />
         </View>
+        <Group label="The 5 stages of a lesson" muted={muted}>
+          <View style={[s.list, row]}>
+            <TotalRow name="Learn" value={C.stages.learn.items} unit="lessons" {...total} />
+            <TotalRow name="Explore" value={C.stages.explore.items} unit="examples" {...total} />
+            <TotalRow name="Predict" value={C.stages.predict.items} unit="questions" {...total} />
+            <TotalRow name="Write & Run" value={C.stages.writeRun.items} unit="tasks" {...total} />
+            <TotalRow name="Debug" value={C.stages.debug.items} unit="tasks" last {...total} />
+          </View>
+        </Group>
+        <Group label="Quiz tab" muted={muted}>
+          <View style={[s.list, row]}>
+            <TotalRow name="Quiz questions" value={C.quizQuestions} unit="questions" last {...total} />
+          </View>
+        </Group>
+        <Group label="Practice tab" muted={muted}>
+          <View style={[s.list, row]}>
+            <TotalRow name="Write & Run" value={C.practice.writeRun} unit="problems" {...total} />
+            <TotalRow name="Debug" value={C.practice.debug} unit="problems" last {...total} />
+          </View>
+        </Group>
       </Group>
     </ScrollView>
   </View>;
@@ -46,7 +72,7 @@ export function StatsScreen({ p, topInset, onBack, onToggleTheme }: { p: Palette
 function Group({ label, muted, children }: { label: string; muted: string; children: React.ReactNode }) {
   return <View style={{ gap: 8 }}><Text style={[s.groupTitle, { color: muted }]}>{label.toUpperCase()}</Text>{children}</View>;
 }
-function BigStat({ value, label, note, row, title, muted }: { value: number; label: string; note?: string; row: object; title: string; muted: string }) {
+function BigStat({ value, label, note, row, title, muted }: { value: number | string; label: string; note?: string; row: object; title: string; muted: string }) {
   return <View style={[s.big, row]}><Text style={[s.bigValue, { color: title }]}>{value}</Text><Text style={[s.rowTitle, { color: title }]}>{label}</Text>{note ? <Text style={[s.sub, { color: muted }]}>{note}</Text> : null}</View>;
 }
 function TotalRow({ name, value, unit, title, muted, last }: { name: string; value: number; unit: string; title: string; muted: string; last?: boolean }) {
@@ -64,4 +90,8 @@ const s = StyleSheet.create({
   totalValue: { fontFamily: FONT.mono.b, fontSize: fz(14) },
   rowTitle: { fontFamily: FONT.outfit.b, fontSize: fz(12) },
   sub: { fontFamily: FONT.body, fontSize: fz(11), lineHeight: fz(16) },
+  worldRow: { paddingVertical: 10, gap: 8 },
+  worldHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  track: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  fill: { height: 8, borderRadius: 4, backgroundColor: '#6366F1' },
 });

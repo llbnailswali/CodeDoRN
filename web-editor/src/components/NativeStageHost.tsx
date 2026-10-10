@@ -95,7 +95,6 @@ export const NativeStageHost: React.FC<{ launch: NativeStageLaunch }> = ({ launc
           isPracticeMode={launch.practice}
           tryItMode={launch.tryIt}
           prefillCode={launch.prefillCode}
-          userStats={StorageManager.getUserStats()}
           onExit={() => void closeNativeStage('back')}
           onCompleteLesson={() => void closeNativeStage('continue')}
           onStageContinue={() => void closeNativeStage('continue')}

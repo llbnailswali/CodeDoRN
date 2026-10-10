@@ -168,7 +168,7 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
         }
         renderItem={({ item: set, index }) => {
           const status = setStatuses[index];
-          const names = set.lessonIds.map((id) => lessonNames.get(id)).filter(Boolean).join(' · ');
+          const names = set.lessonIds.map((id) => lessonNames.get(id)).filter((name): name is string => Boolean(name));
           const levelQuestions = byLevel(set.questions);
           const done = status.state === 'retake';
           const action = status.state === 'start' ? 'Start' : status.state === 'continue' ? 'Continue' : status.state === 'review' ? `Review ${status.missed}` : 'Retake';
@@ -204,7 +204,16 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
                     </View>
                   )}
                 </View>
-                {names !== '' && <Text numberOfLines={2} style={[s.names, { color: muted }]}>{names}</Text>}
+                {names.length > 0 && (
+                  <View style={s.namesList}>
+                    {names.map((name) => (
+                      <View key={name} style={s.nameRow}>
+                        <Text style={[s.nameBullet, { color: muted }]}>•</Text>
+                        <Text style={[s.names, { color: muted }]}>{name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </Pressable>
             </Step>
           );
@@ -328,7 +337,10 @@ const s = StyleSheet.create({
   card: { borderRadius: 16, borderWidth: BW, padding: 14, gap: 8 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardTitle: { fontFamily: FONT.outfit.b, fontSize: fz(16), lineHeight: lh(16, 1.3), includeFontPadding: false },
-  names: { fontFamily: FONT.body, fontSize: fz(12), lineHeight: lh(12, 1.4), includeFontPadding: false },
+  namesList: { gap: 3, marginTop: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
+  nameBullet: { fontFamily: FONT.body, fontSize: fz(14), lineHeight: lh(14, 1.4), includeFontPadding: false },
+  names: { flex: 1, fontFamily: FONT.body, fontSize: fz(13), lineHeight: lh(13, 1.4), includeFontPadding: false },
   meta: { fontFamily: FONT.body, fontSize: fz(12), lineHeight: lh(12, 1.4), includeFontPadding: false },
   doneTick: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
   pill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },

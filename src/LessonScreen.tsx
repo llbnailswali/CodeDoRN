@@ -100,24 +100,13 @@ const heading = (dark: boolean, size: number, extra?: object) => ({
 const CodeScroll = HorizontalCodeScroll;
 
 type ExploreCardData = NonNullable<LessonData['explore']>['cards'][number];
-/** The small "Play" pill that opens an example in the editor (Learn's example and every Explore card). */
+/** The small "Play" pill that opens an example in the editor. */
 function PlayButton({ dark, onPress }: { dark: boolean; onPress: () => void }) {
   return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel="Play this example in the editor"
-        android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false, foreground: true }}
-        style={({ pressed }) => ({
-          flexDirection: 'row', alignItems: 'center', gap: 4, height: 32, paddingLeft: 9, paddingRight: 14, borderRadius: 16, overflow: 'hidden', flexShrink: 0,
-          backgroundColor: dark ? '#4338CA' : '#4F46E5', borderWidth: BW, borderColor: dark ? 'rgba(165,180,252,0.45)' : 'rgba(67,56,202,0.5)',
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        {/* Drawn (Material's play_arrow path) because the app's icon font is a small subset without this glyph. */}
-        <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
-        <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(13), lineHeight: lh(13, 1.2), color: '#FFFFFF', includeFontPadding: false }}>Play</Text>
-      </Pressable>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Play this example in the editor" android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false, foreground: true }} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, height: 32, paddingLeft: 9, paddingRight: 14, borderRadius: 16, overflow: 'hidden', flexShrink: 0, backgroundColor: dark ? '#4338CA' : '#4F46E5', borderWidth: BW, borderColor: dark ? 'rgba(165,180,252,0.45)' : 'rgba(67,56,202,0.5)', opacity: pressed ? 0.85 : 1 })}>
+      <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
+      <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(13), lineHeight: lh(13, 1.2), color: '#FFFFFF', includeFontPadding: false }}>Play</Text>
+    </Pressable>
   );
 }
 
@@ -324,7 +313,14 @@ function RevealedItem({ children, animate, onLayout, itemRef }: { children: Reac
   const opacity = React.useRef(new Animated.Value(animate ? 0 : 1)).current;
 
   React.useEffect(() => {
-    if (!animate) return;
+    // Rapid taps can advance past this item's animation before the effect
+    // runs. In that case the ref was initialized at 0, but `animate` is
+    // already false, so leaving early would keep the section dimmed forever.
+    if (!animate) {
+      opacity.stopAnimation();
+      opacity.setValue(1);
+      return;
+    }
     const animation = Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true });
     animation.start();
     return () => animation.stop();

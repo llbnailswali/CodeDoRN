@@ -334,6 +334,50 @@ Supported challenge types:
 - Tap Correct Line
 - Boss Challenge
 
+### Quiz prompt formatting
+
+- Write questions, options, hints and explanations in simple, direct English that
+  an average person with basic English can understand. Prefer familiar words and
+  short sentences; explain necessary technical terms, and avoid idioms or
+  unnecessarily complex phrasing. Keep the Kotlin concept precise while making
+  the language accessible.
+- In quiz question text, use inline code formatting to make important Kotlin
+  keywords, operators, short expressions, literal values, and exact output
+  strings easy to distinguish from prose. World 1 is the visual reference; use
+  the same convention in every World.
+- When a prompt includes a code expression or fragment, wrap the complete
+  meaningful expression/fragment in one inline-code span. Do not split a single
+  expression into separate highlighted keywords, operators, or values. For
+  example, highlight `for (i in 5..5)` as one span, not as several chips.
+- Keep emphasis selective: do not format ordinary English, and do not repeat or
+  mark up a full code sample when the question already displays that sample
+  separately. This does not prevent highlighting a short code fragment that is
+  part of the prompt itself.
+- Preserve the question's wording and meaning when adding formatting. Inline
+  code markers are presentation only, not learner-visible backtick characters.
+- The React Native quiz and review screens must render these markers
+  consistently as inline code styling.
+
+### Quiz code-block formatting
+
+- Show Kotlin programs in readable, conventional multiline form in every World.
+  Keep a function signature on one line when it fits, put its body on separate
+  lines, indent body statements by four spaces, and put the closing brace on its
+  own line. For example:
+
+  ```kotlin
+  fun price(item: String, count: Int = 2): String {
+      return "$item:$count"
+  }
+  ```
+
+- Do not compress a function body or several statements onto one line just to
+  make the whole program fit on screen. Let the learner scroll when needed.
+  Keep blank lines between separate declarations or logical parts of a program.
+- Preserve the syntax being taught or tested. For example, a question about
+  expression-bodied functions must still show `= expression`; do not convert it
+  to a block body merely to match the example's syntax.
+
 Every challenge should support:
 
 ```text

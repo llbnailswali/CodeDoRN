@@ -30,6 +30,83 @@ const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 const px = (n: number) => fz(n * MAIN);
 const INDIGO = '#4F46E5';
 
+// Stage 1 / World 1: emphasize the concept term in the lesson's Learn heading.
+const WORLD_1_LEARN_TITLE_HIGHLIGHTS: Record<string, string[]> = {
+  // Keep the introductory overview plain; it has no single code token to teach.
+  'Kotlin Syntax & main()': ['main()'],
+  Comments: ['//', '/*', '*/'],
+  'print() and println()': ['print()', 'println()'],
+  'val vs var': ['val', 'var'],
+  'Variables & Type Inference': ['Int', 'String', ': Type'],
+  'Int & Long': ['Int', 'Long', 'L'],
+  'Float & Double': ['Float', 'Double', 'f', 'F'],
+  Boolean: ['True', 'False', 'true', 'false'],
+  Char: ['Char', 'String'],
+  Strings: ['String', '.length', '+', '"""'],
+  'String Templates': ['String Templates', '$name', '${expression}', '${...}', '\\$'],
+};
+
+function learnTitleParts(title: string, terms: string[]) {
+  const parts: Array<{ text: string; highlighted: boolean }> = [];
+  let cursor = 0;
+  while (cursor < title.length) {
+    let nextStart = -1;
+    let nextTerm = '';
+    for (const term of terms) {
+      let at = title.indexOf(term, cursor);
+      while (at !== -1) {
+        const before = at === 0 ? '' : title[at - 1];
+        const after = title[at + term.length] ?? '';
+        const isWord = /^[a-z0-9_]+$/i.test(term);
+        if (!isWord || ((!before || !/[a-z0-9_]/i.test(before)) && (!after || !/[a-z0-9_]/i.test(after)))) {
+          if (nextStart === -1 || at < nextStart || (at === nextStart && term.length > nextTerm.length)) {
+            nextStart = at;
+            nextTerm = term;
+          }
+          break;
+        }
+        at = title.indexOf(term, at + term.length);
+      }
+    }
+
+    const openTick = title.indexOf('`', cursor);
+    const closeTick = openTick === -1 ? -1 : title.indexOf('`', openTick + 1);
+    if (closeTick !== -1 && (nextStart === -1 || openTick <= nextStart)) {
+      if (openTick > cursor) parts.push({ text: title.slice(cursor, openTick), highlighted: false });
+      parts.push({ text: title.slice(openTick + 1, closeTick), highlighted: true });
+      cursor = closeTick + 1;
+      continue;
+    }
+
+    if (nextStart === -1) {
+      parts.push({ text: title.slice(cursor), highlighted: false });
+      break;
+    }
+    if (nextStart > cursor) parts.push({ text: title.slice(cursor, nextStart), highlighted: false });
+    parts.push({ text: nextTerm, highlighted: true });
+    cursor = nextStart + nextTerm.length;
+  }
+  return parts;
+}
+
+function HighlightedLearnText({
+  text, terms, dark, style,
+}: { text: string; terms?: string[]; dark: boolean; style: any }) {
+  if (!terms?.length) return <Text style={style}>{text}</Text>;
+  return (
+    <Text style={style}>
+      {learnTitleParts(text, terms).map((part, i) => (
+        <Text
+          key={`${part.text}-${i}`}
+          style={part.highlighted ? {
+            color: dark ? '#E0E7FF' : '#4338CA',
+          } : undefined}
+        >{part.text}</Text>
+      ))}
+    </Text>
+  );
+}
+
 const tk = (d: boolean) => ({
   page: d ? '#0F131D' : '#F1F4F9',
   title: d ? '#FFFFFF' : '#0F172A',
@@ -101,24 +178,13 @@ const heading = (dark: boolean, size: number, extra?: object) => ({
 const CodeScroll = HorizontalCodeScroll;
 
 type ExploreCardData = NonNullable<LessonData['explore']>['cards'][number];
-/** The small "Play" pill that opens an example in the editor (Learn's example and every Explore card). */
+/** The small "Play" pill that opens an example in the editor. */
 function PlayButton({ dark, onPress }: { dark: boolean; onPress: () => void }) {
   return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel="Play this example in the editor"
-        android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false, foreground: true }}
-        style={({ pressed }) => ({
-          flexDirection: 'row', alignItems: 'center', gap: 4, height: 32, paddingLeft: 9, paddingRight: 14, borderRadius: 16, overflow: 'hidden', flexShrink: 0,
-          backgroundColor: dark ? '#4338CA' : '#4F46E5', borderWidth: BW, borderColor: dark ? 'rgba(165,180,252,0.45)' : 'rgba(67,56,202,0.5)',
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        {/* Drawn (Material's play_arrow path) because the app's icon font is a small subset without this glyph. */}
-        <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
-        <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(13), lineHeight: lh(13, 1.2), color: '#FFFFFF', includeFontPadding: false }}>Play</Text>
-      </Pressable>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Play this example in the editor" android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false, foreground: true }} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, height: 32, paddingLeft: 9, paddingRight: 14, borderRadius: 16, overflow: 'hidden', flexShrink: 0, backgroundColor: dark ? '#4338CA' : '#4F46E5', borderWidth: BW, borderColor: dark ? 'rgba(165,180,252,0.45)' : 'rgba(67,56,202,0.5)', opacity: pressed ? 0.85 : 1 })}>
+      <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
+      <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(13), lineHeight: lh(13, 1.2), color: '#FFFFFF', includeFontPadding: false }}>Play</Text>
+    </Pressable>
   );
 }
 
@@ -325,7 +391,14 @@ function RevealedItem({ children, animate, onLayout, itemRef }: { children: Reac
   const opacity = React.useRef(new Animated.Value(animate ? 0 : 1)).current;
 
   React.useEffect(() => {
-    if (!animate) return;
+    // Rapid taps can advance past this item's animation before the effect
+    // runs. In that case the ref was initialized at 0, but `animate` is
+    // already false, so leaving early would keep the section dimmed forever.
+    if (!animate) {
+      opacity.stopAnimation();
+      opacity.setValue(1);
+      return;
+    }
     const animation = Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true });
     animation.start();
     return () => animation.stop();
@@ -846,6 +919,7 @@ export function LessonScreenPersistent({
 
   // ---- Learn ----
   const learn = lesson.learn;
+  const learnHighlightTerms = worldOrder === 1 ? WORLD_1_LEARN_TITLE_HIGHLIGHTS[lessonTitle] : undefined;
   const learnMax = 3 + learn.keyIdeas.length;
   const learnFull = learnReveal >= learnMax;
   const revealLearn = () => {
@@ -945,13 +1019,11 @@ export function LessonScreenPersistent({
         'learn-body',
         <View style={{ minHeight: 480 }}>
           <View style={{ paddingTop: 4, marginBottom: 8, paddingHorizontal: 10 }}>
-            <Text style={heading(dark, 24, { lineHeight: lh(24, 1.3333), marginBottom: 6 })}>{learn.title}</Text>
+            <HighlightedLearnText text={learn.title} terms={learnHighlightTerms} dark={dark} style={heading(dark, 24, { lineHeight: lh(24, 1.3333), marginBottom: 6 })} />
           </View>
           {learnReveal >= 1 && (
             <RevealedItem animate={learnReveal === 1} onLayout={() => onLearnItemLayout(1)}>
-              <Text style={{ fontFamily: FONT.body, fontSize: px(15), lineHeight: lh(15, 1.625), color: t.body, marginTop: 4, marginBottom: 12, paddingHorizontal: 10, includeFontPadding: false }}>
-                {learn.subtitle}
-              </Text>
+              <HighlightedLearnText text={learn.subtitle} terms={learnHighlightTerms} dark={dark} style={{ fontFamily: FONT.body, fontSize: px(15), lineHeight: lh(15, 1.625), color: t.body, marginTop: 4, marginBottom: 12, paddingHorizontal: 10, includeFontPadding: false }} />
             </RevealedItem>
           )}
           {learnReveal >= 2 && (
@@ -959,7 +1031,7 @@ export function LessonScreenPersistent({
               <View style={{ marginTop: 4, marginBottom: 16 }}>
               <Card dark={dark} shadow={false}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 10 }}>
-                  <Text style={heading(dark, 14, { lineHeight: lh(14, 1.4286), flex: 1, color: dark ? '#F8FAFC' : '#1E293B' })}>{learn.exampleTitle}</Text>
+                  <HighlightedLearnText text={learn.exampleTitle} terms={learnHighlightTerms} dark={dark} style={heading(dark, 14, { lineHeight: lh(14, 1.4286), flex: 1, color: dark ? '#F8FAFC' : '#1E293B' })} />
                   {!learn.noTryIt && <PlayButton dark={dark} onPress={playLearnExample} />}
                 </View>
                 <View style={{ borderRadius: 12, paddingVertical: 12, overflow: 'hidden', backgroundColor: t.codeBg, borderWidth: BW, borderColor: t.codeBorder }}>
@@ -971,7 +1043,7 @@ export function LessonScreenPersistent({
                   <View style={{ marginTop: -1 }}>
                     <Icon name="info" color={dark ? '#818CF8' : '#6366F1'} />
                   </View>
-                  <Text style={{ flex: 1, fontFamily: FONT.body, fontSize: px(12), lineHeight: lh(12, 1.625), color: t.body, includeFontPadding: false }}>{learn.explanation}</Text>
+                  <HighlightedLearnText text={learn.explanation} terms={learnHighlightTerms} dark={dark} style={{ flex: 1, fontFamily: FONT.body, fontSize: px(12), lineHeight: lh(12, 1.625), color: t.body, includeFontPadding: false }} />
                 </View>
               </Card>
               </View>
@@ -989,8 +1061,8 @@ export function LessonScreenPersistent({
                         <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(12), lineHeight: lh(12, 1.3333), color: dark ? '#818CF8' : '#4F46E5', includeFontPadding: false }}>{idea.number}</Text>
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontFamily: FONT.outfit.sb, fontSize: px(14), lineHeight: lh(14, 1.4286), color: dark ? '#FFFFFF' : '#1E293B', includeFontPadding: false }}>{idea.title}</Text>
-                        <Text style={{ fontFamily: FONT.body, fontSize: px(12), lineHeight: lh(12, 1.5), marginTop: 2, color: dark ? '#94A3B8' : '#64748B', includeFontPadding: false }}>{idea.description}</Text>
+                        <HighlightedLearnText text={idea.title} terms={learnHighlightTerms} dark={dark} style={{ fontFamily: FONT.outfit.sb, fontSize: px(14), lineHeight: lh(14, 1.4286), color: dark ? '#FFFFFF' : '#1E293B', includeFontPadding: false }} />
+                        <HighlightedLearnText text={idea.description} terms={learnHighlightTerms} dark={dark} style={{ fontFamily: FONT.body, fontSize: px(12), lineHeight: lh(12, 1.5), marginTop: 2, color: dark ? '#94A3B8' : '#64748B', includeFontPadding: false }} />
                       </View>
                       </Card>
                     </RevealedItem>
@@ -1012,7 +1084,7 @@ export function LessonScreenPersistent({
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(10), lineHeight: lh(10, 1.5), letterSpacing: 0.05 * 10 * MAIN, color: dark ? '#818CF8' : '#4F46E5', marginBottom: 2, includeFontPadding: false }}>KEY TAKEAWAY</Text>
-                <Text style={{ fontFamily: FONT.outfit.sb, fontSize: px(12), lineHeight: lh(12, 1.375), color: dark ? '#E2E8F0' : '#1E293B', includeFontPadding: false }}>{learn.keyTakeaway}</Text>
+                <HighlightedLearnText text={learn.keyTakeaway} terms={learnHighlightTerms} dark={dark} style={{ fontFamily: FONT.outfit.sb, fontSize: px(12), lineHeight: lh(12, 1.375), color: dark ? '#E2E8F0' : '#1E293B', includeFontPadding: false }} />
               </View>
               </View>
             </RevealedItem>

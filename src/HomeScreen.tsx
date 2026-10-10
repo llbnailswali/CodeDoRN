@@ -397,18 +397,6 @@ export function StandardNode({
         <View style={{ alignItems: left ? 'flex-start' : 'flex-end' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <WorldChip p={p} text={`World ${String(world.order).padStart(2, '0')}`} state={done ? 'done' : locked ? 'locked' : 'available'} />
-            {available && (
-              <View
-                style={[
-                  s.availableBadge,
-                  p.isDark
-                    ? { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.25)' }
-                    : { backgroundColor: '#ECFDF5', borderColor: 'rgba(110,231,183,0.6)' },
-                ]}
-              >
-                <Text style={[s.availableBadgeText, { color: p.isDark ? '#6EE7B7' : '#047857' }]}>AVAILABLE</Text>
-              </View>
-            )}
           </View>
           <Text
            
@@ -731,15 +719,15 @@ const s = StyleSheet.create({
   availableBadge: { borderWidth: BW, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   availableBadgeText: { fontFamily: FONT.mono.b, fontSize: fz(8 * MAIN), lineHeight: 12 * MAIN, includeFontPadding: false },
   lessonTag: { alignSelf: 'flex-start', marginTop: 2, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: BW },
-  lessonTagText: { fontFamily: FONT.mono.md, fontSize: fz(10 * MAIN), lineHeight: 15 * MAIN, letterSpacing: 0.25 * MAIN, includeFontPadding: false },
+  lessonTagText: { fontFamily: FONT.mono.sb, fontSize: fz(11 * MAIN), lineHeight: 16.5 * MAIN, letterSpacing: 0.25 * MAIN, includeFontPadding: false },
   // Activity milestones are individual nodes on the same trail as each World.
   activityNodeRow: { width: '100%', height: 52, alignItems: 'center', marginTop: 4 },
   activityNodePressable: { borderRadius: 999, padding: 3 },
   activityDiamondBox: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   activityDiamondShape: { position: 'absolute', width: 31, height: 31, borderRadius: 7, borderWidth: 1.4, transform: [{ rotate: '45deg' }] },
   activityNodeBox: { width: 38, height: 38, borderRadius: 12, borderWidth: 1.82, alignItems: 'center', justifyContent: 'center' },
-  activityCountBadge: { position: 'absolute', right: -6, top: -6, minWidth: 15, height: 15, borderRadius: 7.5, paddingHorizontal: 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0F172A' },
-  activityCountText: { fontFamily: FONT.mono.b, fontSize: fz(7 * MAIN), lineHeight: 9 * MAIN, includeFontPadding: false },
+  activityCountBadge: { position: 'absolute', right: -7, top: -7, minWidth: 17, height: 17, borderRadius: 8.5, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0F172A' },
+  activityCountText: { fontFamily: FONT.mono.b, fontSize: fz(9 * MAIN), lineHeight: 11 * MAIN, includeFontPadding: false },
   ribbonCountBadge: { position: 'absolute', right: -5, top: -5, minWidth: 15, height: 15, borderRadius: 7.5, paddingHorizontal: 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0F172A' },
   // current-world card
   currentCard: { width: '100%', maxWidth: 320, minHeight: CURRENT_CARD_HEIGHT, borderRadius: 16, borderWidth: BW, padding: 16, gap: 10 },

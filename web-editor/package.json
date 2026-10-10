@@ -33,6 +33,7 @@
     "improve": "bash scripts/improve.sh",
     "test:highlighter-fidelity": "tsx scripts/test-highlighter-fidelity.tsx",
     "test:quiz-bank": "tsx scripts/test-quiz-bank.ts",
+    "test:world8-quiz-kotlin": "tsx scripts/test-world8-quiz-kotlin.ts",
     "test:comment-folds": "tsx scripts/test-comment-folds.ts",
     "test:editor-indent": "tsx scripts/test-editor-indent.ts",
     "test:apply-solution": "tsx scripts/test-apply-solution.ts",

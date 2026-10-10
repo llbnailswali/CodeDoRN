@@ -1,12 +1,16 @@
 import React from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { BackHandler, NativeModules, Pressable, ScrollView, StyleSheet, StyleProp, Text, TextStyle, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import PagerView from 'react-native-pager-view';
+import { HorizontalCodeScroll } from './HorizontalCodeScroll';
 import { BW, Icon, MAIN, fz } from './shell';
-import { accentFor, hexAlpha, lh } from './parts';
+import { accentFor, lh } from './parts';
 import { QuizAnswer, QuizQuestion, correctAnswerText, gradeQuizAnswer, hasAnswer } from './quizQuestions';
 import { SAMPLE_QUIZ } from './quizSample';
+import { LESSONS } from './lessonData';
 import { ShadowStack } from './shadows';
 import { FONT, Palette } from './theme';
+import { makeKotlinExampleRunnable } from './utils/kotlinExample';
 
 // The screen a Quiz card opens (web: src/components/quiz/QuizSession.tsx, QuizQuestionScreen.tsx, QuizAnswerBodies.tsx, QuizCodePanel.tsx
 // and QuizSessionComplete.tsx): one question at a time, then a result screen. It really plays: pick an answer, "Check answer", read the
@@ -81,9 +85,17 @@ const LINE_STYLE: Record<CodeLineState, { backgroundColor: string; borderLeftCol
  * asked. React Native cannot round the background of text inside a sentence, so the sentence is laid out as wrapping words and chips. A
  * collapsed row (numberOfLines) keeps the code in the code font without a box, because that layout cannot be clamped to lines.
  */
-function RichText({ text, style, dark, numberOfLines }: { text: string; style: object; dark: boolean; numberOfLines?: number }) {
+function RichText({ text, style, dark, numberOfLines }: { text: string; style: StyleProp<TextStyle>; dark: boolean; numberOfLines?: number }) {
   const parts = text.replace(/\s+/g, ' ').trim().split('`');
-  const base = StyleSheet.flatten(style) as { fontSize?: number; lineHeight?: number };
+  // Plain questions should remain one text flow. Rendering them through the
+  // rich inline-code layout below puts the sentence's text fragments into a
+  // flex-wrapping View, which can wrap individual words/characters as if
+  // they were separate columns (especially on the review screen).
+  if (parts.length === 1) {
+    return <Text style={style} numberOfLines={numberOfLines}>{parts[0]}</Text>;
+  }
+  const { flex, ...wordStyle } = StyleSheet.flatten(style) ?? {};
+  const base = wordStyle as { fontSize?: number; lineHeight?: number };
   const codeSize = (base.fontSize ?? 15) * 0.88;
   if (numberOfLines) {
     return (
@@ -101,7 +113,7 @@ function RichText({ text, style, dark, numberOfLines }: { text: string; style: o
     );
   }
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+    <View style={{ flex, flexShrink: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
       {parts.flatMap((part, i) => {
         if (i % 2 === 1) {
           const spaceAfter = /^\s/.test(parts[i + 1] ?? '');
@@ -115,7 +127,7 @@ function RichText({ text, style, dark, numberOfLines }: { text: string; style: o
           .split(' ')
           .filter((word) => word !== '')
           .map((word, j, words) => (
-            <Text key={`w${i}-${j}`} style={style}>
+            <Text key={`w${i}-${j}`} style={wordStyle}>
               {word + (j < words.length - 1 || /\s$/.test(part) ? ' ' : '')}
             </Text>
           ));
@@ -129,24 +141,54 @@ function ExplainText({ text, style, dark }: { text: string; style: object; dark:
   const sentences = text.trim().split(/(?<=[.!?])\s+(?=[A-Z`])/);
   return (
     <View style={{ gap: 6 }}>
-      {sentences.map((sentence, i) => (
-        <RichText key={i} text={sentence} style={style} dark={dark} />
-      ))}
+      {sentences.map((sentence, i) => {
+        const parts = sentence.split('`');
+        return (
+          <Text key={i} style={style}>
+            {parts.map((part, partIndex) =>
+              partIndex % 2 === 1 ? (
+                <Text key={partIndex} style={{ fontFamily: FONT.mono.sb, color: dark ? '#A5B4FC' : '#4338CA' }}>{part}</Text>
+              ) : (
+                <Text key={partIndex}>{part}</Text>
+              ),
+            )}
+          </Text>
+        );
+      })}
     </View>
   );
 }
 
 function CodePanel({
-  lines, fileName = 'Main.kt', compact, onLineClick, lineState, lineNote, fill,
+  lines, fileName = 'Main.kt', compact, fullBleed = false, showLineNumbers = true, onLineClick, lineState, lineNote, fill,
 }: {
   lines: string[];
   fileName?: string;
   compact?: boolean;
+  fullBleed?: boolean;
+  showLineNumbers?: boolean;
   onLineClick?: (i: number) => void;
   lineState?: (i: number) => CodeLineState;
   lineNote?: (i: number) => string | null;
   fill?: { value: string | null; state: 'idle' | 'filled' | 'correct' | 'wrong'; onClear?: () => void };
 }) {
+  const [panelWidth, setPanelWidth] = React.useState(0);
+  const [copyState, setCopyState] = React.useState<'idle' | 'copied' | 'failed'>('idle');
+  const copyTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+  }, []);
+  const handleCopy = async () => {
+    try {
+      await NativeModules.WebStage.copyToClipboard(lines.join('\n'));
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopyState('idle'), 1600);
+  };
+
   const renderLine = (line: string) => {
     if (fill && line.includes('___')) {
       const [left, right] = line.split('___');
@@ -159,9 +201,9 @@ function CodePanel({
           ? { borderColor: '#818CF8', backgroundColor: 'rgba(129,140,248,0.2)', color: '#E0E7FF', borderStyle: 'solid' as const }
           : { borderColor: '#94A3B8', backgroundColor: 'rgba(255,255,255,0.05)', color: '#64748B', borderStyle: 'dashed' as const };
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' }}>
           {!!left && (
-            <Text style={s.codeText}>
+            <Text numberOfLines={1} style={s.codeText}>
               <Kotlin text={left} />
             </Text>
           )}
@@ -169,7 +211,7 @@ function CodePanel({
             <Text style={[s.slotText, { color: slot.color }]}>{fill.value ?? ' '}</Text>
           </Pressable>
           {!!right && (
-            <Text style={s.codeText}>
+            <Text numberOfLines={1} style={s.codeText}>
               <Kotlin text={right} />
             </Text>
           )}
@@ -177,58 +219,79 @@ function CodePanel({
       );
     }
     return (
-      <Text style={s.codeText}>
+      <Text numberOfLines={1} style={s.codeText}>
         <Kotlin text={line} />
       </Text>
     );
   };
 
   return (
-    <View style={s.codePanel}>
+    <View style={[s.codePanel, fullBleed && { width: 'auto', alignSelf: 'stretch', marginHorizontal: -16, borderRadius: 0 }]} onLayout={event => setPanelWidth(event.nativeEvent.layout.width)}>
       {!compact && (
         <View style={s.codeBar}>
           <View style={[s.dot, { backgroundColor: 'rgba(248,113,113,0.8)' }]} />
           <View style={[s.dot, { backgroundColor: 'rgba(251,191,36,0.8)' }]} />
           <View style={[s.dot, { backgroundColor: 'rgba(52,211,153,0.8)' }]} />
           <Text style={[s.mono11, { color: '#94A3B8', marginLeft: 8 }]}>{fileName}</Text>
+          <Pressable
+            onPress={handleCopy}
+            accessibilityRole="button"
+            accessibilityLabel={copyState === 'copied' ? 'Code copied' : copyState === 'failed' ? 'Could not copy code' : 'Copy code'}
+            hitSlop={8}
+            style={s.copyButton}
+          >
+            <Svg width={16} height={16} viewBox="0 0 24 24" accessibilityLabel={copyState === 'copied' ? 'Copied' : 'Copy code'}>
+              {copyState === 'copied' ? (
+                <Path fill="#6EE7B7" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              ) : (
+                <Path fill={copyState === 'failed' ? '#FDA4AF' : '#CBD5E1'} d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+              )}
+            </Svg>
+            {copyState !== 'idle' && <Text style={[s.mono11, { color: copyState === 'failed' ? '#FDA4AF' : '#6EE7B7' }]}>{copyState === 'copied' ? 'Copied' : 'Failed'}</Text>}
+          </Pressable>
         </View>
       )}
-      <View style={{ paddingVertical: 8 }}>
-        {lines.map((line, idx) => {
-          const state = lineState ? lineState(idx) : 'idle';
-          const note = lineNote ? lineNote(idx) : null;
-          const tappable = !!onLineClick;
-          const row = (
-            <View
-              style={[
-                s.codeRow,
-                { minHeight: tappable ? 48 : 28 },
-                // Tappable lines read as separate rows: a tint, a thin divider and a tap circle on the right.
-                tappable && state === 'idle' && { backgroundColor: 'rgba(255,255,255,0.04)' },
-                tappable && idx < lines.length - 1 && { borderBottomWidth: BW, borderBottomColor: 'rgba(148,163,184,0.22)' },
-                LINE_STYLE[state],
-              ]}
-            >
-              <Text style={s.gutter}>{idx + 1}</Text>
-              <View style={{ flex: 1, paddingRight: 8 }}>{renderLine(line)}</View>
-              {tappable && (
-                <View style={[s.tapCircle, state === 'selected' && { backgroundColor: '#6366F1', borderColor: '#6366F1' }]} />
-              )}
-            </View>
-          );
-          return (
-            <View key={idx}>
-              {tappable ? <Pressable onPress={() => onLineClick?.(idx)}>{row}</Pressable> : row}
-              {!!note && (
-                <View style={[s.note, state === 'error' ? { backgroundColor: 'rgba(239,68,68,0.15)' } : { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
-                  <Icon name="error" size={16} exact color={state === 'error' ? '#FEE2E2' : '#CBD5E1'} />
-                  <Text style={[s.noteText, { color: state === 'error' ? '#FEE2E2' : '#CBD5E1' }]}>{note}</Text>
+      <HorizontalCodeScroll>
+        <View style={{ alignSelf: 'flex-start', paddingVertical: 8 }}>
+          {lines.map((line, idx) => {
+            const state = lineState ? lineState(idx) : 'idle';
+            const note = lineNote ? lineNote(idx) : null;
+            const tappable = !!onLineClick;
+            const row = (
+              <View
+                style={[
+                  s.codeRow,
+                  { minHeight: tappable ? 48 : 28 },
+                  tappable && panelWidth > 0 && { minWidth: panelWidth - 2 * BW },
+                  // Tappable lines read as separate rows: a tint, a thin divider and a tap circle on the right.
+                  tappable && state === 'idle' && { backgroundColor: 'rgba(255,255,255,0.04)' },
+                  tappable && idx < lines.length - 1 && { borderBottomWidth: BW, borderBottomColor: 'rgba(148,163,184,0.22)' },
+                  LINE_STYLE[state],
+                ]}
+              >
+                {showLineNumbers && <Text style={s.gutter}>{idx + 1}</Text>}
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0, paddingLeft: showLineNumbers ? 0 : 8, paddingRight: fullBleed ? 0 : 8 }}>
+                  {renderLine(line)}
                 </View>
-              )}
-            </View>
-          );
-        })}
-      </View>
+                {tappable && (
+                  <View style={[s.tapCircle, { marginLeft: 'auto' }, state === 'selected' && { backgroundColor: '#6366F1', borderColor: '#6366F1' }]} />
+                )}
+              </View>
+            );
+            return (
+              <View key={idx}>
+                {tappable ? <Pressable onPress={() => onLineClick?.(idx)}>{row}</Pressable> : row}
+                {!!note && (
+                  <View style={[s.note, state === 'error' ? { backgroundColor: 'rgba(239,68,68,0.15)' } : { backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+                    <Icon name="error" size={16} exact color={state === 'error' ? '#FEE2E2' : '#CBD5E1'} />
+                    <Text style={[s.noteText, { color: state === 'error' ? '#FEE2E2' : '#CBD5E1' }]}>{note}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      </HorizontalCodeScroll>
     </View>
   );
 }
@@ -326,7 +389,7 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
     case 'predict_output':
       return (
         <View style={{ gap: 16 }}>
-          {q.code && <CodePanel lines={q.code} />}
+          {q.code && <CodePanel lines={q.code} fullBleed showLineNumbers={false} />}
           <View style={{ gap: 8 }}>
             {q.options.map((option, i) => (
               <Option
@@ -368,7 +431,7 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
       const slotState = !checked ? (placed ? 'filled' : 'idle') : placed === q.answer ? 'correct' : 'wrong';
       return (
         <View style={{ gap: 20 }}>
-          <CodePanel lines={q.code} fill={{ value: placed, state: slotState, onClear: checked ? undefined : () => onChange(null) }} />
+          <CodePanel lines={q.code} fullBleed showLineNumbers={false} fill={{ value: placed, state: slotState, onClear: checked ? undefined : () => onChange(null) }} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
             {q.chips.map((chip) => {
               const used = placed === chip;
@@ -409,6 +472,8 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
         )}
         <CodePanel
           lines={q.code}
+          fullBleed
+          showLineNumbers={false}
           onLineClick={checked ? undefined : (i) => onChange(i)}
           lineState={lineState}
           lineNote={(i) => (checked && i === q.errorLine ? q.errorNote ?? null : null)}
@@ -474,121 +539,109 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
 // One question
 // ---------------------------------------------------------------------------------------------------------------------
 
-function QuestionScreen({
-  p, q, step, total, world, label, topInset, onClose, onContinue,
-}: {
+function QuizToolbar({ p, world, label, question, topInset, step, total, checked, onClose }: {
   p: Palette;
-  q: QuizQuestion;
+  world?: { order: number; title: string };
+  label?: string;
+  question: QuizQuestion;
+  topInset: number;
   step: number;
   total: number;
-  world?: { order: number; title: string };
-  /** What this quiz is, shown in the toolbar instead of the World's name: a set's title, "Full quiz", "Review mistakes", "Quick quiz". */
-  label?: string;
-  topInset: number;
+  checked: boolean;
   onClose: () => void;
-  onContinue: (correct: boolean, answer: QuizAnswer) => void;
 }) {
   const dark = p.isDark;
-  const [value, setValue] = React.useState<QuizAnswer>(null);
-  const [checked, setChecked] = React.useState(false);
-  const [hintOpen, setHintOpen] = React.useState(false);
-  const [confirmLeave, setConfirmLeave] = React.useState(false);
-  const scrollRef = React.useRef<ScrollView>(null);
-
-  const answered = hasAnswer(value);
-  const correct = checked && gradeQuizAnswer(q, value);
-  const isLast = step >= total;
   const bg = dark ? '#0B0F19' : '#F3F4F8';
   const title = dark ? '#F8FAFC' : '#1C2033';
   const muted = dark ? '#94A3B8' : '#64748B';
-  const progress = (step - 1 + (checked ? 1 : 0)) / total;
+  const progress = Math.min(1, (step - 1 + (checked ? 1 : 0)) / total);
+  const accent = world ? accentFor(world.order) : null;
+  const difficultyTone = question.difficulty === 'easy'
+    ? { bg: dark ? 'rgba(16,185,129,0.18)' : '#D1FAE5', fg: dark ? '#6EE7B7' : '#047857' }
+    : question.difficulty === 'hard'
+      ? { bg: dark ? 'rgba(244,63,94,0.18)' : '#FFE4E6', fg: dark ? '#FDA4AF' : '#BE123C' }
+      : { bg: dark ? 'rgba(245,158,11,0.18)' : '#FEF3C7', fg: dark ? '#FCD34D' : '#B45309' };
+  return (
+    <View style={{ paddingTop: topInset, backgroundColor: bg, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: dark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
+      <View style={[s.header, { paddingRight: 0, paddingTop: 0 }]}>
+        <Pressable onPress={onClose} style={[s.closeBtn, dark ? { borderColor: 'rgba(255,255,255,0.15)', backgroundColor: '#121826' } : { borderColor: '#CBD5E1', backgroundColor: '#FFFFFF' }]}>
+          <Icon name="close" size={20} exact color={dark ? '#E2E8F0' : '#334155'} />
+        </Pressable>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          {(world || label) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {world && accent && <Text style={[s.worldTag, { color: dark ? accent[0] : accent[1] }]}>W{world.order}</Text>}
+              <Text numberOfLines={1} style={[s.worldTitle, { color: title }]}>{label ?? world?.title}</Text>
+            </View>
+          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <Text numberOfLines={1} style={[s.concept, { color: muted, flexShrink: 1 }]}>Concept · {question.topic}</Text>
+            <View style={s.badgeRow}>
+              {question.type === 'multi_select' && (
+                <View style={[s.diffPill, { backgroundColor: dark ? 'rgba(99,102,241,0.25)' : '#E0E7FF' }]}>
+                  <Text style={[s.diffText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>Multiple</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 4, marginRight: 16 }}>
+          <Text style={[s.count, { color: title, textAlign: 'right' }]}>{step}<Text style={{ color: muted }}> / {total}</Text></Text>
+          <View style={[s.diffPill, { backgroundColor: difficultyTone.bg, alignSelf: 'flex-end', transform: [{ translateX: 6 }] }]}>
+            <Text style={[s.diffText, { color: difficultyTone.fg }]}>{question.difficulty}</Text>
+          </View>
+        </View>
+      </View>
+      <View style={[s.progressTrack, { marginHorizontal: 0, marginTop: 0, marginBottom: 0, backgroundColor: dark ? 'rgba(255,255,255,0.15)' : '#CBD5E1' }]}>
+        <View style={{ height: 4, width: `${progress * 100}%`, borderRadius: 2, backgroundColor: '#6366F1' }} />
+      </View>
+    </View>
+  );
+}
 
-  const check = () => {
-    if (!answered || checked) return;
-    setChecked(true);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-  };
+function QuestionScreen({
+  p, q, value, checked, onDraftChange, onScrollRef,
+}: {
+  p: Palette;
+  q: QuizQuestion;
+  value: QuizAnswer;
+  checked: boolean;
+  onDraftChange: (answer: QuizAnswer, isChecked: boolean) => void;
+  onScrollRef: (ref: ScrollView | null) => void;
+}) {
+  const dark = p.isDark;
+  const [hintOpen, setHintOpen] = React.useState(false);
+
+  const correct = checked && gradeQuizAnswer(q, value);
+  const runnableCode = 'code' in q ? q.code : undefined;
+  const runnableLesson = runnableCode?.length ? Object.values(LESSONS).find((item) => item.id === q.lessonId) : undefined;
+  const stageRunner = NativeModules.WebStage;
+  const playCode = runnableCode?.length && runnableLesson && typeof stageRunner?.open === 'function' ? () => {
+    void stageRunner.open(runnableLesson.key, 'writeRun', dark, false, true, makeKotlinExampleRunnable(runnableCode)).catch(() => {});
+  } : undefined;
+  const bg = dark ? '#0B0F19' : '#F3F4F8';
+  const title = dark ? '#F8FAFC' : '#1C2033';
+  const muted = dark ? '#94A3B8' : '#64748B';
 
   // A question answered with a single tap (choose an option, true/false, A or B, tap a line, tap a chip) is checked the moment it is tapped,
   // which saves a separate "Check answer" tap. Multi-select keeps its Check button: the learner ticks several options and decides when done.
   const checksOnTap = q.type !== 'multi_select';
   const changeAnswer = (next: QuizAnswer) => {
     if (checked) return;
-    setValue(next);
-    if (checksOnTap && hasAnswer(next)) {
-      setChecked(true);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-    }
+    onDraftChange(next, checksOnTap && hasAnswer(next));
   };
-
-  const requestClose = () => (step > 1 || answered ? setConfirmLeave(true) : onClose());
-
-  React.useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (confirmLeave) {
-        setConfirmLeave(false);
-      } else {
-        requestClose();
-      }
-      return true;
-    });
-    return () => subscription.remove();
-  }, [confirmLeave, step, answered]);
-
-  const accent = world ? accentFor(world.order) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
-      <View style={{ paddingTop: topInset, backgroundColor: bg, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: dark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
-        <View style={s.header}>
-          <Pressable onPress={requestClose} style={[s.closeBtn, dark ? { borderColor: 'rgba(255,255,255,0.15)', backgroundColor: '#121826' } : { borderColor: '#CBD5E1', backgroundColor: '#FFFFFF' }]}>
-            <Icon name="close" size={20} exact color={dark ? '#E2E8F0' : '#334155'} />
-          </Pressable>
-          <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
-            {(world || label) && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                {world && accent && <Text style={[s.worldTag, { color: dark ? accent[0] : accent[1] }]}>W{world.order}</Text>}
-                <Text numberOfLines={1} style={[s.worldTitle, { color: title }]}>{label ?? world?.title}</Text>
-              </View>
-            )}
-            <View style={[s.progressTrack, { backgroundColor: dark ? 'rgba(255,255,255,0.15)' : '#CBD5E1' }]}>
-              <View style={{ height: 4, width: `${progress * 100}%`, borderRadius: 2, backgroundColor: '#6366F1' }} />
-            </View>
-          </View>
-          <Text style={[s.count, { color: title }]}>
-            {step}
-            <Text style={{ color: muted }}> / {total}</Text>
-          </Text>
-        </View>
-      </View>
-
-      {/* Sticky, full width: the concept and level stay in view while the question scrolls, and read as a label apart from the question. */}
-      <View style={[s.conceptRow, { backgroundColor: dark ? '#121826' : '#EEF1F7', borderBottomColor: dark ? 'rgba(255,255,255,0.10)' : '#DDE3EE' }]}>
-        <Text numberOfLines={1} style={[s.concept, { color: muted, flexShrink: 1 }]}>Concept · {q.topic}</Text>
-        <View style={s.badgeRow}>
-        {q.type === 'multi_select' && (
-          <View style={[s.diffPill, { backgroundColor: dark ? 'rgba(99,102,241,0.25)' : '#E0E7FF' }]}>
-            <Text style={[s.diffText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>Multiple</Text>
-          </View>
-        )}
-        {(() => {
-          // The level is its own badge, coloured by difficulty, apart from the concept text.
-          const tone = q.difficulty === 'easy'
-            ? { bg: dark ? 'rgba(16,185,129,0.18)' : '#D1FAE5', fg: dark ? '#6EE7B7' : '#047857' }
-            : q.difficulty === 'hard'
-            ? { bg: dark ? 'rgba(244,63,94,0.18)' : '#FFE4E6', fg: dark ? '#FDA4AF' : '#BE123C' }
-            : { bg: dark ? 'rgba(245,158,11,0.18)' : '#FEF3C7', fg: dark ? '#FCD34D' : '#B45309' };
-          return (
-            <View style={[s.diffPill, { backgroundColor: tone.bg }]}>
-              <Text style={[s.diffText, { color: tone.fg }]}>{q.difficulty}</Text>
-            </View>
-          );
-        })()}
-        </View>
-      </View>
-      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 16 }}>
+      <ScrollView ref={onScrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 16 }}>
         <View style={{ gap: 12 }}>
-          <RichText text={q.question} style={[s.question, { color: title }]} dark={dark} />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+            <RichText text={q.question} style={[s.question, { color: title, flex: 1 }]} dark={dark} />
+            {playCode && <Pressable onPress={playCode} accessibilityRole="button" accessibilityLabel="Play this code in Write and Run" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 2, paddingHorizontal: 10, height: 30, borderRadius: 16, backgroundColor: dark ? '#4338CA' : '#4F46E5' }}>
+              <Svg width={15} height={15} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
+              <Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(12), color: '#FFFFFF', includeFontPadding: false }}>Play</Text>
+            </Pressable>}
+          </View>
           {q.type === 'multi_select' && (
             <View style={[s.selectedPill, { backgroundColor: dark ? 'rgba(99,102,241,0.2)' : '#E0E7FF' }]}>
               <Text style={[s.selectedText, { color: dark ? '#C7D2FE' : '#4338CA' }]}>
@@ -652,58 +705,6 @@ function QuestionScreen({
         )}
       </ScrollView>
 
-      {/* The one main action, in the thumb zone */}
-      <View style={{ backgroundColor: bg }}>
-        <Svg width="100%" height={24} style={{ position: 'absolute', left: 0, right: 0, top: -24 }} pointerEvents="none">
-          <Defs>
-            <LinearGradient id="fadeUp" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={bg} stopOpacity="0" />
-              <Stop offset="1" stopColor={bg} stopOpacity="1" />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill="url(#fadeUp)" />
-        </Svg>
-        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20 }}>
-          {/* TEMPORARY: Pass / Fail test shortcut, shown in release builds too. Remove before public release. */}
-          {true && (
-            <View style={s.debugRow}>
-              <Text style={[s.debugLabel, { color: muted }]}>DEBUG</Text>
-              <Pressable onPress={() => onContinue(true, value)} style={[s.debugBtn, { borderColor: '#10B981', backgroundColor: dark ? 'rgba(16,185,129,0.12)' : '#ECFDF5' }]}>
-                <Text style={[s.debugBtnText, { color: dark ? '#6EE7B7' : '#047857' }]}>Pass</Text>
-              </Pressable>
-              <Pressable onPress={() => onContinue(false, value)} style={[s.debugBtn, { borderColor: '#F43F5E', backgroundColor: dark ? 'rgba(244,63,94,0.12)' : '#FFF1F2' }]}>
-                <Text style={[s.debugBtnText, { color: dark ? '#FDA4AF' : '#BE123C' }]}>Fail</Text>
-              </Pressable>
-            </View>
-          )}
-          {answered || checked ? <ShadowStack r={16} shadows={[{ dy: 6, blur: 20, rgb: '99,102,241', alpha: 0.35 }]} /> : null}
-          <Pressable
-            disabled={!checked && !answered}
-            onPress={() => (checked ? onContinue(correct, value) : check())}
-            style={[s.mainBtn, !checked && !answered ? { backgroundColor: dark ? 'rgba(255,255,255,0.10)' : '#E2E8F0' } : { backgroundColor: '#6366F1' }]}
-          >
-            <Text style={[s.mainBtnText, { color: !checked && !answered ? (dark ? '#64748B' : '#94A3B8') : '#FFFFFF' }]}>
-              {checked ? (isLast ? 'Finish' : 'Next') : answered ? 'Check answer' : WAITING_LABEL[q.type]}
-            </Text>
-            {(checked || answered) && <Icon name={checked ? 'arrow_forward' : 'check'} size={20} exact color="#FFFFFF" />}
-          </Pressable>
-        </View>
-      </View>
-
-      {confirmLeave && (
-        <Pressable style={s.leaveOverlay} onPress={() => setConfirmLeave(false)}>
-          <Pressable style={[s.leaveCard, dark ? { backgroundColor: '#121826', borderColor: 'rgba(255,255,255,0.10)', borderWidth: BW } : { backgroundColor: '#FFFFFF' }]} onPress={() => {}}>
-            <Text style={[s.leaveTitle, { color: title }]}>Leave this quiz?</Text>
-            <Text style={[s.body13, { color: muted }]}>Your answers in this session will not be saved.</Text>
-            <Pressable onPress={() => setConfirmLeave(false)} style={[s.leaveBtn, { backgroundColor: '#6366F1' }]}>
-              <Text style={[s.leaveBtnText, { color: '#FFFFFF' }]}>Keep going</Text>
-            </Pressable>
-            <Pressable onPress={onClose} style={[s.leaveBtn, { borderWidth: BW, borderColor: dark ? 'rgba(255,255,255,0.15)' : '#CBD5E1' }]}>
-              <Text style={[s.leaveBtnText, { color: dark ? '#E2E8F0' : '#334155' }]}>Leave</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      )}
     </View>
   );
 }
@@ -891,47 +892,225 @@ function CompleteScreen({ p, results, xp, topInset, onDone, onReview, nextLabel,
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, topInset, stepOffset = 0, totalOverride, onExit, onComplete, onAnswer, nextLabel, onNext }: { p: Palette; world?: { order: number; title: string }; label?: string; /** Position of a resumed quiz: questions already answered before this session. */ stepOffset?: number; /** The whole quiz's length (the position is shown as 13 / 24 even when only the rest is played). */ totalOverride?: number; /** What to offer after the last question: the next set (label and action). */ nextLabel?: string; onNext?: () => void; /** Called as each answer is committed, so progress survives quitting midway. */ onAnswer?: (question: QuizQuestion, correct: boolean) => void; questions?: QuizQuestion[]; topInset: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
-  const [index, setIndex] = React.useState(0);
-  const [results, setResults] = React.useState<Result[]>([]);
+function getCorrectQuizAnswer(question: QuizQuestion): QuizAnswer {
+  if (question.type === 'multi_select') return [...question.answers];
+  if (question.type === 'find_error') return question.errorLine;
+  return question.answer;
+}
+
+export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, topInset, stepOffset = 0, startIndex = 0, lockedQuestionIds = [], totalOverride, onExit, onComplete, onAnswer, nextLabel, onNext }: { p: Palette; world?: { order: number; title: string }; label?: string; /** Position of a resumed quiz: questions already answered before this session. */ stepOffset?: number; /** First page to show when resuming. */ startIndex?: number; /** Previously passed pages, shown correct and kept read-only. */ lockedQuestionIds?: string[]; /** The whole quiz's length. */ totalOverride?: number; /** What to offer after the last question: the next set (label and action). */ nextLabel?: string; onNext?: () => void; /** Called as each answer is committed, so progress survives quitting midway. */ onAnswer?: (question: QuizQuestion, correct: boolean) => void; questions?: QuizQuestion[]; topInset: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
+  const lockedIds = React.useMemo(() => new Set(lockedQuestionIds), [lockedQuestionIds]);
+  const initialResults = React.useMemo(() => questions.map((question) => lockedIds.has(question.id) ? 'correct' as Result : undefined) as Result[], [questions, lockedIds]);
+  const initialAnswers = React.useMemo(() => questions.map((question) => lockedIds.has(question.id) ? getCorrectQuizAnswer(question) : null), [questions, lockedIds]);
+  const initialDrafts = React.useMemo(() => questions.map((question, i) => ({ answer: initialAnswers[i], checked: lockedIds.has(question.id) })), [questions, initialAnswers, lockedIds]);
+  const [index, setIndex] = React.useState(startIndex);
+  const [results, setResults] = React.useState<Result[]>(initialResults);
+  const resultsRef = React.useRef<Result[]>(initialResults);
   // What the learner chose for each answered question, so the review can show it next to the correct answer.
-  const [answers, setAnswers] = React.useState<QuizAnswer[]>([]);
+  const [answers, setAnswers] = React.useState<QuizAnswer[]>(initialAnswers);
+  const answersRef = React.useRef<QuizAnswer[]>(initialAnswers);
+  const [drafts, setDrafts] = React.useState<{ answer: QuizAnswer; checked: boolean }[]>(initialDrafts);
+  const draftsRef = React.useRef(drafts);
+  const activeIndexRef = React.useRef(startIndex);
+  const pagerRef = React.useRef<PagerView | null>(null);
+  const questionScrollRefs = React.useRef<Array<ScrollView | null>>([]);
   const [reviewOpen, setReviewOpen] = React.useState(false);
+  const [confirmLeave, setConfirmLeave] = React.useState(false);
   const [sessionQuestions, setSessionQuestions] = React.useState(questions);
   // The offset / whole-quiz length only apply to the first run; "Try these again" replays the missed questions on their own.
   const [position, setPosition] = React.useState<{ offset: number; total?: number }>({ offset: stepOffset, total: totalOverride });
   const missed = sessionQuestions.filter((_, i) => results[i] === 'wrong');
   const missedAnswers = sessionQuestions.map((_, i) => answers[i] ?? null).filter((_, i) => results[i] === 'wrong');
+  const currentAnswer = drafts[index]?.answer ?? answers[index] ?? null;
+  const requestClose = React.useCallback(() => {
+    const step = position.offset + index + 1;
+    if (step > 1 || hasAnswer(currentAnswer)) setConfirmLeave(true);
+    else onExit();
+  }, [position.offset, index, currentAnswer, onExit]);
 
-  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} answers={missedAnswers} topInset={topInset} onTryAgain={() => { setSessionQuestions(missed); setPosition({ offset: 0, total: undefined }); setReviewOpen(false); setIndex(0); setResults([]); setAnswers([]); }} onDone={onExit} />;
+  React.useEffect(() => {
+    if (reviewOpen || index >= sessionQuestions.length) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (confirmLeave) setConfirmLeave(false);
+      else requestClose();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [reviewOpen, index, sessionQuestions.length, confirmLeave, requestClose]);
+
+  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} answers={missedAnswers} topInset={topInset} onTryAgain={() => { setSessionQuestions(missed); setPosition({ offset: 0, total: undefined }); setReviewOpen(false); setIndex(0); activeIndexRef.current = 0; setResults([]); resultsRef.current = []; setAnswers([]); answersRef.current = []; setDrafts([]); draftsRef.current = []; }} onDone={onExit} />;
 
   if (index >= sessionQuestions.length) {
-    const xp = sessionQuestions.reduce((sum, q, i) => sum + (results[i] === 'correct' ? q.xp : 0), 0);
+    const xp = sessionQuestions.reduce((sum, q, i) => sum + (!lockedIds.has(q.id) && results[i] === 'correct' ? q.xp : 0), 0);
     return <CompleteScreen p={p} results={results} xp={xp} topInset={topInset} onReview={() => setReviewOpen(true)} nextLabel={nextLabel} onNext={onNext} onDone={() => { onComplete?.(sessionQuestions, results); onExit(); }} />;
   }
+  const saveDraft = (questionIndex: number, answer: QuizAnswer, checked: boolean) => {
+    const next = [...draftsRef.current];
+    next[questionIndex] = { answer, checked };
+    draftsRef.current = next;
+    setDrafts(next);
+  };
+  const commitAnswer = (questionIndex: number, answer: QuizAnswer, correct: boolean) => {
+    if (resultsRef.current[questionIndex] !== undefined) return;
+    const nextResults = [...resultsRef.current];
+    nextResults[questionIndex] = correct ? 'correct' : 'wrong';
+    resultsRef.current = nextResults;
+    setResults(nextResults);
+    const nextAnswers = [...answersRef.current];
+    nextAnswers[questionIndex] = answer;
+    answersRef.current = nextAnswers;
+    setAnswers(nextAnswers);
+    onAnswer?.(sessionQuestions[questionIndex], correct);
+  };
+  const handlePageSelected = (pageIndex: number) => {
+    const previousIndex = activeIndexRef.current;
+    if (pageIndex > previousIndex) {
+      const draft = draftsRef.current[previousIndex];
+      if (pageIndex !== previousIndex + 1 || !draft?.checked) {
+        pagerRef.current?.setPageWithoutAnimation(previousIndex);
+        return;
+      }
+      commitAnswer(previousIndex, draft.answer, gradeQuizAnswer(sessionQuestions[previousIndex], draft.answer));
+    }
+    activeIndexRef.current = pageIndex;
+    setIndex(pageIndex);
+  };
+  const continueQuestion = (questionIndex: number, correct: boolean, answer: QuizAnswer) => {
+    saveDraft(questionIndex, answer, true);
+    commitAnswer(questionIndex, answer, correct);
+    if (questionIndex === sessionQuestions.length - 1) {
+      activeIndexRef.current = sessionQuestions.length;
+      setIndex(sessionQuestions.length);
+    } else {
+      pagerRef.current?.setPage(questionIndex + 1);
+    }
+  };
+  const currentQuestion = sessionQuestions[index];
+  const currentDraft = drafts[index] ?? { answer: answers[index] ?? null, checked: results[index] !== undefined };
+  const currentAnswered = hasAnswer(currentDraft.answer);
+  const currentCorrect = gradeQuizAnswer(currentQuestion, currentDraft.answer);
+  const checkCurrentAnswer = () => {
+    if (!currentAnswered || currentDraft.checked) return;
+    saveDraft(index, currentDraft.answer, true);
+    setTimeout(() => questionScrollRefs.current[index]?.scrollToEnd({ animated: true }), 80);
+  };
+
+  const dark = p.isDark;
+  const bg = dark ? '#0B0F19' : '#F3F4F8';
+  const actionReady = currentDraft.checked || currentAnswered;
+  const actionButtonBg = actionReady ? (dark ? '#343A70' : '#D5D8FF') : bg;
   return (
-    <QuestionScreen
-      key={sessionQuestions[index].id}
-      p={p}
-      q={sessionQuestions[index]}
-      step={position.offset + index + 1}
-      total={position.total ?? sessionQuestions.length}
-      world={world}
-      label={label}
-      topInset={topInset}
-      onClose={onExit}
-      onContinue={(correct, answer) => {
-        onAnswer?.(sessionQuestions[index], correct);
-        setResults((r) => [...r, correct ? 'correct' : 'wrong']);
-        setAnswers((a) => [...a, answer]);
-        setIndex((i) => i + 1);
-      }}
-    />
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      <QuizToolbar
+        p={p}
+        world={world}
+        label={label}
+        question={currentQuestion}
+        topInset={topInset}
+        step={position.offset + index + 1}
+        total={position.total ?? sessionQuestions.length}
+        checked={currentDraft.checked}
+        onClose={requestClose}
+      />
+      <PagerView
+        ref={pagerRef}
+        style={{ flex: 1 }}
+        initialPage={startIndex}
+        onPageSelected={(event) => handlePageSelected(event.nativeEvent.position)}
+        overScrollMode="never"
+        offscreenPageLimit={1}
+        orientation="horizontal"
+      >
+        {sessionQuestions.map((question, questionIndex) => {
+          const isNearActivePage = Math.abs(questionIndex - index) <= 1;
+          const draft = drafts[questionIndex] ?? { answer: answers[questionIndex] ?? null, checked: results[questionIndex] !== undefined };
+          return (
+            <View key={question.id} style={{ width: '100%', height: '100%' }}>
+              {isNearActivePage && <QuestionScreen
+                p={p}
+                q={question}
+                value={draft.answer}
+                checked={draft.checked}
+                onDraftChange={(answer, isChecked) => saveDraft(questionIndex, answer, isChecked)}
+                onScrollRef={(ref) => { questionScrollRefs.current[questionIndex] = ref; }}
+              />}
+            </View>
+          );
+        })}
+      </PagerView>
+      <View style={{ backgroundColor: bg }}>
+        <Svg width="100%" height={6} style={{ position: 'absolute', left: 0, right: 0, top: -6 }} pointerEvents="none">
+          <Defs>
+            <LinearGradient id="fadeUp" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={bg} stopOpacity="0" />
+              <Stop offset="1" stopColor={bg} stopOpacity="1" />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill="url(#fadeUp)" />
+        </Svg>
+        <View style={{ paddingHorizontal: 0, paddingTop: 12, paddingBottom: 20 }}>
+          {/* TEMPORARY: Pass / Fail test shortcut, shown in release builds too. Remove before public release. */}
+          <View style={s.debugRow}>
+            <Text style={[s.debugLabel, { color: dark ? '#94A3B8' : '#64748B' }]}>DEBUG</Text>
+            <Pressable onPress={() => continueQuestion(index, true, currentDraft.answer)} style={[s.debugBtn, { borderColor: '#10B981', backgroundColor: dark ? 'rgba(16,185,129,0.12)' : '#ECFDF5' }]}>
+              <Text style={[s.debugBtnText, { color: dark ? '#6EE7B7' : '#047857' }]}>Pass</Text>
+            </Pressable>
+            <Pressable onPress={() => continueQuestion(index, false, currentDraft.answer)} style={[s.debugBtn, { borderColor: '#F43F5E', backgroundColor: dark ? 'rgba(244,63,94,0.12)' : '#FFF1F2' }]}>
+              <Text style={[s.debugBtnText, { color: dark ? '#FDA4AF' : '#BE123C' }]}>Fail</Text>
+            </Pressable>
+          </View>
+          <View style={{ position: 'relative', width: '100%', paddingHorizontal: 16 }}>
+            <Pressable
+              disabled={!currentDraft.checked && !currentAnswered}
+              onPress={() => (currentDraft.checked ? continueQuestion(index, currentCorrect, currentDraft.answer) : checkCurrentAnswer())}
+              accessibilityRole="button"
+              accessibilityLabel={currentDraft.checked ? (index + 1 >= sessionQuestions.length ? 'Finish quiz' : 'Next question') : currentAnswered ? 'Check answer' : WAITING_LABEL[currentQuestion.type]}
+              accessibilityState={{ disabled: !currentDraft.checked && !currentAnswered }}
+              android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
+              style={[
+                s.mainBtn,
+                s.quizActionBtn,
+                {
+                  backgroundColor: actionButtonBg,
+                  borderTopColor: dark ? 'rgba(255,255,255,0.16)' : '#FFFFFF',
+                  borderLeftColor: dark ? 'rgba(255,255,255,0.12)' : '#FFFFFF',
+                  borderBottomColor: dark ? 'rgba(0,0,0,0.72)' : actionReady ? '#A8AFE8' : '#C5C9EA',
+                  borderRightColor: dark ? 'rgba(0,0,0,0.72)' : actionReady ? '#A8AFE8' : '#C5C9EA',
+                  shadowColor: dark ? '#000000' : actionReady ? '#969DDB' : '#9DA3B5',
+                  shadowOpacity: dark ? 0.52 : 0.38,
+                  elevation: 8,
+                },
+                !currentDraft.checked && !currentAnswered && s.quizActionDisabled,
+              ]}
+            >
+              <Text style={[s.mainBtnText, s.quizActionText, { color: !currentDraft.checked && !currentAnswered ? (dark ? '#64748B' : '#94A3B8') : (dark ? '#A5B4FC' : '#4F46E5') }]}>
+                {currentDraft.checked ? (index + 1 >= sessionQuestions.length ? 'Finish' : 'Next') : currentAnswered ? 'Check answer' : WAITING_LABEL[currentQuestion.type]}
+              </Text>
+              {(currentDraft.checked || currentAnswered) && <Icon name={currentDraft.checked ? 'arrow_forward' : 'check'} size={20} exact color={dark ? '#A5B4FC' : '#4F46E5'} />}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+      {confirmLeave && (
+        <Pressable style={s.leaveOverlay} onPress={() => setConfirmLeave(false)}>
+          <Pressable style={[s.leaveCard, dark ? { backgroundColor: '#121826', borderColor: 'rgba(255,255,255,0.10)', borderWidth: BW } : { backgroundColor: '#FFFFFF' }]} onPress={() => {}}>
+            <Text style={[s.leaveTitle, { color: dark ? '#F8FAFC' : '#1C2033' }]}>Leave this quiz?</Text>
+            <Text style={[s.body13, { color: dark ? '#94A3B8' : '#64748B' }]}>Your answers in this session will not be saved.</Text>
+            <Pressable onPress={() => setConfirmLeave(false)} style={[s.leaveBtn, { backgroundColor: '#6366F1' }]}>
+              <Text style={[s.leaveBtnText, { color: '#FFFFFF' }]}>Keep going</Text>
+            </Pressable>
+            <Pressable onPress={onExit} style={[s.leaveBtn, { borderWidth: BW, borderColor: dark ? 'rgba(255,255,255,0.15)' : '#CBD5E1' }]}>
+              <Text style={[s.leaveBtnText, { color: dark ? '#E2E8F0' : '#334155' }]}>Leave</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  debugRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 8 },
+  debugRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 8, paddingHorizontal: 16 },
   debugLabel: { fontFamily: FONT.mono.b, fontSize: fz(9), letterSpacing: 1 },
   debugBtn: { minWidth: 56, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 7, borderWidth: BW, alignItems: 'center' },
   debugBtnText: { fontFamily: FONT.mono.b, fontSize: fz(11), includeFontPadding: false },
@@ -966,7 +1145,8 @@ const s = StyleSheet.create({
   body13: { fontFamily: FONT.body, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
   // code panel
   codePanel: { width: '100%', borderRadius: 12, borderWidth: BW, borderColor: 'rgba(51,65,85,0.6)', backgroundColor: '#0D1322', overflow: 'hidden' },
-  codeBar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#090D17', borderBottomWidth: BW, borderBottomColor: 'rgba(30,41,59,0.7)' },
+  codeBar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 4, backgroundColor: '#090D17', borderBottomWidth: BW, borderBottomColor: 'rgba(30,41,59,0.7)' },
+  copyButton: { marginLeft: 'auto', width: 30, height: 30, borderRadius: 7, borderWidth: BW, borderColor: '#334155', backgroundColor: 'rgba(30,41,59,0.9)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   codeRow: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 2.91 },
   gutter: { width: 36, textAlign: 'right', paddingRight: 12, fontFamily: FONT.mono.r, fontSize: fz(12 * MAIN), color: '#64748B', includeFontPadding: false },
@@ -1005,6 +1185,9 @@ const s = StyleSheet.create({
   // main button
   mainBtn: { height: 48, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   mainBtnText: { fontFamily: FONT.outfit.sb, fontSize: fz(15 * MAIN), lineHeight: lh(15, 1.5), includeFontPadding: false },
+  quizActionBtn: { width: '100%', height: 54, borderRadius: 28, borderWidth: 1, paddingHorizontal: 18, gap: 10, elevation: 8, shadowOffset: { width: 5, height: 5 }, shadowRadius: 8 },
+  quizActionDisabled: { shadowOpacity: 0.25, elevation: 2 },
+  quizActionText: { fontSize: fz(16 * MAIN), lineHeight: lh(16, 1.4) },
   // leave dialog
   leaveOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end', padding: 16, zIndex: 20 },
   leaveCard: { width: '100%', borderRadius: 16, padding: 20, gap: 12 },
