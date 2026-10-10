@@ -2929,3 +2929,13 @@ from the program's own class is a typo unless it is a standard type (`class Stri
 built-in targets never matched `println`/`print`, because the shared `KEYWORDS` set (`compileFixes.ts`) contains them and the target
 filter dropped every keyword; `printn(...)` stayed silent although the previous commit claimed it was caught. A rule's claim needs a test
 case, not only a probe.
+
+## A misspelled `main` (`fun mai()`) ran and printed nothing
+
+Reported from the device: `fun mai()` or `fun mainn()` "still compiles". Real Kotlin compiles it too; it fails only when run (the JVM
+reports "Main method not found"). The simulator treats a file without `main` as a fragment, so it ran the declarations, called nothing and
+printed an empty result: a Write & Run task then failed with no hint why. `misspelledMain` (`kotlinStructureChecks.ts`) now reports it,
+marks the name, and Apply fix renames it to `main`. It judges only a top-level function with no parameters (or only `args`), never called
+anywhere, one letter from `main`; a called or parameterised helper (`fun min(a: Int, b: Int)`, `fun gain()`) is a fragment's helper and
+stays quiet. A file without any function near `main` keeps running as a fragment (lesson snippets rely on that). The kotlinc comparison
+counts "Main method not found" against this message as agreement, since kotlinc reports it at run time instead of compile time.

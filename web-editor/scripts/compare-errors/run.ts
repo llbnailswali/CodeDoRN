@@ -138,6 +138,9 @@ type Verdict = 'agree' | 'simulator-hang' | 'silent-wrong' | 'false-accept' | 'f
 function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict; detail: string } {
   if (sim.kind === 'hang') return { verdict: 'simulator-hang', detail: `kotlinc: ${real.kind}${real.errors[0] ? ' ' + real.errors[0].msg : ''}` };
   if (real.kind === 'crash') return { verdict: 'skipped', detail: real.message ?? 'kotlinc crashed' };
+  // A misspelled `main`: kotlinc compiles it and the JVM then reports "Main method not found"; the simulator reports the same mistake
+  // before running (with a rename fix). Both refuse the program for the same reason.
+  if (/Main method not found/.test(real.message ?? '') && sim.kind === 'compile' && /did you mean 'main'/.test(sim.errors[0]?.msg ?? '')) return { verdict: 'agree', detail: '' };
   if (real.kind === sim.kind) {
     if (real.kind === 'compile') {
       const first = [...real.errors].sort((a, b) => a.line - b.line || a.col - b.col)[0];

@@ -74,6 +74,10 @@ export function suggestFix(code: string, error: KotlinDiagnostic | null | undefi
     caret,
   });
 
+  // 0. `fun mai()` with no main: rename it to main.
+  const misspelledMain = /did you mean 'main' instead of '([A-Za-z_]\w*)'/.exec(message);
+  if (misspelledMain && spanText === misspelledMain[1]) return replace(base + span.start, base + span.end, 'main', `Rename "${misspelledMain[1]}" to "main"`);
+
   // 1. A `val` that is assigned again -> `var`.
   if (/cannot be reassigned/i.test(message)) {
     const quoted = /'([A-Za-z_]\w*)'/.exec(message)?.[1];

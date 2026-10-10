@@ -127,7 +127,26 @@ export function checkStructureRules(code: string): KotlinDiagnostic | null {
     }
   }
 
-  return whenBranchWithoutArrow(code, masked, tokens) ?? callWithoutParentheses(code, masked, tokens) ?? topLevelStatement(code, masked, tokens) ?? nonBooleanCondition(code, masked, tokens) ?? assignedLiteralMismatch(code, masked, tokens) ?? conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
+  return misspelledMain(code, masked) ?? whenBranchWithoutArrow(code, masked, tokens) ?? callWithoutParentheses(code, masked, tokens) ?? topLevelStatement(code, masked, tokens) ?? nonBooleanCondition(code, masked, tokens) ?? assignedLiteralMismatch(code, masked, tokens) ?? conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
+}
+
+/**
+ * `fun mai()` / `fun mainn()` / `fun Main()` and no `fun main`: real Kotlin compiles the file, but running it fails with "Main method not
+ * found", while the simulator ran it and printed nothing. Only a top-level function that takes no parameters (or only `args`), is never
+ * called anywhere, and is one letter from `main` is judged, so a helper such as `fun min(a: Int, b: Int)` or `fun gain()` that is called
+ * is never mistaken for a misspelled entry point.
+ */
+function misspelledMain(code: string, masked: string): KotlinDiagnostic | null {
+  if (/\bfun\s+main\s*\(/.test(masked)) return null;
+  for (const m of masked.matchAll(/^fun\s+([A-Za-z_]\w*)\s*\(\s*(?:args\s*:\s*Array<String>)?\s*\)/gm)) {
+    const name = m[1];
+    if (name === 'main' || distance(name.toLowerCase(), 'main') > 1) continue;
+    const uses = [...masked.matchAll(new RegExp(`(?<![\\w.])${name}\\b`, 'g'))].length;
+    if (uses > 1) continue; // called somewhere: a real helper, not the entry point
+    const line = lineOfOffset(code, m.index! + m[0].indexOf(name));
+    return { message: `No main function: did you mean 'main' instead of '${name}'? A Kotlin program starts running at main.`, line, token: name, occurrence: 0, type: 'compiler_error' };
+  }
+  return null;
 }
 
 /** True when the `if` at `i` (an `if (cond) body [else ...]` chain) ends in an `else` that is not itself another `if`. */

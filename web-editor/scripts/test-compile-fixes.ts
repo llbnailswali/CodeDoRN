@@ -19,6 +19,10 @@ const cases: Case[] = [
   { name: 'val on a loop variable', code: 'fun main() {\n  val xs = listOf(1, 2)\n  for (val i in xs.indices) {\n    println(i)\n  }\n}', label: 'Remove "val"', after: 'fun main() {\n  val xs = listOf(1, 2)\n  for (i in xs.indices) {\n    println(i)\n  }\n}' },
   { name: 'var on a loop variable, no spaces (as typed in the report)', code: 'fun main() {\n  val xs = listOf(1, 2)\n  for(var i in xs){\n    println(i)\n  }\n}', label: 'Remove "var"', after: 'fun main() {\n  val xs = listOf(1, 2)\n  for(i in xs){\n    println(i)\n  }\n}' },
   { name: 'when branch with - instead of ->', code: 'fun main() {\n  val score = 85\n  when (score) {\n    in 90..100 -> println("A")\n    in 80..89 - println("B")\n    else -> println("F")\n  }\n}', simulatorOnly: true, label: 'Change - to -> (when branch arrow)', after: 'fun main() {\n  val score = 85\n  when (score) {\n    in 90..100 -> println("A")\n    in 80..89 -> println("B")\n    else -> println("F")\n  }\n}' },
+  // kotlinc compiles a misspelled main and fails only when it runs ("Main method not found"), so these are simulator-only cases.
+  { name: 'misspelled main (mai)', code: 'fun mai() {\n  println("hi")\n}', label: 'Rename "mai" to "main"', after: 'fun main() {\n  println("hi")\n}', simulatorOnly: true },
+  { name: 'misspelled main (mainn) after a helper', code: 'fun greet() = "hi"\n\nfun mainn() {\n  println(greet())\n}', label: 'Rename "mainn" to "main"', after: 'fun greet() = "hi"\n\nfun main() {\n  println(greet())\n}', simulatorOnly: true },
+  { name: 'misspelled main (Main)', code: 'fun Main() {\n  println("hi")\n}', label: 'Rename "Main" to "main"', after: 'fun main() {\n  println("hi")\n}', simulatorOnly: true },
   { name: 'type mismatch has no automatic fix', code: 'fun main() {\n  val n: Int = "hi"\n  println(n)\n}', label: null },
 ];
 
