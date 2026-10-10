@@ -26,7 +26,8 @@ const unit: Type = { name: 'Unit' };
 const isName = (text: string) => /^[A-Za-z_][A-Za-z_0-9]*$/.test(text);
 
 export class KotlinFunctionError extends Error {
-  constructor(message: string, public line: number) { super(message); }
+  /** `token`/`occurrence`: the offending token's text and which same-text token on its line it is (0-based), so the editor can underline it. */
+  constructor(message: string, public line: number, public token?: string, public occurrence?: number) { super(message); }
 }
 
 function lex(source: string): Token[] {
@@ -66,7 +67,7 @@ function lex(source: string): Token[] {
     } else if (/[A-Za-z_0-9]/.test(source[i])) {
       while (i < source.length && /[A-Za-z_0-9]/.test(source[i])) i++;
     } else {
-      const operator = ['===', '!==', '::', '->', '?.', '?:', '!!', '==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '++', '--', '..'].find(op => source.startsWith(op, i));
+      const operator = ['===', '!==', '::', '->', '?.', '?:', '!!', '==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '%=', '++', '--', '..'].find(op => source.startsWith(op, i));
       i += operator?.length ?? 1;
     }
     tokens.push({ text: source.slice(start, i), start, end: i });
@@ -100,7 +101,15 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   const text = (a: number, b: number) => a < b ? source.slice(t[a].start, t[b - 1].end) : '';
   const at = (i: number) => t[i]?.text ?? '';
   const line = (i: number) => source.slice(0, t[i]?.start ?? source.length).split('\n').length;
-  const fail = (message: string, i: number): never => { throw new KotlinFunctionError(message, line(i)); };
+  const fail = (message: string, i: number): never => {
+    const tok = t[i];
+    // A string token's prepared text differs from what the learner typed, so only identifiers, numbers and operators are named.
+    if (!tok || /^["']/.test(tok.text)) throw new KotlinFunctionError(message, line(i));
+    const lineStart = source.lastIndexOf('\n', tok.start - 1) + 1;
+    let occurrence = 0;
+    for (let j = i - 1; j >= 0 && t[j].start >= lineStart; j--) if (t[j].text === tok.text) occurrence++;
+    throw new KotlinFunctionError(message, line(i), tok.text, occurrence);
+  };
   const newline = (a: number, b: number) => a >= 0 && b < t.length && source.slice(t[a].end, t[b].start).includes('\n');
   const top = (a: number, b: number, needle: string): number => {
     for (let i = a; i < b; i++) {
@@ -721,11 +730,36 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         if (known && !functions.get(at(open - 1))?.receiver) return known;
       }
     }
+    // `xs[i]` / `xs.get(i)` on a List/Array of a known element type is that element type (so `users[i].email` is `String?`).
+    {
+      let base = -1;
+      if (at(b - 1) === ']' && pairs.has(b - 1) && pairs.get(b - 1)! > a) base = pairs.get(b - 1)!;
+      else if (at(b - 1) === ')' && pairs.has(b - 1) && pairs.get(b - 1)! > a + 2 && at(pairs.get(b - 1)! - 1) === 'get' && at(pairs.get(b - 1)! - 2) === '.') base = pairs.get(b - 1)! - 2;
+      if (base > a) {
+        const container = /^(?:Mutable)?List<(.+)>$|^Array<(.+)>$/.exec(infer(a, base, ctx).name);
+        const element = (container?.[1] ?? container?.[2] ?? '').trim();
+        if (element && !element.includes('<')) return element.endsWith('?') ? { name: element.slice(0, -1), nullable: true } : { name: element };
+      }
+    }
+    // `listOf(u1, u2)` of instances of ONE declared class: `List<User>`, so a `for (user in users)` loop variable is a User.
+    if (['listOf', 'mutableListOf', 'setOf', 'mutableSetOf'].includes(at(a)) && at(a + 1) === '(' && pairs.get(a + 1) === b - 1 && b - a > 3) {
+      const elementTypes = split(a + 2, b - 1).map(([x, y]) => infer(x, y, ctx));
+      const first = elementTypes[0];
+      if (first && classProps.has(first.name) && !first.nullable && elementTypes.every(type => type.name === first.name && !type.nullable)) {
+        return { name: `${({ listOf: 'List', mutableListOf: 'MutableList', setOf: 'Set', mutableSetOf: 'MutableSet' } as Record<string, string>)[at(a)]}<${first.name}>` };
+      }
+    }
     // `obj.prop` / `obj?.prop`: the property's declared type (this is how `user.email` is known to be `String?`).
     if (b - a >= 3 && (at(b - 2) === '.' || at(b - 2) === '?.') && isName(at(b - 1))) {
       const receiverType = infer(a, b - 2, ctx);
       const prop = classProps.get(receiverType.name)?.get(at(b - 1));
-      if (prop) return { ...prop, nullable: !!prop.nullable || (at(b - 2) === '?.' && !!receiverType.nullable) };
+      if (prop) {
+        // `if (s.score != null) { f(s.score) }`: a val property checked earlier in the source is smart-cast to its non-null type.
+        const expression = text(a, b).replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Only a STABLE receiver can be smart-cast: not an index (`users[i].email`) or a call (`get(0).email`).
+        const checked = prop.nullable && at(b - 2) === '.' && !/[\[(]/.test(text(a, b - 2)) && new RegExp(`(?<![A-Za-z0-9_.])${expression}\\s*(?:!=\\s*null|!!)`).test((options.priorText ?? '') + text(0, a));
+        return { ...prop, nullable: !checked && (!!prop.nullable || (at(b - 2) === '?.' && !!receiverType.nullable)) };
+      }
     }
     // `x.size` / `s.length` are Int. A plain variable that happens to be NAMED size or length is not.
     if ((at(b - 1) === 'length' || at(b - 1) === 'size') && (at(b - 2) === '.' || at(b - 2) === '?.')) return { name: 'Int' };
@@ -1044,7 +1078,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           const splitAt = lastOperator(a, b, operators);
           if (splitAt > a) {
             const expression = `(${lower(a, splitAt, ctx)} ${at(splitAt)} ${lower(splitAt + 1, b, ctx)})`;
-            return at(splitAt) === '/' && ['Int', 'Long'].includes(infer(a, splitAt, ctx).name) && ['Int', 'Long'].includes(infer(splitAt + 1, b, ctx).name) ? `Math.trunc(${expression})` : expression;
+            const bothIntegral = ['Int', 'Long'].includes(infer(a, splitAt, ctx).name) && ['Int', 'Long'].includes(infer(splitAt + 1, b, ctx).name);
+            if (at(splitAt) === '%' && bothIntegral) return `__kt_irem(${lower(a, splitAt, ctx)}, ${lower(splitAt + 1, b, ctx)})`;
+            return at(splitAt) === '/' && bothIntegral ? `__kt_idiv(${expression})` : expression;
           }
         }
         if (elvis > a) {
@@ -1060,7 +1096,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           const splitAt = lastOperator(a, b, operators);
           if (splitAt > a) {
             const expression = `(${lower(a, splitAt, ctx)} ${at(splitAt)} ${lower(splitAt + 1, b, ctx)})`;
-            return at(splitAt) === '/' && ['Int', 'Long'].includes(infer(a, splitAt, ctx).name) && ['Int', 'Long'].includes(infer(splitAt + 1, b, ctx).name) ? `Math.trunc(${expression})` : expression;
+            const bothIntegral = ['Int', 'Long'].includes(infer(a, splitAt, ctx).name) && ['Int', 'Long'].includes(infer(splitAt + 1, b, ctx).name);
+            if (at(splitAt) === '%' && bothIntegral) return `__kt_irem(${lower(a, splitAt, ctx)}, ${lower(splitAt + 1, b, ctx)})`;
+            return at(splitAt) === '/' && bothIntegral ? `__kt_idiv(${expression})` : expression;
           }
         }
         if (cast > a && at(cast + 1) === '?') {
@@ -1129,6 +1167,10 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const r = receiver.replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const before = (options.priorText ?? '') + text(0, upTo);
       const lead = '(?<![A-Za-z0-9_.])';
+      // Kotlin smart-casts only STABLE values. An index (`users[i].email`) or a call (`get(0).email`) in the receiver is re-evaluated
+      // on every use, so an earlier `!= null` / `== null` / `is` / `when` check proves nothing about the next evaluation. Only the
+      // operators that act on the use itself (`?:`, `!!`, `as?`) count for those.
+      if (/[\[(]/.test(receiver)) return new RegExp(`${lead}${r}\\s*(?:\\?:|!!|as\\?)`).test(before);
       return new RegExp(`${lead}${r}\\s*(?:!=\\s*null|==\\s*null|\\?:|!!|is\\b|!is\\b|as\\?)|${lead}null\\s*(?:!=|==)\\s*${r}\\b|when\\s*\\(\\s*${r}\\s*\\)`).test(before);
     };
     const NULL_TOLERANT_MEMBERS = new Set(['toString', 'hashCode', 'equals', 'isNullOrEmpty', 'isNullOrBlank', 'orEmpty', 'let', 'also', 'run', 'apply', 'takeIf', 'takeUnless']);
@@ -1173,14 +1215,20 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const render = (p: ChainPrimary) => `${p.unary}${lower(p.start, p.end, ctx)}`;
       // Multiplicative groups, folded left to right; additive operators join them.
       type Piece = { text: string; type: Type };
-      const groups: Piece[] = []; const additive: string[] = [];
+      const groups: Piece[] = []; const additive: string[] = []; const additiveAt: number[] = [];
+      // Index of the operator token that sits before primaries[n + 1] (a unary sign, if any, is part of that primary).
+      const operatorToken = (n: number) => primaries[n + 1].start - 1 - (primaries[n + 1].unary ? 1 : 0);
+      const stringOperator: Record<string, string> = { '-': 'minus', '*': 'times', '/': 'div', '%': 'rem' };
       let current: Piece = { text: render(primaries[0]), type: primaries[0].type };
       for (let n = 0; n < operators.length; n++) {
         const op = operators[n]; const next = primaries[n + 1];
-        if (op === '+' || op === '-') { groups.push(current); additive.push(op); current = { text: render(next), type: next.type }; continue; }
+        if (op === '+' || op === '-') { groups.push(current); additive.push(op); additiveAt.push(n); current = { text: render(next), type: next.type }; continue; }
+        if (current.type.name === 'String' && !current.type.nullable && stringOperator[op]) fail(`Unresolved reference: ${stringOperator[op]} (String has no operator ${op})`, operatorToken(n));
         const promoted = promoteNumeric(current.type, next.type) ?? unknown;
         if (op === '/' && isIntegral(current.type) && isIntegral(next.type)) {
-          current = { text: `Math.trunc(${current.text} / ${render(next)})`, type: promoted }; changed = true;
+          current = { text: `__kt_idiv(${current.text} / ${render(next)})`, type: promoted }; changed = true;
+        } else if (op === '%' && isIntegral(current.type) && isIntegral(next.type)) {
+          current = { text: `__kt_irem(${current.text}, ${render(next)})`, type: promoted }; changed = true;
         } else current = { text: `${current.text} ${op} ${render(next)}`, type: promoted };
       }
       groups.push(current);
@@ -1189,6 +1237,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       let acc = groups[0];
       for (let n = 0; n < additive.length; n++) {
         const op = additive[n]; const next = groups[n + 1];
+        if (op === '-' && acc.type.name === 'String' && !acc.type.nullable) fail('Unresolved reference: minus (String has no operator -)', operatorToken(additiveAt[n]));
         if (op === '+' && acc.type.name === 'String') {
           const text = isDecimal(next.type) ? (changed = true, `__kt_decimalText(${next.text})`) : next.text;
           acc = { text: `${acc.text} + ${text}`, type: acc.type };
@@ -1213,13 +1262,16 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       }
       // Compound assignment needs the target's type: Kotlin's `x /= y` truncates for
       // Int/Long, and `text += decimal` must append Kotlin's decimal text (`600.0`).
-      if (isName(at(i)) && (at(i + 1) === '/=' || at(i + 1) === '+=') && !['.', '?.'].includes(at(i - 1))) {
+      if (isName(at(i)) && (at(i + 1) === '/=' || at(i + 1) === '%=' || at(i + 1) === '+=') && !['.', '?.'].includes(at(i - 1))) {
         const target = ctx.vars.get(at(i));
         const end = expressionEnd(i + 2, b);
         if (target && !target.nullable && end > i + 2) {
           const rightType = infer(i + 2, end, ctx);
           if (at(i + 1) === '/=' && isIntegral(target) && isIntegral(rightType)) {
-            emit(i, end, `${at(i)} = Math.trunc(${at(i)} / (${lower(i + 2, end, ctx)}))`); i = end - 1; continue;
+            emit(i, end, `${at(i)} = __kt_idiv(${at(i)} / (${lower(i + 2, end, ctx)}))`); i = end - 1; continue;
+          }
+          if (at(i + 1) === '%=' && isIntegral(target) && isIntegral(rightType)) {
+            emit(i, end, `${at(i)} = __kt_irem(${at(i)}, (${lower(i + 2, end, ctx)}))`); i = end - 1; continue;
           }
           if (at(i + 1) === '+=' && target.name === 'String' && isDecimal(rightType)) {
             emit(i, end, `${at(i)} += __kt_decimalText(${lower(i + 2, end, ctx)})`); i = end - 1; continue;
@@ -1262,6 +1314,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const element = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(infer(i + 4, closeParen, ctx).name);
         const inner = (element?.[1] ?? element?.[2] ?? '').trim();
         if (inner.endsWith('?') && !inner.includes('<')) ctx.vars.set(at(i + 2), { name: inner.slice(0, -1), nullable: true });
+        else if (classProps.has(inner)) ctx.vars.set(at(i + 2), { name: inner });
       }
       // Arithmetic on a nullable number that was never null-checked is a compile error (`n + 1`, `total += score`).
       {
@@ -1507,7 +1560,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         }
         if (callable && info.signature) {
           const required = info.signature.params.filter(p => !p.defaultCode && p.mode !== 'vararg').length;
-          if (args.length + Number(trailing) < required || (!info.signature.params.some(p => p.mode === 'vararg') && args.length + Number(trailing) > info.signature.params.length)) fail(`Wrong argument count for ${info.name}: expected ${info.signature.params.length}`, i);
+          if (args.length + Number(trailing) < required || (!info.signature.params.some(p => p.mode === 'vararg') && args.length + Number(trailing) > info.signature.params.length)) fail(`Wrong argument count for ${info.name}: expected ${info.signature.params.length}`, args.length > info.signature.params.length && !info.signature.params.some(p => p.mode === 'vararg') ? args[info.signature.params.length][0] : i);
           if (ctx.vars.get(info.name)?.nullable && !(at(i - 1) === 'invoke' && at(i - 2) === '?.')) fail(`Nullable function ${info.name} requires a safe call or non-null assertion`, i);
         }
         // Named-argument reordering. Collection helpers (windowed/chunked) and
@@ -1672,7 +1725,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // emitted twice (`receiver.name` then `receiver.namereceiver.name =`).
       else if (ctx.receiver && isName(at(i)) && !ctx.vars.has(at(i)) && !['.', '?.'].includes(at(i - 1)) && at(i + 1) !== '=' && !['val', 'var', 'fun'].includes(at(i - 1)) && !functions.has(at(i)) && !classes.has(at(i)) && !builtins.has(at(i)) && !receiverExcludedNames.has(at(i))) emit(i, i + 1, `${ctx.receiver}.${at(i)}`);
       if (at(i) === '/' && i > a && !['*', '/', '%', ')', ']'].includes(at(i - 2)) && !['.', '?.', '(', '['].includes(at(i + 2)) && i + 1 < b && isName(at(i - 1)) && /^(Int|Long)$/.test(ctx.vars.get(at(i - 1))?.name ?? '') && (ctx.vars.get(at(i + 1))?.name === 'Int' || /^\d+$/.test(at(i + 1)))) {
-        emit(i - 1, i + 2, `Math.trunc(${at(i - 1)} / ${at(i + 1)})`); i++;
+        emit(i - 1, i + 2, `__kt_idiv(${at(i - 1)} / ${at(i + 1)})`); i++;
       }
     }
     const result = out + source.slice(cursor, t[b - 1].end);
@@ -1684,14 +1737,56 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   const namedFunctions = [...headers.entries()].filter(([, h]) => h.name && !h.anonymous);
   const declarationCount = new Map<string, number>();
   namedFunctions.forEach(([, h]) => declarationCount.set(h.name, (declarationCount.get(h.name) ?? 0) + 1));
+  // Whether the statements in (a, b) are certain to end the function: the LAST statement must be return/throw/a Nothing call, an endless
+  // loop, a try/when (not analysed further), or an if/else-if/else chain in which every branch ends the same way. A `return` somewhere
+  // earlier does not help: `return` forgotten on the final path is "missing return statement".
+  const statementStarts = (a: number, b: number): number[] => {
+    const starts: number[] = [];
+    const operatorsEnding = new Set(['+', '-', '*', '/', '%', '&&', '||', '?:', '.', '?.', '=', ',', '(', '[', '{', '->', '==', '!=', '<', '>', '<=', '>=', ':', 'else']);
+    const operatorsStarting = new Set(['.', '?.', '?:', '&&', '||', 'else', 'catch', 'finally', ')', ']', '}']);
+    for (let k = a; k < b; k++) {
+      const previous = at(k - 1);
+      const headerClose = previous === ')' && pairs.has(k - 1) && ['if', 'while', 'for', 'when', 'catch'].includes(at(pairs.get(k - 1)! - 1));
+      if (k === a || (newline(k - 1, k) && !operatorsEnding.has(previous) && !operatorsStarting.has(at(k)) && !headerClose)) starts.push(k);
+      if (pairs.has(k) && pairs.get(k)! > k && pairs.get(k)! < b) k = pairs.get(k)!;
+    }
+    return starts;
+  };
+  const endsInExit = (a: number, b: number): boolean => {
+    const starts = statementStarts(a, b);
+    if (!starts.length) return false;
+    const first = starts[starts.length - 1];
+    const word = at(first);
+    if (['return', 'throw', 'try', 'when', 'do'].includes(word)) return true;
+    if (['TODO', 'error'].includes(word) && at(first + 1) === '(') return true;
+    if (functions.get(word)?.result?.name === 'Nothing' && at(first + 1) === '(') return true;
+    if (word === 'while' && at(first + 1) === '(' && at(first + 2) === 'true' && at(first + 3) === ')') return true;
+    if (word !== 'if' || at(first + 1) !== '(' || !pairs.has(first + 1)) return false;
+    // if / else if / else: every branch must end the function, and the chain must finish with an else.
+    let cursor = first;
+    for (;;) {
+      const bodyStart = pairs.get(cursor + 1)! + 1;
+      let next: number;
+      let exits: boolean;
+      if (at(bodyStart) === '{' && pairs.has(bodyStart)) { exits = endsInExit(bodyStart + 1, pairs.get(bodyStart)!); next = pairs.get(bodyStart)! + 1; }
+      else {
+        exits = ['return', 'throw'].includes(at(bodyStart)) || (['TODO', 'error'].includes(at(bodyStart)) && at(bodyStart + 1) === '(');
+        next = bodyStart;
+        while (next < b && at(next) !== 'else' && !(next > bodyStart && newline(next - 1, next))) { if (pairs.has(next) && pairs.get(next)! > next) next = pairs.get(next)!; next++; }
+      }
+      if (!exits) return false;
+      if (at(next) !== 'else') return false;
+      if (at(next + 1) === 'if' && at(next + 2) === '(' && pairs.has(next + 2)) { cursor = next + 1; continue; }
+      const elseStart = next + 1;
+      if (at(elseStart) === '{' && pairs.has(elseStart)) return endsInExit(elseStart + 1, pairs.get(elseStart)!);
+      return ['return', 'throw'].includes(at(elseStart)) || (['TODO', 'error'].includes(at(elseStart)) && at(elseStart + 1) === '(');
+    }
+  };
   for (const [index, h] of namedFunctions) {
     const result = h.signature.result;
     if (at(h.body) === '{' && result && result.name !== 'Unit' && result.name !== 'Nothing') {
       const close = pairs.get(h.body)!;
-      let exits = false;
-      // return/throw end a body, and so do TODO() and error(...), which are typed Nothing.
-      for (let k = h.body + 1; k < close && !exits; k++) exits = ['return', 'throw', 'TODO', 'error'].includes(at(k));
-      if (!exits) fail('A return expression is required in a function with a block body', index);
+      if (!endsInExit(h.body + 1, close)) fail('A return expression is required in a function with a block body', close);
     }
     if (declarationCount.get(h.name) === 1) {
       // The nearest enclosing FUNCTION body makes this a local function; Kotlin requires it

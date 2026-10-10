@@ -100,7 +100,7 @@ const BUILTIN_CALLS = ['println', 'print', 'listOf', 'mutableListOf'];
 // quoted-string token would otherwise drop the backslash and leave a bare
 // letter, exactly like the unmatched-`'`/digit-suffix bugs described above.
 const TOKEN_REGEX =
-  /(\/\/.*$|"[^"]*"|'(?:\\.|[^'\\])*'|_____|\b(?:val|var|fun|class|when|if|else|for|in|downTo|step|until|return|null|true|false|is)\b|\b(?:Int|String|Boolean|Double|Unit|Float|List|Set|Map)\b|\b(?:println|print|listOf|mutableListOf)\b|\d[\d_]*(?:\.[\d_]+)?[fFdDL]?|[{}()+\-*\/=?:.,!<>"&|\\]+|[A-Za-z_][A-Za-z0-9_]*|\s+)/g;
+  /(\/\/.*$|"[^"]*"|'(?:\\.|[^'\\])*'|_____|\b(?:val|var|fun|class|when|if|else|for|in|downTo|step|until|return|null|true|false|is)\b|\b(?:Int|String|Boolean|Double|Unit|Float|List|Set|Map)\b|\b(?:println|print|listOf|mutableListOf)\b|\d[\d_]*(?:\.[\d_]+)?[fFdDL]?|[{}()+\-*\/%=?:.,!<>&|\\@;\[\]]+|"|[A-Za-z_][A-Za-z0-9_]*|\s+|[\s\S])/g;
 
 interface ColorClasses {
   commentClass: string;
@@ -214,7 +214,7 @@ function renderCodeFragment(
         </span>
       );
     }
-    if (/^[{}()+\-*\/=?:.,!<>"&|\\]+$/.test(token)) {
+    if (/^[{}()+\-*\/%=?:.,!<>"&|\\@;\[\]]+$/.test(token)) {
       return (
         <span key={key} className={classes.punctuationClass}>
           {token}

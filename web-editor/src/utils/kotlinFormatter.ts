@@ -19,7 +19,7 @@
  * single-statement ones); a top-level `;`-separated crammed sequence is also
  * split onto separate lines. `{}` (empty block) is left untouched.
  */
-import { KotlinSourceError, scanKotlin, type SourceToken } from '../../src/utils/kotlinSource';
+import { KotlinSourceError, scanKotlin, type SourceToken } from './kotlinSource';
 
 const OPENERS = new Set(['{', '(', '[']);
 const CLOSERS = new Set(['}', ')', ']']);

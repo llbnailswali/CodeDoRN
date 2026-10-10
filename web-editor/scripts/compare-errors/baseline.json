@@ -1,0 +1,122 @@
+{
+ "authored-broken": {
+  "total": 291,
+  "agree": 252,
+  "false-accept": 16,
+  "false-reject": 1,
+  "output-differs": 5,
+  "compile-line-differs": 4,
+  "extra-runtime": 9,
+  "exception-differs": 1,
+  "compile-token-differs": 3
+ },
+ "drop-close-bracket": {
+  "total": 120,
+  "agree": 120
+ },
+ "drop-open-bracket": {
+  "total": 120,
+  "agree": 120
+ },
+ "drop-quote": {
+  "total": 120,
+  "agree": 120
+ },
+ "typo-identifier": {
+  "total": 120,
+  "agree": 113,
+  "false-accept": 6,
+  "compile-line-differs": 1
+ },
+ "typo-builtin": {
+  "total": 120,
+  "agree": 111,
+  "compile-line-differs": 1,
+  "false-accept": 8
+ },
+ "var-to-val": {
+  "total": 120,
+  "agree": 118,
+  "false-accept": 2
+ },
+ "remove-safe-call": {
+  "total": 18,
+  "agree": 9,
+  "false-accept": 9
+ },
+ "remove-not-null-assert": {
+  "total": 4,
+  "agree": 4
+ },
+ "annotation-type-swap": {
+  "total": 44,
+  "agree": 34,
+  "false-accept": 9,
+  "compile-line-differs": 1
+ },
+ "initializer-mismatch": {
+  "total": 12,
+  "agree": 12
+ },
+ "null-to-non-null": {
+  "total": 16,
+  "agree": 16
+ },
+ "extra-argument": {
+  "total": 120,
+  "agree": 113,
+  "compile-line-differs": 2,
+  "compile-token-differs": 5
+ },
+ "missing-argument": {
+  "total": 27,
+  "agree": 24,
+  "compile-token-differs": 3
+ },
+ "equals-to-assign": {
+  "total": 63,
+  "agree": 54,
+  "false-accept": 9
+ },
+ "remove-return": {
+  "total": 80,
+  "agree": 70,
+  "false-accept": 10
+ },
+ "remove-else": {
+  "total": 80,
+  "agree": 68,
+  "false-accept": 11,
+  "compile-token-differs": 1
+ },
+ "string-minus": {
+  "total": 85,
+  "agree": 73,
+  "compile-token-differs": 2,
+  "false-accept": 8,
+  "compile-line-differs": 2
+ },
+ "divide-by-zero": {
+  "total": 56,
+  "agree": 36,
+  "missed-runtime": 16,
+  "other": 2,
+  "output-differs": 1,
+  "exception-differs": 1
+ },
+ "index-out-of-bounds": {
+  "total": 13,
+  "agree": 11,
+  "missed-runtime": 2
+ },
+ "remove-override": {
+  "total": 32,
+  "agree": 31,
+  "compile-line-differs": 1
+ },
+ "remove-open": {
+  "total": 15,
+  "compile-token-differs": 5,
+  "agree": 10
+ }
+}

@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { compileAndRunKotlin } from '../../src/utils/kotlinRunner';
 import { resolveLesson } from './lessonLocator';
 import { extractFields, fieldKey, type FieldEntry } from './extractFields';
-import { formatKotlinLines, formatJoinedKotlin } from './kotlinFormatter';
+import { formatKotlinLines, formatJoinedKotlin } from '../../src/utils/kotlinFormatter';
 import { applyUpdatesToFile, type FieldUpdate } from './applyFieldUpdate';
 import { KNOWN_WORLD_COUNT, loadWorldLessons } from './worldDiscovery';
 import { CODEDO_MASTER_WORLDS } from '../../src/data/curriculum/masterCurriculumCatalog';

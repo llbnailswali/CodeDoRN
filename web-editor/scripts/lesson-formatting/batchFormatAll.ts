@@ -24,7 +24,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { compileAndRunKotlin } from '../../src/utils/kotlinRunner';
 import { scanKotlin } from '../../src/utils/kotlinSource';
 import { extractFields, fieldKey, type FieldEntry } from './extractFields';
-import { formatKotlinLines, formatJoinedKotlin } from './kotlinFormatter';
+import { formatKotlinLines, formatJoinedKotlin } from '../../src/utils/kotlinFormatter';
 import { applyUpdatesToFile, type FieldUpdate } from './applyFieldUpdate';
 
 /**

@@ -2,6 +2,8 @@ import { checkClassMemberRules } from './kotlinClassChecks';
 import { prepareKotlinSource, scanKotlin, KotlinSourceError, NESTED_QUOTE } from './kotlinSource';
 import { KotlinList, KotlinPair, KotlinSequence, outOfBounds } from './kotlinCollections';
 import { lowerKotlinFunctions, KotlinFunctionError } from './kotlinFunctions';
+import { maskStringsAndComments } from './errorSpan';
+import { checkStructureRules } from './kotlinStructureChecks';
 import {
   kotlinAsync,
   KotlinCoroutineStart,
@@ -44,6 +46,11 @@ export interface KotlinDiagnostic {
   message: string;
   line: number;
   column?: number;
+  /** The offending token's text and which same-text token on `line` it is (0-based); the editor underlines it. */
+  token?: string;
+  occurrence?: number;
+  /** True when `line` is only a placeholder (the engine could not locate the problem), so nothing should be highlighted. */
+  unlocated?: boolean;
   type: 'syntax_error' | 'compiler_error' | 'type_mismatch' | 'val_reassignment' | 'unresolved_reference' | 'runtime_error' | 'hardcoded_output';
   codeSnippet?: string;
 }
@@ -238,20 +245,44 @@ function detectHardcodedOutput(code: string, expectedOutput: string): KotlinDiag
  * - val reassignment
  * - basic unresolved references
  */
+/** How many identical tokens precede the one at `offset` on its own line (0-based), so the editor can find the same one. */
+function occurrenceOnLine(code: string, offset: number, text: string): number {
+  const lineStart = code.lastIndexOf('\n', offset - 1) + 1;
+  return code.slice(lineStart, offset).split(text).length - 1;
+}
+
 function staticValidateKotlin(code: string): KotlinDiagnostic | null {
   const lines = code.split('\n');
 
-  const stack: { text: string; line: number }[] = [];
+  const stack: { text: string; line: number; occurrence: number }[] = [];
   for (const token of scanKotlin(code)) {
     if (token.kind !== 'symbol') continue;
     const line = code.slice(0, token.start).split('\n').length;
-    if ('({['.includes(token.text)) stack.push({ text: token.text, line });
+    if ('({['.includes(token.text)) stack.push({ text: token.text, line, occurrence: occurrenceOnLine(code, token.start, token.text) });
     else if (')}]'.includes(token.text)) {
       const open = stack.pop();
-      if (!open || '({['.indexOf(open.text) !== ')}]'.indexOf(token.text)) return { message: 'Syntax error: mismatched closing delimiter', line, type: 'syntax_error' };
+      if (!open) return { message: `Syntax error: unexpected '${token.text}'`, line, token: token.text, occurrence: occurrenceOnLine(code, token.start, token.text), type: 'syntax_error' };
+      if ('({['.indexOf(open.text) !== ')}]'.indexOf(token.text)) {
+        // Mark the opener that was never closed (where the learner forgot something), not the later closer that exposed it.
+        return { message: `Syntax error: '${open.text}' on line ${open.line} is never closed`, line: open.line, token: open.text, occurrence: open.occurrence, type: 'syntax_error' };
+      }
     }
   }
-  if (stack.length) return { message: 'Syntax error: unclosed delimiter', line: stack.at(-1)!.line, type: 'syntax_error' };
+  if (stack.length) {
+    const open = stack.at(-1)!;
+    return { message: 'Syntax error: unclosed delimiter', line: open.line, token: open.text, occurrence: open.occurrence, type: 'syntax_error' };
+  }
+
+  // A loop variable is always read-only and never declared with val/var: `for (val i in xs)` is a compile error in Kotlin.
+  {
+    const masked = maskStringsAndComments(code);
+    const loopKeyword = /\bfor\s*\(\s*(val|var)\s+[A-Za-z_(]/.exec(masked);
+    if (loopKeyword) {
+      const at = loopKeyword.index + loopKeyword[0].indexOf(loopKeyword[1], 3);
+      const line = code.slice(0, at).split('\n').length;
+      return { message: `'${loopKeyword[1]}' on loop parameter is prohibited.`, line, token: loopKeyword[1], occurrence: occurrenceOnLine(code, at, loopKeyword[1]), type: 'compiler_error' };
+    }
+  }
 
   // World 16 Lesson 3: a suspend function may only be called from another
   // suspend function or a recognized coroutine builder body. This narrow
@@ -372,7 +403,8 @@ function staticValidateKotlin(code: string): KotlinDiagnostic | null {
         (!!type && MUTABLE_COLLECTION_TYPE.test(type)) || (!!initialExpr && MUTABLE_COLLECTION_INITIALIZER.test(initialExpr));
       declaredVars.set(varName, {
         name: varName,
-        isVal,
+        // `val total: Int` with no initializer is assigned exactly once later (definite assignment): legal, so not read-only yet.
+        isVal: isVal && !!initialExpr,
         type,
         line: i + 1,
         isMutableCollectionRef,
@@ -554,7 +586,10 @@ function wrapIntDivision(line: string, intVars: Set<string>): string {
       const right = parts[i + 1];
       const rightIsInt = isIntLiteral(right) || intVars.has(bare(right));
       if (op === '/' && isInt && rightIsInt) {
-        expr = `Math.trunc(${expr} / ${right})`;
+        expr = `__kt_idiv(${expr} / ${right})`;
+        changed = true;
+      } else if (op === '%' && isInt && rightIsInt) {
+        expr = `__kt_irem(${expr}, ${right})`;
         changed = true;
       } else {
         expr = `${expr} ${op} ${right}`;
@@ -3145,7 +3180,7 @@ export async function compileAndRunKotlin(
 
   try { code = prepareKotlinSource(code); }
   catch (err) {
-    return { success: false, output: '', logs: [], error: { message: `Syntax error: ${(err as Error).message}`, line: err instanceof KotlinSourceError ? err.line : 1, type: 'syntax_error' }, executionTimeMs: 0, exitCode: 1 };
+    return { success: false, output: '', logs: [], error: { message: `Syntax error: ${(err as Error).message}`, line: err instanceof KotlinSourceError ? err.line : 1, unlocated: !(err instanceof KotlinSourceError), type: 'syntax_error' }, executionTimeMs: 0, exitCode: 1 };
   }
 
   // World 16: `Job`/`CoroutineName`/`CoroutineExceptionHandler`/`Dispatchers`
@@ -3185,6 +3220,10 @@ export async function compileAndRunKotlin(
     const elapsed = Math.round(performance.now() - startTime);
     return { success: false, output: '', logs: [], error: inheritanceError, executionTimeMs: elapsed, exitCode: 1 };
   }
+  const structureError = checkStructureRules(code);
+  if (structureError) {
+    return { success: false, output: '', logs: [], error: structureError, executionTimeMs: Math.round(performance.now() - startTime), exitCode: 1 };
+  }
   const classRuleError = checkClassMemberRules(code);
   if (classRuleError) {
     return {
@@ -3216,6 +3255,9 @@ export async function compileAndRunKotlin(
       error: {
         message: `Compilation error: ${err?.message || 'Failed to parse Kotlin code'}`,
         line: err instanceof KotlinFunctionError ? err.line : 1,
+        token: err instanceof KotlinFunctionError ? err.token : undefined,
+        occurrence: err instanceof KotlinFunctionError ? err.occurrence : undefined,
+        unlocated: !(err instanceof KotlinFunctionError),
         type: 'compiler_error',
       },
       executionTimeMs: elapsed,
@@ -3752,6 +3794,7 @@ export async function compileAndRunKotlin(
   };
 
   let returnValue: any = undefined;
+  let runnerScript = '';
 
   try {
     // Construct execution sandbox
@@ -3767,7 +3810,7 @@ export async function compileAndRunKotlin(
     // this file warns about repeatedly, and nothing like real Kotlin's
     // "Unresolved reference" compile error. In strict mode this instead throws
     // a real ReferenceError, which is at least a loud, honest failure.
-    let runnerScript = `
+    runnerScript = `
       "use strict";
       let __kt_loop_start = Date.now();
       let __kt_loop_iter = 0;
@@ -3814,6 +3857,16 @@ export async function compileAndRunKotlin(
         return value;
       };
       const __kt_run = (action) => action();
+      // Int/Long division and remainder by zero throw in Kotlin (java.lang.ArithmeticException: / by zero); in JS they give Infinity/NaN.
+      // The typed lowering rewrites Int / Int to __kt_idiv(a / b): the quotient of two finite integers is non-finite only for a zero divisor.
+      const __kt_idiv = (quotient) => {
+        if (!Number.isFinite(quotient)) throw new ArithmeticException('/ by zero');
+        return Math.trunc(quotient);
+      };
+      const __kt_irem = (dividend, divisor) => {
+        if (divisor === 0) throw new ArithmeticException('/ by zero');
+        return dividend % divisor;
+      };
       // with(receiver) { block } -- registered as a plain builtins entry
       // in kotlinFunctions.ts (same as run/repeat above), which already
       // auto-renames a bare "with" token to "__kt_with" wherever it's
@@ -3857,6 +3910,7 @@ export async function compileAndRunKotlin(
       const Dispatchers = kotlinDispatchers;
       ` : ''}
 
+      //__KT_USER_BEGIN__
       ${transpiledJS}
 
       let __lastResult = undefined;
@@ -3966,14 +4020,39 @@ export async function compileAndRunKotlin(
     returnValue = await Promise.race([executionPromise, timeoutPromise]);
   } catch (runtimeErr: any) {
     const elapsed = Math.round(performance.now() - startTime);
-    const errMessage = runtimeErr?.message || String(runtimeErr);
+    // A Kotlin exception is reported with its class, like the JVM does (`ArithmeticException: / by zero`).
+    const errMessage = runtimeErr instanceof Throwable ? String(runtimeErr) : runtimeErr?.message || String(runtimeErr);
 
     // Try to extract line number from stack trace if available
-    let line = 1;
-    if (runtimeErr?.stack) {
-      const match = runtimeErr.stack.match(/<anonymous>:(\d+):(\d+)/);
-      if (match) {
-        line = Math.max(1, parseInt(match[1], 10) - 2);
+    // The stack line is inside the generated script (a long helper prelude, then the transpiled program). Map it back to the
+    // Kotlin line only when the transpiled program kept the source's line count, so line N is still line N. Otherwise report no
+    // line (0) rather than a number that points into generated code.
+    let line = 0;
+    const stackMatch = runtimeErr?.stack?.match(/<anonymous>:(\d+):(\d+)/);
+    if (stackMatch) {
+      const markerAt = runnerScript.indexOf('//__KT_USER_BEGIN__');
+      const headerLines = markerAt < 0 ? -1 : runnerScript.slice(0, markerAt).split('\n').length; // the marker's own line is headerLines
+      const mapped = parseInt(stackMatch[1], 10) - 2 - headerLines;
+      const sourceLines = code.split('\n').length;
+      if (headerLines > 0 && transpiledJS.split('\n').length === sourceLines && mapped >= 1 && mapped <= sourceLines) line = mapped;
+    }
+
+    // `foo is not defined` is Kotlin's "Unresolved reference" -- a compile-time error. Report it where the name is
+    // written in the source (the JS stack line points into generated code), so the editor can underline it.
+    const undefinedName = runtimeErr instanceof ReferenceError ? /^([A-Za-z_]\w*) is not defined$/.exec(errMessage)?.[1] : undefined;
+    if (undefinedName) {
+      const maskedLines = maskStringsAndComments(code).split('\n');
+      const nameRe = new RegExp(`(?<!\\w)${undefinedName}(?!\\w)`);
+      const at = maskedLines.findIndex((l) => nameRe.test(l));
+      if (at >= 0) {
+        return {
+          success: false,
+          output: '',
+          logs: [],
+          error: { message: `Unresolved reference: ${undefinedName}`, line: at + 1, token: undefinedName, occurrence: 0, type: 'unresolved_reference' },
+          executionTimeMs: elapsed,
+          exitCode: 1,
+        };
       }
     }
 

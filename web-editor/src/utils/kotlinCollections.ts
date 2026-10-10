@@ -173,7 +173,9 @@ export class KotlinSequence {
   }
   filter(fn: any): KotlinSequence {
     const self = this;
-    return new KotlinSequence(function* () { for (const v of self) if (fn(v)) yield v; }, self.singleUse);
+    // Counts the elements it SCANS, not only those it passes on: a filter that never matches over an endless source never yields, so
+    // the terminal operation's own counter would never run (it hung the editor for good).
+    return new KotlinSequence(function* () { let scanned = 0; for (const v of self) { KotlinSequence.guard(++scanned); if (fn(v)) yield v; } }, self.singleUse);
   }
   take(n: number): KotlinSequence {
     const self = this;
@@ -189,7 +191,7 @@ export class KotlinSequence {
   }
   drop(n: number): KotlinSequence {
     const self = this;
-    return new KotlinSequence(function* () { let i = 0; for (const v of self) { if (i++ < n) continue; yield v; } }, self.singleUse);
+    return new KotlinSequence(function* () { let i = 0; for (const v of self) { KotlinSequence.guard(i + 1); if (i++ < n) continue; yield v; } }, self.singleUse);
   }
   toList(): KotlinList {
     const out = new KotlinList(); let c = 0;

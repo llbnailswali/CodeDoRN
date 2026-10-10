@@ -2756,3 +2756,56 @@ replacement, or `disabled` with a reason). `npm run generate:native-data` copies
 would and fails when one neither runs (and prints its stored `output`) nor has an override, so a broken Try it cannot ship. Run it after
 adding or editing Explore cards; use `-- --list` to see the code of the failing ones. When the simulator gains a feature (for example Flow),
 delete the matching `disabled` entries and let the audit prove the cards run.
+
+## Compile-error highlighting: the engine's columns cannot be trusted, so the editor re-finds the token in the learner's own text
+
+The editor underlines a compile-time error (`KotlinCodeEditor`'s `errorSpan` prop, wired in `WriteRun` and `DebugIde`; Try it is
+`WriteRun` in `tryItMode`). The engine reports only a LINE, plus the offending token's TEXT and which same-text token on that line it
+is (`KotlinDiagnostic.token`/`occurrence`, filled by `fail()` in `kotlinFunctions.ts`). `resolveErrorSpan` (`src/utils/errorSpan.ts`)
+turns that into a column span on the ORIGINAL code. Do not add numeric columns from the lowerer: it works on a rewritten copy
+(`prepareKotlinSource` turns a `/` inside a string into `/`, nested quotes become U+0001, pre-passes reshape the text), so an
+offset there is wrong on any line holding a string. A string token is never named for the same reason.
+
+- Only compile-time kinds are marked (`syntax_error`, `compiler_error`, `type_mismatch`, `val_reassignment`, `unresolved_reference`).
+  A runtime error or an output mismatch has no place in the code. A diagnostic with `unlocated: true` (the generic `line: 1`
+  fallbacks) is never marked, because its line is a placeholder.
+- When no token is known the whole statement on that line is marked (`exact: false`), never a guessed column.
+- `foo is not defined` used to surface as a runtime error with a line number into the generated JS (e.g. line 85). It is now
+  reported as Kotlin's `Unresolved reference: foo` on the first line where the name appears outside strings and comments.
+- A marked compile-time error does NOT open the run-result dialog (it would cover the underlined line). `WriteRun`/`DebugIde` pass
+  a `CompileErrorBar` (line + message) as the editor's `outputPanel` instead, and set `showOutputPanel` from `resolveErrorSpan`.
+  Wrong-output and runtime failures still use the dialog.
+- Editing clears `executionResult`, which clears the mark. `npm run test:error-span` pins the underlined text per error kind.
+
+## Highlighter dropped `@`, `%` and the opening quote of a string that followed `(`
+
+`TOKEN_REGEX` in `codeHighlighter.tsx` put `"` inside its punctuation run, so in `User("A", "a@x.com")` the `("` was consumed as
+ONE punctuation token; the string was then never recognised as a string and its `@` matched nothing and vanished (`"ax.com"` in the
+Write & Run "You start with" box). `%` (the remainder operator) was missing from the punctuation class too. Fixed by taking `"` out of
+the run (a lone `"` is its own alternative AFTER the string alternative), adding `% @ ; [ ]`, and ending the regex with a catch-all
+`[\s\S]`, so no character can disappear again. `npm run test:highlighter-fidelity` renders every practice-bank code field and fails if
+any character is lost. Run it after touching the tokenizer.
+
+## A null check on `users[i].email` or `get(0).email` was treated as a smart cast (real kotlinc rejects it)
+
+Found by comparing the simulator with real kotlinc through the editor's "K" run button. `val len = if (users[i].email == null) "no email" else
+users[i].email.length ...` ran in the simulator but is a compile error in Kotlin: only STABLE values are smart-cast, and an index or a call in the
+receiver is re-evaluated on every use. Two causes: (1) `infer` had no type for `xs[i]` / `xs.get(i)` on a `List<T>`/`Array<T>`, so `.email` on
+it looked non-null and nothing was checked; (2) both null-guard tests (`nullGuardMentioned` and the `if (s.score != null)` branch in `infer`)
+accepted an earlier `!= null` for ANY receiver text. Now `xs[i]` is typed as the element type, and an unstable receiver (containing `[` or `(`)
+is accepted only with a use-site `?:`, `!!` or `as?`. `npm run test:smart-cast` pins 9 cases confirmed against real kotlinc.
+**Rule:** when a learner reports "kotlinc rejects it but the app runs it", reproduce it with the K button first, add the case to a test with the
+real result, then fix the simulator. The real compiler is the authority; this simulator only approximates it.
+
+## Editor undo history: two edits in one tick crashed with "Cannot read properties of undefined (reading 'code')"
+
+`updateCodeWithHistory` sliced the history with the `historyIndex` STATE value, which is stale until React re-renders. Two edits before a
+re-render both cut the history at the same old index, so it grew by one while the index grew by two; the next render's sync effect then read
+`history[historyIndex].code` of `undefined` and the ErrorBoundary showed "Something went wrong". Found by typing a long program through
+synthetic key events. Now a `historyIndexRef` carries the index forward between batched edits (set from state on every render, advanced
+immediately by each edit), and the sync effect uses `history[historyIndex]?.code`. Anything that edits twice in one event (smart Enter plus
+auto-indent, Apply fix plus a caret move) needed this too.
+
+## Known Kotlin runner gaps: it can reject valid code or accept invalid code
+
+Verified runner gaps found during World 1–4 quiz validation are tracked in the central [Kotlin Runner Known Issues](KOTLIN_RUNNER_KNOWN_ISSUES.md) register. A suspected `continue` bug was a false lead: `w4q-set-ctl-4` asks for a count (`4`) while its predict-output validator compares the literal output (`xxxx`). Treat that as a quiz-item/validation mismatch, not evidence that the runner mishandles `continue`.
