@@ -2,10 +2,10 @@
  "authored-broken": {
   "total": 291,
   "agree": 263,
-  "false-accept": 7,
+  "false-accept": 6,
   "output-differs": 6,
   "compile-line-differs": 4,
-  "compile-token-differs": 4,
+  "compile-token-differs": 5,
   "extra-runtime": 6,
   "exception-differs": 1
  },
@@ -23,15 +23,16 @@
  },
  "typo-identifier": {
   "total": 120,
-  "agree": 115,
-  "false-accept": 4,
-  "compile-line-differs": 1
+  "agree": 114,
+  "false-accept": 3,
+  "compile-line-differs": 1,
+  "compile-token-differs": 2
  },
  "typo-builtin": {
   "total": 120,
-  "agree": 111,
-  "compile-line-differs": 1,
-  "false-accept": 8
+  "agree": 114,
+  "false-accept": 5,
+  "compile-line-differs": 1
  },
  "var-to-val": {
   "total": 120,
@@ -39,9 +40,9 @@
   "false-accept": 2
  },
  "remove-safe-call": {
-  "total": 18,
-  "agree": 9,
-  "false-accept": 9
+  "total": 19,
+  "false-accept": 10,
+  "agree": 9
  },
  "remove-not-null-assert": {
   "total": 4,
@@ -49,8 +50,8 @@
  },
  "annotation-type-swap": {
   "total": 44,
-  "agree": 34,
   "false-accept": 9,
+  "agree": 34,
   "compile-line-differs": 1
  },
  "initializer-mismatch": {
@@ -63,19 +64,20 @@
  },
  "extra-argument": {
   "total": 120,
-  "agree": 113,
+  "agree": 115,
+  "false-accept": 1,
   "compile-line-differs": 2,
-  "compile-token-differs": 5
+  "compile-token-differs": 2
  },
  "missing-argument": {
   "total": 27,
-  "agree": 24,
-  "compile-token-differs": 3
+  "compile-token-differs": 3,
+  "agree": 24
  },
  "equals-to-assign": {
   "total": 63,
-  "agree": 54,
-  "false-accept": 9
+  "agree": 53,
+  "false-accept": 10
  },
  "remove-return": {
   "total": 80,
@@ -85,38 +87,37 @@
  },
  "remove-else": {
   "total": 80,
-  "agree": 68,
-  "false-accept": 11,
-  "compile-token-differs": 1
+  "agree": 67,
+  "false-accept": 13
  },
  "string-minus": {
   "total": 85,
   "agree": 73,
-  "compile-token-differs": 2,
   "false-accept": 8,
+  "compile-token-differs": 2,
   "compile-line-differs": 2
  },
  "divide-by-zero": {
   "total": 56,
   "agree": 36,
+  "output-differs": 1,
   "missed-runtime": 16,
   "other": 2,
-  "output-differs": 1,
   "exception-differs": 1
  },
  "index-out-of-bounds": {
   "total": 13,
-  "agree": 11,
-  "missed-runtime": 2
+  "agree": 12,
+  "missed-runtime": 1
  },
  "remove-override": {
   "total": 32,
-  "agree": 31,
-  "compile-line-differs": 1
+  "agree": 28,
+  "compile-line-differs": 4
  },
  "remove-open": {
   "total": 15,
-  "compile-token-differs": 5,
-  "agree": 10
+  "agree": 9,
+  "compile-token-differs": 6
  }
 }

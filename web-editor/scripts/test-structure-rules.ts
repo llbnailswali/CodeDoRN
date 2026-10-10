@@ -72,7 +72,11 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['extension property with a getter', 'class User(val first: String)\nval User.greeting: String get() = "hi " + first\nfun main() {\n  println(User("a").greeting)\n}', 'ok'],
   // --- casts
   ['an as cast that succeeds', wrap('  val a: Any = "text"\n  val s = a as String\n  println(s.length)'), 'ok'],  ['sealed objects compared by name, one missing', 'sealed interface St\ndata object Waiting : St\ndata object Done : St\nfun f(s: St) = when (s) {\n  Waiting -> "w"\n}\nfun main() {\n  println(f(Done))\n}', 'error'],
-  ['sealed objects compared by name, all covered', 'sealed interface St\ndata object Waiting : St\ndata object Done : St\nfun f(s: St) = when (s) {\n  Waiting -> "w"\n  Done -> "d"\n}\nfun main() {\n  println(f(Done))\n}', 'ok'],
+  ['sealed objects compared by name, all covered', 'sealed interface St\ndata object Waiting : St\ndata object Done : St\nfun f(s: St) = when (s) {\n  Waiting -> "w"\n  Done -> "d"\n}\nfun main() {\n  println(f(Done))\n}', 'ok'],  // --- two interfaces give the same member a default body
+  ['two interface defaults, not overridden', 'interface Light {\n  fun mode() = "light"\n}\ninterface Dark {\n  fun mode() = "dark"\n}\nclass Theme : Light, Dark\nfun main() {\n  println(Theme().mode())\n}', 'error'],
+  ['two interface defaults, overridden', 'interface Light {\n  fun mode() = "light"\n}\ninterface Dark {\n  fun mode() = "dark"\n}\nclass Theme : Light, Dark {\n  override fun mode() = super<Dark>.mode()\n}\nfun main() {\n  println(Theme().mode())\n}', 'ok'],
+  ['two interfaces with different members', 'interface A {\n  fun a() = 1\n}\ninterface B {\n  fun b() = 2\n}\nclass C : A, B\nfun main() {\n  println(C().a() + C().b())\n}', 'ok'],
+  ['one default, one abstract, overridden', 'interface A {\n  fun f(): Int\n}\ninterface B {\n  fun f() = 2\n}\nclass C : A, B {\n  override fun f() = 3\n}\nfun main() {\n  println(C().f())\n}', 'ok'],
 ];
 
 (async () => {

@@ -127,7 +127,7 @@ export function checkStructureRules(code: string): KotlinDiagnostic | null {
     }
   }
 
-  return extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
+  return conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
 }
 
 /** True when the `if` at `i` (an `if (cond) body [else ...]` chain) ends in an `else` that is not itself another `if`. */
@@ -532,6 +532,52 @@ function whenNotExhaustive(code: string, masked: string, tokens: SourceToken[]):
       if (!names.every((n) => entries.includes(n))) continue;
       const missing = entries.filter((e) => !names.includes(e));
       if (missing.length) return diagnostic(code, masked, t, `'when' expression must be exhaustive. Add the '${missing[0]}' branch or an 'else' branch.`);
+    }
+  }
+  return null;
+}
+
+/** The `{ ... }` body that starts at `open` in the masked text (balanced braces), or '' when there is none. */
+function bodyAt(masked: string, open: number): string {
+  if (masked[open] !== '{') return '';
+  let depth = 0;
+  for (let i = open; i < masked.length; i++) {
+    if (masked[i] === '{') depth++;
+    else if (masked[i] === '}' && --depth === 0) return masked.slice(open + 1, i);
+  }
+  return '';
+}
+
+/**
+ * `class Theme : Light, Dark` where BOTH interfaces give `mode()` a default body: Kotlin will not choose one, so the class must override
+ * it ("must override 'mode' because it inherits multiple interface methods for it"). Only members with a default in two or more of the
+ * listed interfaces are judged.
+ */
+function conflictingInterfaceDefaults(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  const defaults = new Map<string, Set<string>>();
+  for (const m of masked.matchAll(/\binterface\s+([A-Z]\w*)\s*(?:<[^>]*>)?\s*(?::[^{]*)?/g)) {
+    const body = bodyAt(masked, m.index! + m[0].length);
+    if (!body) continue;
+    const names = new Set<string>();
+    let depth = 0;
+    let top = '';
+    for (const ch of body) { if (ch === '{') depth++; if (depth === 0) top += ch; if (ch === '}') depth--; if (depth > 0 && ch !== '{') top += ' '; }
+    for (const f of top.matchAll(/\bfun\s+([a-zA-Z_]\w*)\s*\([^)]*\)\s*(?::\s*[\w<>?, ]+)?\s*(=|\{)/g)) names.add(f[1]);
+    defaults.set(m[1], names);
+  }
+  if (defaults.size < 2) return null;
+  for (const m of masked.matchAll(/\bclass\s+([A-Z]\w*)\s*(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*:\s*([^{\n]+)/g)) {
+    const supertypes = m[2].split(',').map((p) => p.trim().replace(/\s+by\s+.*$/, '').replace(/\(.*$/, '').replace(/<.*$/, '').trim());
+    const listed = supertypes.filter((p) => defaults.has(p));
+    if (listed.length < 2) continue;
+    const afterHeader = m.index! + m[0].length;
+    const body = bodyAt(masked, masked.slice(afterHeader).search(/\S/) + afterHeader);
+    const counts = new Map<string, number>();
+    for (const i of listed) for (const name of defaults.get(i)!) counts.set(name, (counts.get(name) ?? 0) + 1);
+    for (const [name, n] of counts) {
+      if (n < 2 || new RegExp(`\\boverride\\s+fun\\s+${name}\\b`).test(body)) continue;
+      const nameToken = tokens.find((t) => t.kind === 'word' && t.text === m[1] && t.start >= m.index!);
+      if (nameToken) return diagnostic(code, masked, nameToken, `Class '${m[1]}' must override '${name}' because it inherits multiple interface methods for it.`);
     }
   }
   return null;
