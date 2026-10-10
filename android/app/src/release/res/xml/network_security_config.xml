@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The editor's "Run with Kotlin compiler" button talks to a dev server on the developer's computer (scripts/real-kotlin-server.ts),
+  reached over USB with `adb reverse tcp:8787 tcp:8787`, so it appears as http://localhost:8787. Release builds block plain HTTP by
+  default; this allows it for the loopback addresses only and for nothing else.
+-->
+<network-security-config>
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">localhost</domain>
+    <domain includeSubdomains="false">127.0.0.1</domain>
+  </domain-config>
+</network-security-config>

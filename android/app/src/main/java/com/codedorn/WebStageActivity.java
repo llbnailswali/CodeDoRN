@@ -14,6 +14,7 @@ import android.content.Intent;
 import android.view.View;
 import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.codedorn.compose.NativeScreensPlugin;
 import com.getcapacitor.BridgeActivity;
@@ -41,6 +42,13 @@ public class WebStageActivity extends BridgeActivity {
         // Set before the web view exists, from the theme the app passed in, so the system bars are right from the first frame. (Capacitor's
         // StatusBar plugin is not loaded in this activity: it applied a fixed dark color at startup and the page then switched it.)
         applyStageTheme(dark);
+
+        // Draw into the camera-cutout area too. Without this the system leaves that strip black (some phones paint it themselves), so
+        // hiding the status bar would still waste the top of the screen. The page keeps its header below the cutout through
+        // env(safe-area-inset-top) (viewport-fit=cover).
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
 
         registerPlugin(NativeScreensPlugin.class);
         super.onCreate(savedInstanceState);
@@ -117,6 +125,22 @@ public class WebStageActivity extends BridgeActivity {
     public void onResume() {
         super.onResume();
         applyStageTheme(stageDark);
+    }
+
+    /**
+     * The editor uses the whole screen: the status and navigation bars are hidden and a swipe from the screen edge shows them for a
+     * moment. Re-applied whenever the window regains focus, since the system shows the bars again after a dialog or the keyboard.
+     */
+    private void hideSystemBars() {
+        WindowInsetsControllerCompat bars = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+        bars.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        bars.hide(WindowInsetsCompat.Type.systemBars());
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) hideSystemBars();
     }
 
     @Override

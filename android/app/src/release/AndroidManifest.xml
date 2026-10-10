@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Release only: allow plain HTTP to loopback for the dev "Run with Kotlin compiler" server (see res/xml/network_security_config.xml).
+       Debug builds keep React Native's own cleartext setting, which Metro needs. -->
+  <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

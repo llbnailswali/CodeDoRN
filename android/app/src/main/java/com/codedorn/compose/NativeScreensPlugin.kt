@@ -1,5 +1,8 @@
 package com.codedorn.compose
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import com.codedorn.WebStageActivity
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -45,6 +48,23 @@ class NativeScreensPlugin : Plugin() {
         if (host is WebStageActivity) {
             host.handleStageAction(call.getString("action") ?: "back")
         }
+        call.resolve()
+    }
+
+    /** The Capacitor Clipboard plugin is not part of this app, and a WebView blocks `navigator.clipboard.readText`, so the editor reads here. */
+    @PluginMethod
+    fun readClipboard(call: PluginCall) {
+        val manager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val item = manager.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)
+        val result = JSObject()
+        result.put("value", item?.coerceToText(context)?.toString() ?: "")
+        call.resolve(result)
+    }
+
+    @PluginMethod
+    fun writeClipboard(call: PluginCall) {
+        val manager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        manager.setPrimaryClip(ClipData.newPlainText("code", call.getString("value") ?: ""))
         call.resolve()
     }
 }
