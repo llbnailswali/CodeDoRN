@@ -6,7 +6,7 @@ import { suggestFix } from '../src/utils/compileFixes';
 // "Apply fix" must only be offered when it really clears the error. Each case: a program with one compile error, the fix label the
 // learner should see (null = no fix offered), and the program text after applying it. Simulator cases run offline; the kotlinc cases
 // need `npm run real-kotlin:serve` and are skipped (with a note) when it is not running.
-type Case = { name: string; code: string; label: string | null; after?: string };
+type Case = { name: string; code: string; label: string | null; after?: string; simulatorOnly?: boolean };
 const cases: Case[] = [
   { name: 'val reassigned', code: 'fun main() {\n  val age = 20\n  age = 21\n  println(age)\n}', label: 'Change "val age" to "var age"', after: 'fun main() {\n  var age = 20\n  age = 21\n  println(age)\n}' },
   { name: 'val property reassigned from outside', code: 'class A(val x: Int)\nfun main() {\n  val a = A(1)\n  a.x = 5\n  println(a.x)\n}', label: 'Change "val x" to "var x"', after: 'class A(var x: Int)\nfun main() {\n  val a = A(1)\n  a.x = 5\n  println(a.x)\n}' },
@@ -18,6 +18,7 @@ const cases: Case[] = [
   { name: 'missing )', code: 'fun main() {\n  println("Hello"\n}', label: 'Add the missing )', after: 'fun main() {\n  println("Hello")\n}' },
   { name: 'val on a loop variable', code: 'fun main() {\n  val xs = listOf(1, 2)\n  for (val i in xs.indices) {\n    println(i)\n  }\n}', label: 'Remove "val"', after: 'fun main() {\n  val xs = listOf(1, 2)\n  for (i in xs.indices) {\n    println(i)\n  }\n}' },
   { name: 'var on a loop variable, no spaces (as typed in the report)', code: 'fun main() {\n  val xs = listOf(1, 2)\n  for(var i in xs){\n    println(i)\n  }\n}', label: 'Remove "var"', after: 'fun main() {\n  val xs = listOf(1, 2)\n  for(i in xs){\n    println(i)\n  }\n}' },
+  { name: 'when branch with - instead of ->', code: 'fun main() {\n  val score = 85\n  when (score) {\n    in 90..100 -> println("A")\n    in 80..89 - println("B")\n    else -> println("F")\n  }\n}', simulatorOnly: true, label: 'Change - to -> (when branch arrow)', after: 'fun main() {\n  val score = 85\n  when (score) {\n    in 90..100 -> println("A")\n    in 80..89 -> println("B")\n    else -> println("F")\n  }\n}' },
   { name: 'type mismatch has no automatic fix', code: 'fun main() {\n  val n: Int = "hi"\n  println(n)\n}', label: null },
 ];
 
@@ -27,7 +28,7 @@ const compiles = (error: { type: string } | undefined) => !error || error.type =
   let realUp = true;
   try { await fetch('http://localhost:8787/health'); } catch { realUp = false; }
   for (const c of cases) {
-    for (const engine of realUp ? (['simulator', 'kotlinc'] as const) : (['simulator'] as const)) {
+    for (const engine of realUp && !c.simulatorOnly ? (['simulator', 'kotlinc'] as const) : (['simulator'] as const)) {
       const result = engine === 'simulator' ? await compileAndRunKotlin(c.code) : await runWithRealKotlin(c.code);
       const fix = suggestFix(c.code, result.error);
       // The two engines may offer different wording for a missing bracket, but never a wrong fix: if one is offered it must work.

@@ -127,7 +127,7 @@ export function checkStructureRules(code: string): KotlinDiagnostic | null {
     }
   }
 
-  return callWithoutParentheses(code, masked, tokens) ?? topLevelStatement(code, masked, tokens) ?? nonBooleanCondition(code, masked, tokens) ?? assignedLiteralMismatch(code, masked, tokens) ?? conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
+  return whenBranchWithoutArrow(code, masked, tokens) ?? callWithoutParentheses(code, masked, tokens) ?? topLevelStatement(code, masked, tokens) ?? nonBooleanCondition(code, masked, tokens) ?? assignedLiteralMismatch(code, masked, tokens) ?? conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
 }
 
 /** True when the `if` at `i` (an `if (cond) body [else ...]` chain) ends in an `else` that is not itself another `if`. */
@@ -674,6 +674,45 @@ function callWithoutParentheses(code: string, masked: string, tokens: SourceToke
     const next = tokens[i + 1];
     if (next.text === '(' || next.text === '{' || next.text === '<') continue;
     return diagnostic(code, masked, t, `Function invocation '${t.text}()' expected.`);
+  }
+  return null;
+}
+
+/**
+ * Every branch of a `when` needs `->` between its condition and its result. A branch line without one (`in 80..89 - println("B")`, a
+ * forgotten `>`) used to be silently DROPPED by the runner's when translation, so the program ran and printed another branch.
+ */
+function whenBranchWithoutArrow(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  const isArrow = (k: number) => tokens[k]?.text === '-' && tokens[k + 1]?.text === '>' && tokens[k + 1].start === tokens[k].start + 1;
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].kind !== 'word' || tokens[i].text !== 'when') continue;
+    let open = i + 1;
+    if (tokens[open]?.text === '(') open = closeOf(tokens, open) + 1;
+    if (tokens[open]?.text !== '{') continue;
+    const close = closeOf(tokens, open);
+    if (close < 0) continue;
+    // Walk the body line by line at depth 0; a line that starts a branch must contain `->` (or continue onto the next line).
+    let k = open + 1;
+    while (k < close) {
+      const line = lineOfOffset(code, tokens[k].start);
+      const start = k;
+      let hasArrow = false;
+      let last = k;
+      while (k < close && lineOfOffset(code, tokens[k].start) === line) {
+        if (OPENERS.has(tokens[k].text) && tokens[k].kind === 'symbol') { const c = closeOf(tokens, k); if (c > k) { last = c; k = c + 1; continue; } }
+        if (isArrow(k)) hasArrow = true;
+        last = k;
+        k++;
+      }
+      // a branch whose result is a block or continues on later lines: skip past it
+      if (hasArrow) continue;
+      const first = tokens[start];
+      const endsOpen = [',', '-', '>', '(', '.', '&', '|', '+', '*', '/'].includes(tokens[last].text) || isArrow(last - 1);
+      const previous = tokens[start - 1];
+      const continues = start > open + 1 && previous && (previous.text === ',' || previous.text === '>' && isArrow(start - 2) || ['&', '|', '+', '-', '*', '/', '.'].includes(previous.text));
+      if (continues || endsOpen || first.text === '}' || first.text === '.' || first.text === '?') continue;
+      return diagnostic(code, masked, first, "Syntax error: Expecting '->' after the when branch condition.");
+    }
   }
   return null;
 }

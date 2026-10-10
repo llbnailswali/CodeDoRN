@@ -96,7 +96,13 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['a method called without parentheses', wrap('  val name = "ana"\n  println(name.uppercase)'), 'error'],
   ['the same method called properly', wrap('  val name = "ana"\n  println(name.uppercase())'), 'ok'],
   ['a function reference is not a call', wrap('  val f: (String) -> String = String::uppercase\n  println(f("ana"))'), 'ok'],
-  ['Pair.first is a property, not a call', wrap('  val p = Pair(1, 2)\n  println(p.first)'), 'ok'],
+  ['Pair.first is a property, not a call', wrap('  val p = Pair(1, 2)\n  println(p.first)'), 'ok'],  // --- a when branch without its arrow
+  ['when branch with - instead of ->', wrap('  val score = 85\n  when (score) {\n    in 90..100 -> println("A")\n    in 80..89 - println("B")\n    else -> println("F")\n  }'), 'error'],
+  ['when branch with no arrow at all', wrap('  val n = 2\n  val s = when (n) {\n    1 -> "one"\n    2 "two"\n    else -> "many"\n  }\n  println(s)'), 'error'],
+  ['when branches with block bodies', wrap('  val n = 2\n  when (n) {\n    1 -> {\n      println("one")\n      println("1")\n    }\n    else -> {\n      println("other")\n    }\n  }'), 'ok'],
+  ['when branch result on the next line', wrap('  val n = 2\n  when (n) {\n    1 ->\n      println("one")\n    else ->\n      println("other")\n  }'), 'ok'],
+  ['when conditions split across lines', wrap('  val n = 2\n  when (n) {\n    1,\n    2 -> println("small")\n    else -> println("big")\n  }'), 'ok'],
+  ['subject-less when', wrap('  val n = 2\n  when {\n    n < 0 -> println("neg")\n    n == 0 -> println("zero")\n    else -> println("pos")\n  }'), 'ok'],
 ];
 
 (async () => {

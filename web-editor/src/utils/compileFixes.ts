@@ -100,6 +100,14 @@ export function suggestFix(code: string, error: KotlinDiagnostic | null | undefi
     return replace(base + at, base + at + loopKeyword.length + after, '', `Remove "${loopKeyword}"`, base + at);
   }
 
+  // 1c. A when branch missing `->`: the usual slip is a lone `-` (the `>` forgotten) -> `->`.
+  if (/Expecting '->' after the when branch/.test(message)) {
+    const lineText = maskedLines[span.line];
+    const lone = /(?<![-=<>!])-(?![->=\d])\s/.exec(lineText);
+    if (!lone) return null;
+    return replace(base + lone.index, base + lone.index + 1, '->', 'Change - to -> (when branch arrow)', base + lone.index + 2);
+  }
+
   // 2. A member call on something nullable -> safe call `?.`.
   if (/only safe \(\?\.\)|safe \(\?\.\) or non-null asserted/i.test(message)) {
     const lineText = maskedLines[span.line];
