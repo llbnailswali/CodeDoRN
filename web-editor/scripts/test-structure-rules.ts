@@ -92,7 +92,11 @@ const cases: Array<[string, string, 'error' | 'ok']> = [
   ['a one-line for body', wrap('  for (n in 1..3) println(n)'), 'ok'],
   ['downTo with step, one-line body', wrap('  for (n in 10 downTo 0 step 4) println(n)'), 'ok'],
   ['vararg iterated with a one-line for', 'fun total(vararg xs: Int): Int {\n  var s = 0\n  for (x in xs) s += x\n  return s\n}\nfun main() {\n  println(total())\n  println(total(1, 2, 3))\n}', 'ok'],  ['do-while with while on the next line', wrap('  var n = 5\n  do {\n    print(n)\n  }\n  while (n < 2)\n  println()'), 'ok'],
-  ['a range check used as a value', wrap('  println(10 in 5..10)\n  println(3 !in 5..10)'), 'ok'],
+  ['a range check used as a value', wrap('  println(10 in 5..10)\n  println(3 !in 5..10)'), 'ok'],  // --- widened mistake audit
+  ['a method called without parentheses', wrap('  val name = "ana"\n  println(name.uppercase)'), 'error'],
+  ['the same method called properly', wrap('  val name = "ana"\n  println(name.uppercase())'), 'ok'],
+  ['a function reference is not a call', wrap('  val f: (String) -> String = String::uppercase\n  println(f("ana"))'), 'ok'],
+  ['Pair.first is a property, not a call', wrap('  val p = Pair(1, 2)\n  println(p.first)'), 'ok'],
 ];
 
 (async () => {

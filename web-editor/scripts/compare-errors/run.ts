@@ -11,6 +11,7 @@
  * Needs tools/kotlinc (`npm run kotlinc:fetch`). Writes <repo>/outputs/real-kotlin-compare/{report.md,results.json}.
  */
 import { execFile } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -225,23 +226,23 @@ function compare(p: Program, real: Outcome, sim: SimOutcome): { verdict: Verdict
   const programs = buildPrograms();
   console.log(`${programs.length} programs (${programs.filter((p) => p.op === 'authored-broken').length} authored broken, the rest mutants). Seed ${SEED}.`);
 
-  // The real compiler pass is the slow part, so its results are cached (keyed by the exact program set); --fresh redoes it.
-  const cacheFile = path.join(OUT_DIR, `real-cache-${SEED}-${PER_OP}-${WORLDS.join('_') || 'all'}.json`);
+  // The real compiler pass is the slow part: results are cached per program text (a hash), so only new or changed programs are compiled.
+  // --fresh ignores the cache.
+  const cacheFile = path.join(OUT_DIR, 'real-cache-by-code.json');
+  const hashOf = (code: string) => crypto.createHash('sha1').update(code).digest('hex');
+  const cache: Record<string, Outcome> = !process.argv.includes('--fresh') && fs.existsSync(cacheFile) ? JSON.parse(fs.readFileSync(cacheFile, 'utf8')) : {};
   const real = new Map<string, Outcome>();
-  if (!process.argv.includes('--fresh') && fs.existsSync(cacheFile)) {
-    const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8')) as [string, Outcome][];
-    if (cached.length === programs.length) { for (const [k, v] of cached) real.set(k, v); console.log(`Using cached real-kotlinc results (${cacheFile}).`); }
-  }
-  if (!real.size) {
-    console.log('Running the real Kotlin compiler...');
-    for (let i = 0; i < programs.length; i += CHUNK) {
-      await realChunk(programs.slice(i, i + CHUNK), real);
-      console.log(`  kotlinc ${Math.min(i + CHUNK, programs.length)}/${programs.length}`);
-    }
+  for (const p of programs) { const c = cache[hashOf(p.code)]; if (c) real.set(p.id, c); }
+  const todo = programs.filter((p) => !real.has(p.id));
+  console.log(`Real kotlinc: ${programs.length - todo.length} cached, ${todo.length} to compile.`);
+  for (let i = 0; i < todo.length; i += CHUNK) {
+    const chunk = todo.slice(i, i + CHUNK);
+    await realChunk(chunk, real);
+    for (const p of chunk) { const r = real.get(p.id); if (r) cache[hashOf(p.code)] = r; }
     fs.mkdirSync(OUT_DIR, { recursive: true });
-    fs.writeFileSync(cacheFile, JSON.stringify([...real]));
+    fs.writeFileSync(cacheFile, JSON.stringify(cache));
+    console.log(`  kotlinc ${Math.min(i + CHUNK, todo.length)}/${todo.length}`);
   }
-
   console.log('Running the simulator...');
   const rows: { p: Program; real: Outcome; sim: SimOutcome; verdict: Verdict; detail: string }[] = [];
   let n = 0;

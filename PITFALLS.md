@@ -2846,3 +2846,9 @@ declaration line for an expression body or getter (no statement to mark), restor
 the caller's line, not the last line inside findUser), and tags a thrown error once with the innermost line. `__kt_line` is excluded from
 receiver-member rewriting (otherwise `apply { }` / extension bodies turn it into `this.__kt_line`). Pinned by `npm run test:runtime-lines`
 (15 cases, each checked against the first `Main.kt:N` frame of real kotlinc's stack trace) and by the comparison's `runtime-line-differs`.
+
+### Deliberately lenient: the kotlinx.coroutines import
+
+Real Kotlin rejects `runBlocking`/`launch`/`delay` without `import kotlinx.coroutines.*`; the simulator does not. A rule for it was tried
+and removed: Explore cards are fragments that rely on an implied import (the real-kotlinc checker adds it), so the rule broke their Try it.
+The comparison's `remove-import` mistake type keeps measuring this gap (68% agreement).

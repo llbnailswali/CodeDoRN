@@ -127,7 +127,7 @@ export function checkStructureRules(code: string): KotlinDiagnostic | null {
     }
   }
 
-  return topLevelStatement(code, masked, tokens) ?? nonBooleanCondition(code, masked, tokens) ?? assignedLiteralMismatch(code, masked, tokens) ?? conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
+  return callWithoutParentheses(code, masked, tokens) ?? topLevelStatement(code, masked, tokens) ?? nonBooleanCondition(code, masked, tokens) ?? assignedLiteralMismatch(code, masked, tokens) ?? conflictingInterfaceDefaults(code, masked, tokens) ?? extensionPropertyInitializer(code, masked, tokens) ?? whenNotExhaustive(code, masked, tokens) ?? valReassigned(code, masked, tokens) ?? literalMismatch(code, masked, tokens) ?? variableExpected(code, masked, tokens) ?? statementsOnOneLine(code, masked, tokens) ?? whenWithoutElse(code, masked, tokens) ?? unresolvedTypo(code, masked, tokens);
 }
 
 /** True when the `if` at `i` (an `if (cond) body [else ...]` chain) ends in an `else` that is not itself another `if`. */
@@ -657,6 +657,23 @@ function assignedLiteralMismatch(code: string, masked: string, tokens: SourceTok
     const want = declared.get(t.text)!;
     const fits = k === want || (want === 'Long' && k === 'Int') || (want === 'Double' && k === 'Double');
     if (!fits) return diagnostic(code, masked, value, `Assignment type mismatch: actual type is ${k}, but ${want} was expected.`);
+  }
+  return null;
+}
+
+/** Standard functions (not properties) that learners call without `()`: `name.uppercase` is "Function invocation 'uppercase()' expected". */
+const ZERO_ARG_FUNCTIONS = new Set(['uppercase', 'lowercase', 'trim', 'reversed', 'sorted', 'sortedDescending', 'toInt', 'toDouble', 'toLong', 'toString', 'isEmpty', 'isNotEmpty', 'isBlank', 'isNotBlank', 'last', 'sum', 'toList', 'toMutableList', 'toSet', 'distinct', 'shuffled', 'average', 'trimStart', 'trimEnd', 'capitalize']);
+
+function callWithoutParentheses(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
+  // A user declaration with the same name (a property `val last`, or an extension property) makes the bare name legitimate.
+  const declared = new Set([...masked.matchAll(/\b(?:val|var)\s+(?:[A-Z]\w*(?:<[^>]*>)?\.)?([a-zA-Z_]\w*)/g)].map((m) => m[1]));
+  for (let i = 1; i + 1 < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.kind !== 'word' || !ZERO_ARG_FUNCTIONS.has(t.text) || declared.has(t.text)) continue;
+    if (tokens[i - 1].text !== '.' || (i > 1 && tokens[i - 2].text === ':')) continue; // `::uppercase` is a reference
+    const next = tokens[i + 1];
+    if (next.text === '(' || next.text === '{' || next.text === '<') continue;
+    return diagnostic(code, masked, t, `Function invocation '${t.text}()' expected.`);
   }
   return null;
 }

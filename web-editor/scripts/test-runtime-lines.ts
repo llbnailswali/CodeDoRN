@@ -17,8 +17,7 @@ const cases: [string, string, number][] = [
   ['inside an expression-bodied function', 'fun withTax(price: Int, percent: Int) = price + price * 10 / percent\n\nfun main() {\n  println(withTax(100, 5))\n  println(withTax(100, 0))\n}', 1],
   ['inside a getter', 'class Sensor(val celsius: Int, val scale: Int) {\n  val ratio: Int\n    get() = celsius / scale\n}\n\nfun main() {\n  println(Sensor(20, 0).ratio)\n}', 3],
   ['inside an override method', 'open class Policy {\n  open fun apply(price: Int) = price\n}\nclass Split(val parts: Int) : Policy() {\n  override fun apply(price: Int) = price / parts\n}\n\nfun main() {\n  println(Split(0).apply(10))\n}', 5],
-  ['after i++ in a loop', 'fun main() {\n  var i = 1\n  var total = 0\n  while (i <= 3) {\n    val current = i\n    i++\n    if (current % 0 == 0) {\n      continue\n    }\n    total += current\n  }\n  println(total)\n}', 7],
-];
+  ['after i++ in a loop', 'fun main() {\n  var i = 1\n  var total = 0\n  while (i <= 3) {\n    val current = i\n    i++\n    if (current % 0 == 0) {\n      continue\n    }\n    total += current\n  }\n  println(total)\n}', 7],];
 
 (async () => {
   let realUp = true;

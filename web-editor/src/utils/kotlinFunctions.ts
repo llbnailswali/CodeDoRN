@@ -1501,7 +1501,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           if (crossed.some(f => !f.inline)) fail('Non-local return is only allowed in an inline lambda (not noinline or crossinline)', i);
         }
         let end = newline(start - 1, start) ? start : expressionEnd(start, b);
-        const actual = infer(start, end, ctx); check(target.result, actual, i);
+        const actual = infer(start, end, ctx); check(target.result, actual, start < end ? start : i); // kotlinc marks the returned expression
         const value = start < end ? lower(start, end, ctx, target.result) : 'undefined';
         if (target === ctx.frames.at(-1) && target.kind === 'function') emit(i, end, `return ${value}`);
         else { target.used = true; emit(i, end, `throw { __kt_target: ${target.token}, value: ${value} }`); }

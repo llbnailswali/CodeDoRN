@@ -1,10 +1,10 @@
 {
  "authored-broken": {
   "total": 291,
-  "agree": 263,
+  "agree": 265,
   "false-accept": 6,
   "output-differs": 6,
-  "compile-line-differs": 4,
+  "compile-line-differs": 2,
   "compile-token-differs": 5,
   "extra-runtime": 6,
   "exception-differs": 1
@@ -23,16 +23,16 @@
  },
  "typo-identifier": {
   "total": 120,
-  "agree": 114,
+  "agree": 113,
   "false-accept": 3,
-  "compile-line-differs": 1,
+  "compile-line-differs": 2,
   "compile-token-differs": 2
  },
  "typo-builtin": {
   "total": 120,
-  "agree": 114,
+  "agree": 111,
   "false-accept": 5,
-  "compile-line-differs": 1
+  "compile-line-differs": 4
  },
  "var-to-val": {
   "total": 120,
@@ -113,9 +113,44 @@
   "agree": 28,
   "compile-line-differs": 4
  },
+ "wrong-argument-type": {
+  "total": 70,
+  "agree": 64,
+  "false-accept": 5,
+  "compile-line-differs": 1
+ },
+ "wrong-return-type": {
+  "total": 80,
+  "agree": 50,
+  "false-accept": 30
+ },
+ "private-access": {
+  "total": 45,
+  "agree": 31,
+  "false-accept": 14
+ },
+ "remove-import": {
+  "total": 44,
+  "agree": 30,
+  "missed-runtime": 1,
+  "false-accept": 13
+ },
+ "loop-variable-after-loop": {
+  "total": 80,
+  "agree": 80
+ },
+ "generic-type-argument": {
+  "total": 2,
+  "false-accept": 2
+ },
+ "call-without-parentheses": {
+  "total": 59,
+  "false-accept": 8,
+  "agree": 51
+ },
  "remove-open": {
   "total": 15,
-  "agree": 9,
-  "compile-token-differs": 6
+  "compile-token-differs": 6,
+  "agree": 9
  }
 }

@@ -150,6 +150,79 @@ export const OPERATORS: Operator[] = [
   },
   { name: 'index-out-of-bounds', describe: 'index far past the end', edits: (c, m) => all(m, /\[(\d+)\]/).map((x) => ({ start: x.index! + 1, end: x.index! + 1 + x[1].length, text: '99', desc: `[${x[1]}] -> [99]` })) },
   { name: 'remove-override', describe: 'forget override', edits: (c, m) => all(m, /\boverride\s+/).map((x) => del(x.index!, x.index! + x[0].length, 'delete override')) },
+  {
+    name: 'wrong-argument-type',
+    describe: 'pass a text argument where a number is expected (or the reverse) to a declared function',
+    edits: (c, m) => {
+      const fns = new Set([...m.matchAll(/\bfun\s+([A-Za-z_]\w*)\s*\(/g)].map((x) => x[1]));
+      const out: Edit[] = [];
+      for (const x of all(m, /\b([A-Za-z_]\w*)\s*\(/)) {
+        if (!fns.has(x[1]) || /\bfun\s+$/.test(m.slice(0, x.index!)) || x[1] === 'main') continue;
+        const open = x.index! + x[0].length - 1;
+        const close = matchingParen(m, open);
+        if (close < 0) continue;
+        const firstEnd = topLevelCommas(m, open, close)[0] ?? close;
+        const arg = c.slice(open + 1, firstEnd).trim();
+        const at = c.indexOf(arg, open + 1);
+        if (/^-?\d+$/.test(arg)) out.push({ start: at, end: at + arg.length, text: `"${arg}"`, desc: `${x[1]}(${arg}) -> ${x[1]}("${arg}")` });
+        else if (/^"[^"$]*"$/.test(arg)) out.push({ start: at, end: at + arg.length, text: '42', desc: `${x[1]}(${arg}) -> ${x[1]}(42)` });
+      }
+      return out;
+    },
+  },
+  {
+    name: 'wrong-return-type',
+    describe: 'declare the wrong return type on a function',
+    edits: (c, m) => all(m, /\bfun\s+[A-Za-z_]\w*\s*\([^)]*\)\s*:\s*(Int|String|Boolean|Double)\b/).map((x) => {
+      const to = ({ Int: 'String', String: 'Int', Boolean: 'Int', Double: 'String' } as Record<string, string>)[x[1]];
+      const at = x.index! + x[0].lastIndexOf(x[1]);
+      return { start: at, end: at + x[1].length, text: to, desc: `returns ${x[1]} -> ${to}` };
+    }),
+  },
+  {
+    name: 'private-access',
+    describe: 'make a property private that is read from outside the class',
+    edits: (c, m) => {
+      const out: Edit[] = [];
+      for (const x of all(m, /\b(class\s+[A-Z]\w*\s*\(\s*)(val|var)\s+([a-z]\w*)/)) {
+        if (!new RegExp(`\\.${x[3]}\\b`).test(m.slice(x.index! + x[0].length))) continue;
+        const at = x.index! + x[1].length;
+        out.push({ start: at, end: at, text: 'private ', desc: `${x[2]} ${x[3]} -> private ${x[2]} ${x[3]}` });
+      }
+      return out;
+    },
+  },
+  { name: 'remove-import', describe: 'forget an import', edits: (c, m) => all(m, /^import\s+[^\n]+\n/m).map((x) => del(x.index!, x.index! + x[0].length, `delete ${x[0].trim()}`)) },
+  {
+    name: 'loop-variable-after-loop',
+    describe: 'use a for-loop variable after the loop has ended',
+    edits: (c, m) => {
+      const out: Edit[] = [];
+      for (const x of all(m, /\bfor\s*\(\s*([a-z]\w*)\s+in\b[^)]*\)\s*\{/)) {
+        let depth = 0;
+        let close = -1;
+        for (let k = x.index! + x[0].length - 1; k < m.length; k++) { if (m[k] === '{') depth++; else if (m[k] === '}' && --depth === 0) { close = k; break; } }
+        if (close < 0) continue;
+        const indent = /[^\S\n]*$/.exec(m.slice(0, x.index!))?.[0] ?? '';
+        out.push({ start: close + 1, end: close + 1, text: `\n${indent}println(${x[1]})`, desc: `println(${x[1]}) after the loop` });
+      }
+      return out;
+    },
+  },
+  {
+    name: 'generic-type-argument',
+    describe: 'declare a list with the wrong element type',
+    edits: (c, m) => all(m, /:\s*(?:Mutable)?List<(Int|String|Double)>\s*=/).map((x) => {
+      const to = ({ Int: 'String', String: 'Int', Double: 'String' } as Record<string, string>)[x[1]];
+      const at = x.index! + x[0].indexOf(x[1]);
+      return { start: at, end: at + x[1].length, text: to, desc: `List<${x[1]}> -> List<${to}>` };
+    }),
+  },
+  {
+    name: 'call-without-parentheses',
+    describe: 'call a method without its parentheses',
+    edits: (c, m) => all(m, /\.(uppercase|lowercase|trim|reversed|sorted|toInt|toDouble|toString|isEmpty|first|last|size\b)\(\)/).filter((x) => x[1] !== 'size').map((x) => del(x.index! + x[0].length - 2, x.index! + x[0].length, `.${x[1]}() -> .${x[1]}`)),
+  },
   { name: 'remove-open', describe: 'forget open on a class or member', edits: (c, m) => all(m, /\bopen\s+(?=class|fun|val|var)/).map((x) => del(x.index!, x.index! + x[0].length, 'delete open')) },
 ];
 

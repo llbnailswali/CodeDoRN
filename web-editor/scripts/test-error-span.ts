@@ -10,6 +10,7 @@ const cases: Array<[string, string, { text: string; exact: boolean } | null]> = 
   ['wrong initializer type', 'fun main() {\n  val x: Int = "hi"\n  println(x)\n}', { text: '"hi"', exact: true }],
   ['unresolved name (was a runtime ReferenceError)', 'fun main() {\n  val x = 5\n  println(y + 1)\n}', { text: 'y', exact: true }],
   ['unresolved name ignores the same word in a string', 'fun main() {\n  println("foo")\n  println(foo)\n}', { text: 'foo', exact: true }],
+  ['a loop variable used after its loop is marked where it is used', 'fun main() {\n  for (i in 1..2) {\n    println(i)\n  }\n  println(i)\n}', { text: 'i', exact: true }],
   ['mutating call on a read-only list', 'fun main() {\n  val a = listOf(1)\n  a.add(2)\n}', { text: 'add', exact: true }],
   ['unsafe call on a nullable receiver', 'fun main() {\n  val s: String? = null\n  println(s.length)\n}', { text: 's', exact: true }],
   ['wrong argument type', 'fun greet(name: String) = "Hi " + name\nfun main() {\n  println(greet(5))\n}', null],

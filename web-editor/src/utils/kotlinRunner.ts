@@ -4095,7 +4095,8 @@ export async function compileAndRunKotlin(
     if (undefinedName) {
       const maskedLines = maskStringsAndComments(code).split('\n');
       const nameRe = new RegExp(`(?<!\\w)${undefinedName}(?!\\w)`);
-      const at = maskedLines.findIndex((l) => nameRe.test(l));
+      // Prefer the line that was running (line markers); fall back to the first line that mentions the name.
+      const at = line > 0 ? line - 1 : maskedLines.findIndex((l) => nameRe.test(l));
       if (at >= 0) {
         return {
           success: false,
