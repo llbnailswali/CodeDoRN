@@ -64,6 +64,10 @@ export class KotlinList extends ArrayBase {
   }
   distinct() { const result = new KotlinList(); for (const v of this) if (!result.some((x: any) => equal(x, v))) result.push(v); return result; }
   distinctBy(fn: any) { const keys: any[] = []; return this.filter((v: any) => { const k = fn(v); if (keys.some(x => equal(x, k))) return false; keys.push(k); return true; }); }
+  foldRight(initial: any, fn: any) { let acc = initial; for (let i = this.length - 1; i >= 0; i--) acc = fn(this[i], acc); return acc; }
+  reduceRight(fn: any) { if (!this.length) throw kotlinError('UnsupportedOperationException', "Empty list can't be reduced."); let acc = this[this.length - 1]; for (let i = this.length - 2; i >= 0; i--) acc = fn(this[i], acc); return acc; }
+  foldIndexed(initial: any, fn: any) { let acc = initial; for (let i = 0; i < this.length; i++) acc = fn(i, acc, this[i]); return acc; }
+  reduceIndexed(fn: any) { if (!this.length) throw kotlinError('UnsupportedOperationException', "Empty list can't be reduced."); let acc = this[0]; for (let i = 1; i < this.length; i++) acc = fn(i, acc, this[i]); return acc; }
   forEachIndexed(fn: any) { let i = 0; for (const v of this) fn(i++, v); }
   mapIndexed(fn: any) { return new KotlinList(Array.from(this).map((v: any, i: number) => fn(i, v))); }
   mapIndexedNotNull(fn: any) { return this.mapIndexed(fn).filter((v: any) => v != null); }

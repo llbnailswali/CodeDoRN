@@ -283,3 +283,17 @@ Answers verified only by hand (the engine cannot reject them): `syntax-5` (a `pr
 | 12 | hard | predict_output | Syntax & main(), Int & Long, Boolean, print/println, Strings (escape) |
 
 Every lesson of the world is used at least once. Simulator blind spots (the key follows real kotlinc): in 7 the simulator does not flag `val views: Int = 5_000_000_000`; in 10 it does not tell a Char from a String; in the fill-blank of 2, `size` and `count()` are accepted by the simulator but rejected by kotlinc, so those chips were replaced by `len`, `chars` and `length()`.
+
+## Audit findings and evidence (content audit, 2026-10-11)
+
+All 147 questions were read one by one (135 lesson and set questions plus the 12 Boss questions audited earlier). 134 executable programs were run through real kotlinc 2.0.21 (predictions, compile errors and their lines, fill-in chips, code comparisons), and every multi-select and single-choice fact was checked option by option (types, ranges, templates, Char versus String, comment forms).
+
+- **Fixed: reversed explanations (4).** The answer key was right but the explanation described the other program in `w1q-comments-4`, `w1q-bool-9`, `w1q-string-7` and `w1q-string-11`.
+- **Fixed: wrong claim in a key.** `w1q-syntax-6` said a program needs curly braces around its body, but `fun main() = println("ok")` compiles. It now asks what a program can run without (println, a class, a variable) and keeps `main` as the required part.
+- **Fixed: "error" that compiles.** `w1q-print-9` keyed a `println` that compiles fine (wrong layout, not an error). It is now a multi-select on which calls end the line (`println("Hi")`, `println()`), confirmed by running each.
+- **Fixed: duplicate facts and trivial "hard".** `bool-6` repeated `bool-3` (which Boolean declaration compiles); it is now a find-the-error on comparing a Boolean with a String. `float-4` repeated `float-1`; it now tests that Float is less precise than Double. `setnum-2` repeated the 8_000_000_000L comparison of two Boss questions; it now tests a decimal boundary (`rate >= 2.5`). `valvar-10` was a trivial sum; it now shows that a val keeps the value it was given.
+- **Added 2 questions** to `kotlin-syntax` (6 to 8): statements run top to bottom (`syntax-7`) and a missing closing quote (`syntax-8`), both covered by the lesson text.
+- **Known mismatch (not changed):** `w1q-setstart-3` keys the line where a block comment opens, but kotlinc reports an unclosed comment at the end of the program. The keyed line is the one a learner can act on.
+- **Polish (done):** `w1q-what-5` repeated the Java-interoperability fact of `what-2` and `what-6`; it now asks where Kotlin runs for backend code (the JVM), a fact the lesson teaches. The most repeated prompts were varied ("What will this code print?" 43 times is now spread over three wordings; "Tap the line that contains an error." is alternated with "Tap the line that does not compile.").
+- **Open (content):** `what-is-kotlin` and `comments` have 6 questions each; the first is mostly facts, and no missing common feature was found in `comments`. Predict-the-output is 34%, within the guideline.
+- **Open (display):** no phone-width screenshot review has been done.

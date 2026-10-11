@@ -189,7 +189,7 @@ const STANDARD_TYPES = new Set(['String', 'Strings', 'Int', 'Long', 'Short', 'By
 
 const BARE_BUILTINS = ['println', 'print', 'readln', 'readLine', 'listOf', 'mutableListOf', 'arrayOf', 'intArrayOf', 'setOf', 'mutableSetOf', 'mapOf',
   'mutableMapOf', 'emptyList', 'emptyMap', 'emptySet', 'maxOf', 'minOf', 'repeat', 'require', 'check', 'error', 'buildString', 'sequenceOf',
-  'generateSequence', 'runBlocking', 'launch', 'delay', 'coroutineScope', 'supervisorScope', 'withContext', 'arrayListOf', 'hashMapOf'];
+  'generateSequence', 'runBlocking', 'launch', 'delay', 'coroutineScope', 'supervisorScope', 'withContext', 'arrayListOf', 'hashMapOf', 'lazy', 'lazyOf', 'also', 'apply', 'takeIf', 'takeUnless'];
 
 /**
  * A name that is not declared anywhere but is one typo away from a name that is: `val qauntity = 1 ... quantity`. Real Kotlin rejects the

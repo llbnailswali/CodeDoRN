@@ -53,3 +53,24 @@ All 12 questions use one story: the Grade & Eligibility System (scores, grade ba
 | 12 | hard | predict_output | when range expression, nested else-if chain, `is` with `&&`, var |
 
 Every lesson is used at least once: if (1, 5), if-else (1, 2, 7, 8), else-if (4, 5, 12), when (3, 11), when with ranges (3, 8, 9, 11, 12), when as an expression (3, 8, 12), multiple and nested conditions (2, 4, 6, 12), type checks with `is` (9, 10, 12). No loops, lists or functions are used (later worlds).
+
+## Audit findings and evidence (content audit, 2026-10-11)
+
+All 88 questions were read one by one (76 lesson/set questions plus the 12 Boss questions audited earlier). Every executable question (67 programs) was run through real kotlinc 2.0.21, and the fragment-style comparisons and fill-in questions (calls or conditions without declarations) were verified by hand with the declarations added, including truth tables for the AND/OR comparisons.
+
+- **Fixed: wrong explanation.** `w3q-types-7` said `item == String` "cannot compare an Any value to the String type". It compiles; it compares `item` with the String companion object, never matches text, and prints nothing. The key (`is`) was right; the explanation is fixed.
+- **Fixed: "find the error" keyed the wrong line.** `w3q-expression-7` keyed the `200 -> "OK"` branch, but kotlinc reports the non-exhaustive `when` on the `val label = when (code) {` line. The key now points there.
+- **Fixed: code shown as an answer option.** `w3q-set-wh-1` listed the `when` expression itself as one of its four options. It is now a predict-the-output question with the code shown.
+- **Fixed: duplicate scenarios.** `set-br-3` repeated the code of `elseif-8`; `elseif-7` repeated the "broad condition first" idea of `elseif-3`; `set-co-1` repeated `types-8`; `set-co-3` repeated `nested-8`; `set-wh-4` and `expression-8` repeated the 90/80 grade snippet used by several other questions; `expression-5` and `ranges-5` repeated facts already asked (the `else` branch, the `in` operator). Each now has its own scenario (boundary at 25 degrees, a range check inside a chain, OR with type checks, neither-String-nor-Int AND/OR, temperature bands, Int results of a `when`, comma values in a `when` expression, a range that includes 70 but not 80).
+- **Fixed: easy "hard" and a trivial one.** `ifelse-8` now tests the `>` boundary (n = 5); `elseif-7` and `expression-8` need a combined condition or an extra step.
+- **Fixed: true/false skew.** 7 of 8 were true. Three are now false statements (`ifelse-1`, `when-1`, `ranges-1`), so it is 4 true / 4 false.
+- **Fixed: wording and explanations.** `nested-1` showed the broken chip ``using && is``; `set-co-4` had a garbled explanation ("not String and not !is Int").
+- **Open (content):** 25 questions open with "What does this code print?". The "if" and "when with ranges" lessons have only 8 questions each. Predict-the-output is 45% overall.
+- **Open (display):** no phone-width screenshot review has been done.
+
+### Polish pass (2026-10-11, after the audit)
+
+- **Added 5 questions** so the thin lessons reach the usual 2 easy / 5 medium / 3 hard: `w3q-if-9` (which values can be an `if` condition, multi-select), `w3q-if-10` (braces group the `if` body, comparison), `w3q-ranges-9` (a range with variable bounds, fill-in), `w3q-nested-9` (`&` is not logical AND, find the error), `w3q-nested-10` (precedence and negation, multi-select). Real kotlinc confirmed every option, chip and compile error. World 3 now has 94 questions (82 lesson and set, 12 Boss).
+- **Converted** `w3q-elseif-6` (the final `else` of a chain) into a fill-in question, `w3q-expression-3` into a multi-select (when-expression facts) and `w3q-expression-6` into a single-choice question (valid `when` syntax), because `when-as-an-expression` was 8 of 12 predictions. Real kotlinc confirmed every option.
+- **Predict-the-output share is 42%** (over the 40% soft guideline). Left as is on purpose: these lessons teach tracing decisions, and each remaining prediction covers a distinct branch, boundary or ordering case. Further conversions would repeat facts already asked by single-choice questions (for example the `else` keyword and the `->` arrow).
+- **Not changed:** 25 questions still open with "What does this code print?" (style only).

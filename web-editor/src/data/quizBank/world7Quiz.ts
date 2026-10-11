@@ -77,7 +77,8 @@ const lessonQuestions: QuizQuestion[] = lessons.flatMap((row, index) => {
     ['val names: List<String>? = null','println(names[0])'],
     ['val name: String? = null','val length: Int = name?.length'],
   ][index];
-  const errorLine = index === 1 ? 1 : index === 3 ? 2 : index === 6 ? 3 : 1;
+  // Index into the program() lines, so +1 for `fun main() {`: the line the compiler reports (checked with real kotlinc).
+  const errorLine = [1, 2, 2, 3, 2, 2, 4, 2, 2, 2][index];
   const compareA = index === 0 ? ['val label: String? = null','println(label ?: "No label")']
     : index === 1 ? ['var label: String? = null','label = "Ready"','println(label)']
     : index === 2 ? ['val title: String? = null','println(title?.length)']
@@ -166,16 +167,52 @@ const lessonQuestions: QuizQuestion[] = lessons.flatMap((row, index) => {
     { prompt:'Which type allows list items to be null while the list itself is present?', right:'List<String?>', wrong:['List<String>?','String?','List<String>'] },
     { prompt:'If name is null, what happens to `name?.uppercase()?.length`?', right:'It evaluates to null without calling uppercase().', wrong:['It throws before reaching length.','It evaluates to 0.','It calls uppercase() on the text "null".'] },
   ][index];
+  const truths: ReadonlyArray<readonly [string, boolean, string]> = [
+    ['A nullable `String` can contain an empty `String`, which is different from `null`.', true, 'An empty String "" is a real value with length 0. A String? can hold it or null, and the two are not the same.'],
+    ['A `val` variable can be reassigned after it is initialized.', false, 'A val is assigned once. Only a var can be reassigned, even when its type is nullable.'],
+    ['A safe call on a `null` receiver returns `null`.', true, 'name?.length skips the call when name is null and evaluates to null instead of throwing.'],
+    ['Elvis always evaluates to its right side.', false, 'Elvis uses the right side only when the left side is null; a non-null left value is kept.'],
+    ['Using `!!` on `null` throws at runtime.', true, '!! asserts that the value is not null, so a null value throws an exception when the line runs.'],
+    ['The `== null` branch runs when the value is absent.', true, 'A check such as name == null is true only when the value is missing, so that branch handles the absent case.'],
+    ['Kotlin can smart-cast any `var` after a null check, even if it changes later.', false, 'A smart cast needs a value that cannot change between the check and the use, such as a stable val. A var that may change is not smart-cast.'],
+    ['A failed `as?` cast returns `null`.', true, 'as? returns null instead of throwing when the value is not of the requested type.'],
+    ['In `List<String?>`, list elements may be `null`.', true, 'The question mark is on String, so each element may be null while the list itself is an ordinary List.'],
+    ['A `null` result in a safe-call chain still runs the remaining calls.', false, 'After a safe call yields null, the later ?. calls are skipped and the whole chain evaluates to null.'],
+  ];
+  const behaviourExplain = [
+    'To allow a missing label the type must be nullable, so String? is the syntax. A plain String cannot hold null.',
+    'A var can be reassigned, and String? lets it start as null, so a var of type String? can later hold text.',
+    'The safe call ?. reads length only when the value is present and gives null otherwise.',
+    'Elvis ?: shows a default for missing text: its right side is used only when the left side is null.',
+    '!! asserts that known-present text really is non-null; it throws if the value turns out to be null.',
+    'A == null check separates a missing name from a present one by branching on null.',
+    'After a != null check, Kotlin smart-casts a stable val, so its length can be used safely.',
+    'as? tries the cast without throwing: it returns the converted value or null.',
+    'List<String?> allows a missing item: each element may be null.',
+    'A ?. chain stops safely at the first null and returns null, so no later access can crash.',
+  ];
+  const compareExplain = [
+    'Program A supplies "No label" with Elvis when label is null. Program B uses !!, which throws when label is null.',
+    'Program A declares label with var, so it can be reassigned. Program B tries to reassign a val, which does not compile.',
+    'Program A uses ?. so a null title gives null. Program B reads title.length directly on a nullable value, which does not compile.',
+    'Program A uses Elvis to give a Guest fallback. Program B uses !!, which throws for a null title.',
+    'Program A uses a safe call with a fallback of 0. Program B uses !! on null, which throws.',
+    'Program A reads length only in the else branch, where name is known to be non-null. Program B reads name.length on a nullable value, which does not compile.',
+    'Program A checks a stable val, so note.length is smart-cast. In Program B the var is set to null after the check, so it is no longer smart-cast and the access does not compile.',
+    'Program A uses as?, which returns null if the type does not match. Program B uses as on an Int, which throws a ClassCastException.',
+    'Program A prints null: only the element is nullable and the list exists. Program B asserts a null list with !!, which throws.',
+    'Program A uses a safe call and an Elvis fallback, so null gives 0. Program B uses !!, which throws on null.',
+  ];
   return [
     mk(1,'easy',`${topic} syntax`,lessonPrompt,explanation,'Look at the type marker or operator that represents this rule.','single_choice',{...choose(choices[0],choices.slice(1)),monoOptions:true}),
-    mk(2,'easy',`${topic} rule`,`True or false: ${[ 'A nullable String can contain an empty String, which is different from null.','A val variable can be reassigned after it is initialized.','A safe call on a null receiver returns null.','Elvis uses its right side when the left side is null.','Using !! on null throws at runtime.','The == null branch runs when the value is absent.','A stable val can be smart-cast after a successful null check.','A failed as? cast returns null.','In List<String?>, list elements may be null.','A null result in a safe-call chain skips the remaining calls.' ][index]}`,explanation,'Decide whether the statement matches Kotlin null-safety behavior.','true_false',{answer:true}),
+    mk(2,'easy',`${topic} rule`,truths[index][0],truths[index][2],'Decide whether the statement matches Kotlin null-safety behavior.','true_false',{answer:truths[index][1]}),
     mk(3,'medium',`${topic} trace`,index === 0 ? 'Does this program print true or false?' : 'What does this program print?',lessonCases[index].explain,'Trace the declared value and the null-safety operation.', 'predict_output',{...choose(lessonCases[index].out,[...lessonCases[index].wrong,'""']),code:program(lessonCases[index].outCode),monoOptions:true}),
     mk(4,'medium',`${topic} application`,application.prompt,`The correct choice follows the ${topic.toLowerCase()} rule for this specific value or task.`,'Apply the rule to the value described in the question.','single_choice',{...choose(application.right,application.wrong),monoOptions:true}),
-    mk(5,'medium',`${topic} behavior`,`A learner wants to ${[ 'allow a missing label','change a missing label to text','read length only when present','show a default for missing text','assert known-present text','separate missing from present names','use length after proving presence','try a cast without throwing','allow a missing list item','stop safely when an access is missing' ][index]}. Which syntax should they use?`,explanation,'Choose the construct whose behavior matches the goal.','single_choice',choose(syntax,wrong)),
+    mk(5,'medium',`${topic} behavior`,`A learner wants to ${[ 'allow a missing label','change a missing label to text','read length only when present','show a default for missing text','assert known-present text','separate missing from present names','use length after proving presence','try a cast without throwing','allow a missing list item','stop safely when an access is missing' ][index]}. Which syntax should they use?`,behaviourExplain[index],'Choose the construct whose behavior matches the goal.','single_choice',choose(syntax,wrong)),
     mk(6,'medium',`${topic} second trace`,'What does this different example print?',secondCases.explain,'Check the exact input value before tracing the operation.','predict_output',{...choose(secondCases.out,[...secondCases.wrong,'""']),code:program(secondCases.code),monoOptions:true}),
     mk(7,'medium',`${topic} misconception`,`Select the two correct statements about ${topic.toLowerCase()}.`,`${factPair[0]} ${factPair[1]} The other options state common null-safety mistakes.`,'Check both the value state and the type of the result.','multi_select',{options:[factPair[0],factPair[1],factPair[2],factPair[3]],answers:[0,1]}),
     mk(8,'hard',`${topic} compile-time rule`,'Tap the line that does not compile.',errorExplanation,'Check the type Kotlin knows at the marked access.','find_error',{code:program(errorCode),errorLine,errorNote:errorExplanation}),
-    mk(9,'hard',`${topic} comparison`,`Which program handles this lesson's nullable value without an unsafe access?`,'Program A handles the nullable case according to this lesson; Program B contains the corresponding unsafe or invalid operation.','Compare what happens when the value is null.','code_comparison',{a:program(compareA),b:program(compareB),answer:0}),
+    mk(9,'hard',`${topic} comparison`,`Which program handles this lesson's nullable value without an unsafe access?`,compareExplain[index],'Compare what happens when the value is null.','code_comparison',{a:program(compareA),b:program(compareB),answer:0}),
     mk(10,'hard',`${topic} edge-case reasoning`,decision.prompt,decision.explain,'Check how this exact value interacts with the lesson rule.','multi_select',{options:[...decision.good,...decision.bad],answers:[0,1]}),
   ];
 });

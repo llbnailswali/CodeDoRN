@@ -26,6 +26,22 @@ Set count follows the lesson grouping, not a fixed number. World 4's ten regular
 
 The bank includes single choice, true/false, predict output, fill blank, find error, code comparison and multi-select. Structural validation checks IDs, lesson/set ownership, answer indexes, explanations, hints and XP/difficulty consistency. The lightweight project interpreter does not yet model all loop syntax and `continue` semantics, so affected World 4 execution cases are reported as engine-unverified; the authored Kotlin and expected outputs need compiler-level review when a Kotlin compiler is available.
 
+## Audit findings and evidence
+
+Content audit completed 2026-10-11. All 116 lesson/set questions and the 12 Boss questions were read in complete dump batches. The fact-check pass inspected every single-choice option and both Boss multi-select answers option by option. No wrong answer keys were found. The mechanical scan reports no duplicate code (including code-plus-options), no duplicate explanations, no filler options, and balanced true/false keys (7 true, 7 false).
+
+Rewrites in `world4Quiz.ts`:
+
+- `w4q-prog-8`: replaced a duplicate of `w4q-prog-4` with a distinct hard stepped-range accumulation trace using a variable lower bound.
+- `w4q-down-10`: made the stepped countdown distinct from the set question and removed an unaccounted trailing space; answers now match `println` output exactly.
+- `w4q-nested-3` and `w4q-set-ctl-2`: changed to line-based output so answer choices match exact Kotlin output (including line breaks, with no hidden trailing spaces).
+- `w4q-while-8`: replaced an intentionally infinite loop with a `val` reassignment compile-error question, so no quiz requires a non-terminating program.
+- `w4q-for-1`, `w4q-while-1`, `w4q-do-1`, `w4q-range-1`, `w4q-cont-1`, `w4q-set-rng-1`, `w4q-set-ctl-1`: rewrote/rebalanced the true/false statements and keyed explanations; the former `continue` statement was malformed/tautological.
+
+Follow-up real-compiler sweep: the three misleading logic-only find-error items were rewritten as genuine compile errors (`w4q-break-7`, `w4q-cont-7`, `w4q-nested-8`), and `w4q-step-8` now explicitly says its negative step crashes at runtime. `npx tsx scripts/quiz-audit/real.ts 4` reports 91 executable cases; remaining findings are the expected runtime failure for `w4q-step-8` and comparison-fragment false alarms (call-only snippets without executable `main`). The negative-step exception is confirmed as `IllegalArgumentException: Step must be positive, was: -2.`
+
+Validation passed: `npx tsc --noEmit`, `npm run test:quiz-bank`, `npm run audit:quiz-bank`, `npx tsx scripts/quiz-audit/std-scan.ts`, and `npm run generate:native-data`. The quality scan reports 0 type/difficulty violations and 10 soft type-mix warnings in the ten lesson banks (predict-output is 43–60% per lesson). The known `w4q-range-8` flake remains unreproduced. Phone-width/visual rendering was not checked and remains for the user.
+
 ## Source files
 
 - Authored questions: `web-editor/src/data/quizBank/world4Quiz.ts`

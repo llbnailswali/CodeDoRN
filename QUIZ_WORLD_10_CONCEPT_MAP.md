@@ -77,6 +77,8 @@ The Boss should test choosing the right operation, tracing intermediate collecti
 
 ## Plain-English review
 
+Follow-up compiler sweep corrected `w10q-1-8` to mark the `it + 1` expression, which returns `Int` where `filter` requires a `Boolean`. The runtime-error questions' prompts explicitly say the line may crash when run.
+
 Reviewed wording and answer/explanation accuracy across all 90 lesson questions, 12 set questions, and 12 Boss questions. Simplified technical wording (for example, “predicate” to “test” and “accumulator” to “running total”), rewrote set-identification questions, and split long Boss explanations into shorter sentences. Phone-width rendering is intentionally not included; the user will check visuals.
 
 - `w10q-1-1`: the answer now describes what `map` does specifically; the earlier correct choice mixed the jobs of `map`, `mapNotNull`, and `filter`.

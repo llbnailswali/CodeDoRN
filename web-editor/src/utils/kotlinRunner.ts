@@ -2,7 +2,7 @@ import { checkClassMemberRules } from './kotlinClassChecks';
 import { prepareKotlinSource, scanKotlin, KotlinSourceError, NESTED_QUOTE } from './kotlinSource';
 import { hoistNestedDeclarations } from './kotlinNestedClasses';
 import { KotlinIndexedValue, KotlinList, KotlinMapEntry, KotlinPair, KotlinRange, KotlinSequence, makeRange, outOfBounds } from './kotlinCollections';
-import { installKotlinMath, installKotlinStdlib, javaDoubleToString } from './kotlinStdlib';
+import { installKotlinMath, installKotlinStdlib, javaDoubleToString, makeStructural } from './kotlinStdlib';
 import { lowerKotlinFunctions, KotlinFunctionError } from './kotlinFunctions';
 import { maskStringsAndComments } from './errorSpan';
 import { checkStructureRules } from './kotlinStructureChecks';
@@ -1566,7 +1566,26 @@ function rewriteLiteralIndexing(line: string): string {
   return out + line.slice(cursor);
 }
 
-function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'map' = 'list'): string {
+/** Variables whose class declares `operator fun get` / `set`: `m[0, 1]` calls them. Read from the source before modifiers are stripped. */
+function inferOperatorIndexVars(code: string): Set<string> {
+  const classes = new Set<string>();
+  const re = /\bclass\s+([A-Za-z_]\w*)[^{\n]*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code)) !== null) {
+    const open = m.index + m[0].length - 1;
+    let depth = 1, i = open + 1;
+    for (; i < code.length && depth > 0; i++) { if (code[i] === '{') depth++; else if (code[i] === '}') depth--; }
+    if (/\boperator\s+fun\s+(?:get|set)\b/.test(code.slice(open, i))) classes.add(m[1]);
+  }
+  const names = new Set<string>();
+  for (const cls of classes) {
+    for (const v of code.matchAll(new RegExp(`\\b(?:val|var)\\s+([A-Za-z_]\\w*)\\s*(?::\\s*${cls})?\\s*=\\s*${cls}\\s*\\(`, 'g'))) names.add(v[1]);
+    for (const v of code.matchAll(new RegExp(`\\b([A-Za-z_]\\w*)\\s*:\\s*${cls}\\b`, 'g'))) names.add(v[1]);
+  }
+  return names;
+}
+
+function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'map' | 'operator' = 'list'): string {
   for (const name of names) {
     // `this.items[i]` too: inside a class, a property is reached through `this.` after the OOP pass.
     const re = new RegExp(String.raw`(?<![\w.$])((?:this\.)?)${name}\s*\[`, 'g');
@@ -1596,17 +1615,17 @@ function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'ma
           else if (ch === ';' && depth === 0) break;
         }
         const value = rewriteIndexAccess(line.slice(valueStart, valueEnd).trim(), names, mode);
-        replacement = mode === 'map'
+        replacement = mode === 'map' || mode === 'operator'
           ? (assign[1] === '=' ? `${target}.set(${index}, ${value})` : `${target}.set(${index}, ${target}.get(${index}) ${assign[1][0]} (${value}))`)
           : (assign[1] === '=' ? `__kt_setAt(${target}, ${index}, ${value})` : `__kt_setAt(${target}, ${index}, __kt_at(${target}, ${index}) ${assign[1][0]} (${value}))`);
         end = valueEnd;
       } else if (step) {
-        replacement = mode === 'map'
+        replacement = mode === 'map' || mode === 'operator'
           ? `${target}.set(${index}, ${target}.get(${index}) ${step[1][0]} 1)`
           : `__kt_setAt(${target}, ${index}, __kt_at(${target}, ${index}) ${step[1][0]} 1)`;
         end = close + 1 + step[0].length;
       } else {
-        replacement = mode === 'map' ? `${target}.get(${index})` : `__kt_at(${target}, ${index})`;
+        replacement = mode === 'map' || mode === 'operator' ? `${target}.get(${index})` : `__kt_at(${target}, ${index})`;
         end = close + 1;
       }
       line = line.slice(0, match.index) + replacement + line.slice(end);
@@ -1679,9 +1698,55 @@ function inferMutableListVars(code: string): Set<string> {
  */
 function stripModifierKeywords(code: string): string {
   return code.replace(
-    /\b(?:(?:private|public|protected|internal|open|abstract|override|const)\s+)+(?=(?:class|val|var|fun|constructor)\b)/g,
+    /\b(?:(?:private|public|protected|internal|open|abstract|override|const|lateinit)\s+)+(?=(?:class|val|var|fun|constructor)\b)/g,
     ''
   );
+}
+
+/**
+ * Members an abstract class or interface declares (abstract functions/properties, interface defaults) and each class's supertypes, read
+ * from the ORIGINAL source before modifiers and abstract declarations are stripped. A subclass or implementer reaches them bare
+ * (`name()`, `$sides`), so they join its member set: methods as `name()`, properties as `name`.
+ */
+interface InheritedMembers { members: Map<string, Set<string>>; supers: Map<string, string[]> }
+function collectInheritedMembers(code: string): InheritedMembers {
+  const members = new Map<string, Set<string>>();
+  const supers = new Map<string, string[]>();
+  const re = /\b((?:abstract\s+|open\s+|sealed\s+|data\s+)*(?:class|interface))\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*<[^>{}]+>)?([^{\n]*)(\{)?/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code)) !== null) {
+    const [, kind, name, tail, brace] = m;
+    const clause = /:\s*(.+)$/.exec(tail.replace(/\((?:[^()]|\([^()]*\))*\)/g, ''));
+    supers.set(name, clause ? clause[1].split(',').map((t) => t.trim().replace(/<.*$/, '').replace(/\s+by\s+.*$/, '')).filter(Boolean) : []);
+    if (!brace) continue;
+    const open = m.index + m[0].length - 1;
+    let depth = 1, i = open + 1;
+    for (; i < code.length && depth > 0; i++) { if (code[i] === '{') depth++; else if (code[i] === '}') depth--; }
+    const names = new Set<string>();
+    let level = 0;
+    for (const line of code.slice(open + 1, i - 1).split('\n')) {
+      if (level === 0) {
+        const fn = /^\s*(?:(?:abstract|open|override|private|protected|internal|public)\s+)*fun\s+(?:<[^>]*>\s*)?([A-Za-z_]\w*)/.exec(line);
+        const prop = /^\s*(?:(?:abstract|open|override|private|protected|internal|public)\s+)*(?:val|var)\s+([A-Za-z_]\w*)/.exec(line);
+        if (fn && (kind.includes('interface') || /\babstract\b/.test(line) || true)) names.add(`${fn[1]}()`);
+        if (prop && (kind.includes('interface') || /\babstract\b/.test(line))) names.add(prop[1]);
+      }
+      level += (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length;
+    }
+    members.set(name, names);
+  }
+  return { members, supers };
+}
+/** Everything a class inherits from its (transitive) abstract/interface supertypes. */
+function inheritedNamesOf(info: InheritedMembers, className: string, seen = new Set<string>()): Set<string> {
+  const out = new Set<string>();
+  for (const superType of [className, ...(info.supers.get(className) ?? [])]) {
+    if (seen.has(superType)) continue;
+    seen.add(superType);
+    for (const n of info.members.get(superType) ?? []) out.add(n);
+    if (superType !== className) for (const n of inheritedNamesOf(info, superType, seen)) out.add(n);
+  }
+  return out;
 }
 
 function stripAbstractMemberDeclarations(code: string): string {
@@ -1724,9 +1789,22 @@ function splitClassMembers(bodyLines: string[]): string[][] {
  * names, and any default value. Reuses the same shape `cleanKotlinParams`
  * targets but keeps the property/name/default split explicit, since class
  * construction needs to know which params also become `this.x` fields. */
+/** Splits a parameter list at the commas that are not inside (), [], {} or <> (a type such as `Map<String, Int>`). */
+function splitParamList(text: string): string[] {
+  const parts: string[] = [];
+  let depth = 0, current = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if ('([{<'.includes(ch)) depth++;
+    else if (')]}'.includes(ch) || (ch === '>' && text[i - 1] !== '-')) depth--;
+    if (ch === ',' && depth === 0) { parts.push(current); current = ''; } else current += ch;
+  }
+  if (current.trim()) parts.push(current);
+  return parts;
+}
+
 function parseConstructorParams(paramsRaw: string): { name: string; isProperty: boolean; default?: string; type?: string }[] {
-  return paramsRaw
-    .split(',')
+  return splitParamList(paramsRaw)
     .map((p) => p.trim())
     .filter(Boolean)
     .map((p) => {
@@ -1905,7 +1983,52 @@ function transpileClassMember(rawMemberLines: string[], classProps: Set<string> 
   }
   const header = memberLines[0].trim();
 
-  const getterProp = header.match(/^(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*[a-zA-Z0-9_<>?,\s]+\s+get\(\)\s*=\s*(.+)$/);
+  // `var name: Type` with no initializer (lateinit, or assigned in `init`): the field exists, unset
+  const bareProperty = header.match(/^(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(?![^=]*\bby\b)[^=]+$/);
+  if (bareProperty && memberLines.length === 1) return { ctorLines: [`this.${bareProperty[1]} = undefined;`], methodLines: [] };
+
+  // A property whose initializer spans several lines once lowered (`val data = Array(n) { IntArray(m) }`): one assignment in the constructor.
+  const multiLineProperty = header.match(/^(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?::\s*[^=]+?)?\s*=\s*(.*)$/);
+  if (multiLineProperty && memberLines.length > 1 && !/^\s*(?:get|set)\s*\(/.test(memberLines[1])) {
+    const expression = [multiLineProperty[2], ...memberLines.slice(1)].join('\n');
+    return { ctorLines: [`this.${multiLineProperty[1]} = ${rewriteClassPropertyAccess([expression], classProps, ctorParamNames)[0]};`], methodLines: [] };
+  }
+
+  // A property with a custom setter and/or a backing `field` (`var celsius = 0.0` + `set(value) { field = ... }`): stored in a hidden
+  // `__f_name` field behind a real JS getter/setter pair, so every `obj.name` read and write goes through the accessors.
+  const accessorHeader = header.match(/^(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?::\s*[^=]+?)?\s*(?:=\s*(.+))?$/);
+  if (accessorHeader && memberLines.length > 1) {
+    const rest = memberLines.slice(1).join('\n');
+    const hasSetter = /^\s*set\s*\(/m.test(rest);
+    const initializer = accessorHeader[2];
+    if (hasSetter || (initializer !== undefined && /^\s*get\s*\(/m.test(rest))) {
+      const name = accessorHeader[1];
+      const field = `this.__f_${name}`;
+      const accessors: { kind: 'get' | 'set'; param?: string; expr?: string; block?: string }[] = [];
+      const re = /\b(get\s*\(\s*\)|set\s*\(\s*(\w*)\s*\))\s*(?:=\s*([^\n]+)|\{)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(rest)) !== null) {
+        const kind = m[1].startsWith('get') ? 'get' : 'set';
+        if (m[3] !== undefined) { accessors.push({ kind, param: m[2], expr: m[3].trim() }); continue; }
+        const open = m.index + m[0].length - 1;
+        let depth = 1, i = open + 1;
+        for (; i < rest.length && depth > 0; i++) { if (rest[i] === '{') depth++; else if (rest[i] === '}') depth--; }
+        accessors.push({ kind, param: m[2], block: rest.slice(open + 1, i - 1) });
+        re.lastIndex = i;
+      }
+      const body = (a: { expr?: string; block?: string }, params: Set<string>) => rewriteClassPropertyAccess((a.block ?? a.expr ?? '').replace(/\bfield\b/g, field).split('\n'), classProps, params);
+      const getter = accessors.find((a) => a.kind === 'get');
+      const setter = accessors.find((a) => a.kind === 'set');
+      const methodLines: string[] = [];
+      if (getter?.block !== undefined) methodLines.push(`  get ${name}() {`, ...body(getter, new Set()), '  }');
+      else methodLines.push(`  get ${name}() { return ${getter?.expr !== undefined ? body(getter, new Set())[0] : field}; }`);
+      if (setter) methodLines.push(`  set ${name}(${setter.param || 'value'}) {`, ...(setter.block !== undefined ? body(setter, new Set([setter.param || 'value'])) : [`${field} = ${body(setter, new Set([setter.param || 'value'])).join('\n')};`]), '  }');
+      else if (header.startsWith('var')) methodLines.push(`  set ${name}(value) { ${field} = value; }`);
+      return { ctorLines: initializer !== undefined ? [`${field} = ${rewriteClassPropertyAccess([initializer], classProps, ctorParamNames)[0]};`] : [], methodLines };
+    }
+  }
+
+  const getterProp = header.match(/^(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\s*:\s*[a-zA-Z0-9_<>?,\s]+?)?\s+get\(\)\s*=\s*(.+)$/);
   if (getterProp && memberLines.length === 1) {
     const [, name, expr] = getterProp;
     const rewrittenExpr = rewriteClassPropertyAccess([expr], classProps, new Set())[0];
@@ -2039,6 +2162,135 @@ function transpileClassMember(rawMemberLines: string[], classProps: Set<string> 
  * constant list (a trailing `;` followed by more properties/methods) or
  * `.values()`/`.ordinal` -- out of scope for what this world's lessons need.
  */
+/** `var x: T by Delegates.observable(init) { _, old, new -> body }` and `Delegates.vetoable` become a plain property with a custom setter
+ * (`var x: T = init` + `set(value) { ... field = value }`), which the class pass already runs. */
+function transpileDelegatesObservable(code: string): string {
+  const re = /\b(var)\s+([A-Za-z_]\w*)\s*(?::\s*([A-Za-z_][\w<>?, ]*?))?\s+by\s+(?:kotlin\.properties\.)?Delegates\.(observable|vetoable)\s*\(/g;
+  let out = '';
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code)) !== null) {
+    let i = m.index + m[0].length;
+    let depth = 1;
+    const argStart = i;
+    for (; i < code.length && depth > 0; i++) { if (code[i] === '(') depth++; else if (code[i] === ')') depth--; }
+    if (depth !== 0) continue;
+    const init = code.slice(argStart, i - 1);
+    const braceAt = code.indexOf('{', i);
+    if (braceAt < 0 || code.slice(i, braceAt).trim() !== '') continue;
+    let d = 1;
+    let j = braceAt + 1;
+    for (; j < code.length && d > 0; j++) { if (code[j] === '{') d++; else if (code[j] === '}') d--; }
+    if (d !== 0) continue;
+    const lambda = code.slice(braceAt + 1, j - 1);
+    const arrow = lambda.match(/^\s*([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*->([\s\S]*)$/);
+    if (!arrow) continue;
+    const [, , oldName, newName, bodyRaw] = arrow;
+    const rename = (text: string) => (oldName === '_' ? text : text.replace(new RegExp(`\\b${oldName}\\b`, 'g'), '__kt_old')).replace(new RegExp(`\\b${newName}\\b`, 'g'), '__kt_new');
+    const body = rename(bodyRaw.trim());
+    const [, , name, type, kind] = m;
+    const header = `var ${name}${type ? `: ${type}` : ''} = ${init}`;
+    const setter = kind === 'observable'
+      ? `    set(__kt_new) {\n        val __kt_old = field\n        field = __kt_new\n        ${body}\n    }`
+      : `    set(__kt_new) {\n        val __kt_old = field\n        if (${body}) {\n            field = __kt_new\n        }\n    }`;
+    out += code.slice(cursor, m.index) + header + '\n' + setter;
+    cursor = j;
+    re.lastIndex = j;
+  }
+  return out + code.slice(cursor);
+}
+
+/** An enum with member functions/properties after the constants, or constants that carry their own body
+ * (`ADD("+") { override fun apply(...) }`), is rewritten into ordinary Kotlin the class/object passes already handle:
+ * an open class holding the members, one subclass per constant that has a body, and an `object` holding the constants. */
+function transpileRichEnums(code: string): string {
+  const re = /\benum\s+class\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(([^)]*)\))?\s*\{/g;
+  let out = '';
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code)) !== null) {
+    const open = m.index + m[0].length - 1;
+    let depth = 1;
+    let end = open + 1;
+    for (; end < code.length && depth > 0; end++) {
+      if (code[end] === '{') depth++;
+      else if (code[end] === '}') depth--;
+    }
+    if (depth !== 0) continue;
+    const body = code.slice(open + 1, end - 1);
+    // split constants from members at the first top-level `;`
+    let semi = -1;
+    let d = 0;
+    for (let i = 0; i < body.length; i++) {
+      const ch = body[i];
+      if (ch === '(' || ch === '{') d++;
+      else if (ch === ')' || ch === '}') d--;
+      else if (ch === ';' && d === 0) { semi = i; break; }
+    }
+    const constantsText = semi >= 0 ? body.slice(0, semi) : body;
+    const membersText = semi >= 0 ? body.slice(semi + 1) : '';
+    const hasBodies = /\)\s*\{|[A-Za-z0-9_]\s*\{/.test(constantsText);
+    if (!membersText.trim() && !hasBodies) continue;
+    const name = m[1];
+    const ctor = (m[2] ?? '').trim();
+    // constants: split at top-level commas (respecting () and {})
+    const entries: string[] = [];
+    let cur = '';
+    d = 0;
+    for (const ch of constantsText) {
+      if (ch === '(' || ch === '{') d++;
+      else if (ch === ')' || ch === '}') d--;
+      if (ch === ',' && d === 0) { entries.push(cur); cur = ''; } else cur += ch;
+    }
+    if (cur.trim()) entries.push(cur);
+    const base = `${name}__Enum`;
+    const names: string[] = [];
+    const subclasses: string[] = [];
+    const vals: string[] = [];
+    entries.forEach((entry, idx) => {
+      const em = entry.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(([\s\S]*?)\))?\s*(?:\{([\s\S]*)\})?$/);
+      if (!em) return;
+      const [, constName, args = '', constBody] = em;
+      names.push(constName);
+      const callArgs = `${args.trim()}${args.trim() ? ', ' : ''}"${constName}", ${idx}`;
+      if (constBody !== undefined) {
+        subclasses.push(`class ${name}__${constName}(${ctor ? ctor.replace(/\bval\s+|\bvar\s+/g, '') + ', ' : ''}name: String, ordinal: Int) : ${base}(${ctor ? splitParamNames(ctor).join(', ') + ', ' : ''}name, ordinal) {\n${constBody}\n}`);
+        vals.push(`val ${constName} = ${name}__${constName}(${callArgs})`);
+      } else {
+        vals.push(`val ${constName} = ${base}(${callArgs})`);
+      }
+    });
+    // a companion object's members belong to the constants' holder object (`Planet.first()`)
+    let companionBody = '';
+    let membersNoCompanion = membersText;
+    const cm = /\bcompanion\s+object\b(?:\s+[A-Za-z_]\w*)?\s*\{/.exec(membersText);
+    if (cm) {
+      let cd = 1;
+      let ci = cm.index + cm[0].length;
+      for (; ci < membersText.length && cd > 0; ci++) { if (membersText[ci] === '{') cd++; else if (membersText[ci] === '}') cd--; }
+      if (cd === 0) {
+        companionBody = membersText.slice(cm.index + cm[0].length, ci - 1);
+        membersNoCompanion = membersText.slice(0, cm.index) + membersText.slice(ci);
+      }
+    }
+    const members = membersNoCompanion.replace(/(?<![.\w])values\(\)/g, `${name}.values()`).replace(/(?<![.\w])valueOf\(/g, `${name}.valueOf(`).replace(/^[ \t]+/gm, '');
+    const hasToString = /\bfun\s+toString\s*\(/.test(membersText);
+    const classText =
+      `class ${base}(${ctor ? ctor + ', ' : ''}val name: String, val ordinal: Int) {\n${members}\n${hasToString ? '' : 'override fun toString() = name\n'}}\n` +
+      subclasses.join('\n') + (subclasses.length ? '\n' : '') +
+      `object ${name} {\n${vals.join('\n')}\n${companionBody.replace(/^[ \t]+/gm, '')}\nval entries = listOf(${names.join(', ')})\nfun values() = entries\n` +
+      `fun valueOf(n: String): ${base} {\nfor (e in entries) {\nif (e.name == n) return e\n}\nthrow IllegalArgumentException("No enum constant ${name}." + n)\n}\n}`;
+    out += code.slice(cursor, m.index) + classText;
+    cursor = end;
+    re.lastIndex = end;
+  }
+  return out + code.slice(cursor);
+}
+
+function splitParamNames(ctor: string): string[] {
+  return splitTopLevelCommas(ctor).map((p) => p.trim().replace(/^(?:(?:private|public|protected|internal)\s+)?(?:val|var)\s+/, '').split(':')[0].trim());
+}
+
 function transpileEnumClasses(code: string): string {
   return code.replace(
     /\benum\s+class\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(([^)]*)\))?\s*\{([^}]*)\}/g,
@@ -2095,7 +2347,7 @@ function splitTopLevelCommas(text: string): string[] {
  * (rather than overridden by every implementer) is NOT supported -- out of
  * scope, since it would require the interface to become a real mixin.
  */
-function transpileInterfaceDeclarations(code: string): string {
+function transpileInterfaceDeclarations(code: string, inherited?: InheritedMembers): string {
   // A generic interface's type parameter list (`interface Logger<in T>`) --
   // including a variance annotation, since that's compile-time-only and
   // has no runtime representation -- sits between the name and the body;
@@ -2122,7 +2374,10 @@ function transpileInterfaceDeclarations(code: string): string {
     const body = code.slice(openBraceIdx + 1, i - 1);
     const methods = [...body.matchAll(/(?:fun\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)(?:\s*:\s*[A-Za-z_][A-Za-z0-9_<>?,\s]*)?\s*=\s*([^\n}]+)|fun\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*:\s*[A-Za-z_][A-Za-z0-9_<>?,\s]*\{\s*return\s+([^;}]+)[;}]|function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\{\s*return\s+([^;}]+)[;}])/g)]
       .map((method) => [method[1] ?? method[4] ?? method[7], method[2] ?? method[5] ?? method[8], method[3] ?? method[6] ?? method[9]]);
-    const helper = `const __kt_interface_${name} = { ${methods.map((method) => `${method[0]}(${cleanKotlinParams(method[1])}) { return ${method[2].trim()}; }`).join(', ')} };\n`;
+    // a default method reaches the interface's other members bare (`$sides`, `describe()`): they belong to `this`
+    const own = inherited ? inheritedNamesOf(inherited, name) : new Set<string>();
+    const defaultBody = (method: string[]) => rewriteClassPropertyAccess([method[2].trim()], own, new Set(splitParamList(method[1]).map((p) => p.trim().split(/[\s:]/)[0].replace(/^(?:val|var|vararg)$/, ''))))[0];
+    const helper = `const __kt_interface_${name} = { ${methods.map((method) => `${method[0]}(${cleanKotlinParams(method[1])}) { return ${defaultBody(method)}; }`).join(', ')} };\n`;
     result += code.slice(cursor, blockStart) + helper;
     cursor = i;
     re.lastIndex = i;
@@ -2140,7 +2395,124 @@ function transpileInterfaceDeclarations(code: string): string {
  * constructor calls (Kotlin never writes `new`). See the member-level
  * helpers above for how the body itself is handled.
  */
-function transpileClassDeclarations(code: string, classNamesOut: Set<string>, interfaceMembers: Map<string, string[]> = new Map()): string {
+/**
+ * Anonymous objects (`val v = object : Visitor { ... }`, `register(object { ... })`): the literal becomes a named LOCAL object declared on the
+ * line before its statement (so the variables in scope there stay captured) and the expression is replaced by that name.
+ */
+function hoistAnonymousObjects(code: string): string {
+  const re = /(?<![\w.])object\s*(?::\s*([A-Za-z_]\w*)(?:\s*<[^>{}]*>)?(\s*\((?:[^()]|\([^()]*\))*\))?)?\s*\{/g;
+  let out = '';
+  let cursor = 0;
+  let count = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(code)) !== null) {
+    // expression position only: `val v = object ...`, `f(object ...)`, `, object ...`, `return object ...`
+    const before = code.slice(0, m.index).trimEnd();
+    if (!/(?:=|\(|,|\breturn)$/.test(before)) continue;
+    const open = m.index + m[0].length - 1;
+    let depth = 1, i = open + 1;
+    for (; i < code.length && depth > 0; i++) { if (code[i] === '{') depth++; else if (code[i] === '}') depth--; }
+    if (depth !== 0) continue;
+    const lineStart = code.lastIndexOf('\n', m.index) + 1;
+    if (lineStart < cursor) continue;
+    const indent = /^[ \t]*/.exec(code.slice(lineStart))![0];
+    const name = `__KtAnon${++count}`;
+    const header = `object ${name}${m[1] ? ` : ${m[1]}${m[2] ?? ''}` : ''} {`;
+    out += code.slice(cursor, lineStart) + `${indent}${header}${code.slice(open + 1, i - 1)}}\n` + code.slice(lineStart, m.index) + name;
+    cursor = i;
+    re.lastIndex = i;
+  }
+  return count ? out + code.slice(cursor) : code;
+}
+
+/**
+ * Secondary constructors (`constructor() : this(7)`, `constructor(a: Int) : this(a, 0) { ... }`): each becomes a top-level factory
+ * `fun A__ctor1(params): A = A(delegated args).apply { body }`, and a call `A(args)` whose argument count does not fit the primary
+ * constructor but fits a secondary one calls that factory. Resolution is by argument COUNT (a limit documented in PITFALLS.md).
+ */
+function transpileSecondaryConstructors(code: string): string {
+  const classRe = /\bclass\s+([A-Za-z_]\w*)(?:\s*<[^>{}]+>)?\s*(?:\(((?:[^()]|\([^()]*\))*)\))?[^{\n]*\{/g;
+  const factories = new Map<string, { name: string; min: number; max: number }[]>();
+  const primary = new Map<string, { min: number; max: number }>();
+  const additions: { at: number; text: string }[] = [];
+  const edits: { from: number; to: number; text: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = classRe.exec(code)) !== null) {
+    const className = m[1];
+    const params = m[2] ? splitParamList(m[2]).filter((p) => p.trim()) : [];
+    primary.set(className, { min: params.filter((p) => !/=/.test(p)).length, max: params.length });
+    const open = m.index + m[0].length - 1;
+    let depth = 1, i = open + 1;
+    for (; i < code.length && depth > 0; i++) { if (code[i] === '{') depth++; else if (code[i] === '}') depth--; }
+    if (depth !== 0) continue;
+    const body = code.slice(open + 1, i - 1);
+    const ctorRe = /^[ \t]*constructor\s*\(((?:[^()]|\([^()]*\))*)\)\s*:\s*this\s*\(((?:[^()]|\([^()]*\))*)\)[ \t]*(\{)?/gm;
+    let c: RegExpExecArray | null;
+    let produced = '';
+    while ((c = ctorRe.exec(body)) !== null) {
+      let end = c.index + c[0].length;
+      let ctorBody = '';
+      if (c[3]) {
+        let d = 1, k = end;
+        for (; k < body.length && d > 0; k++) { if (body[k] === '{') d++; else if (body[k] === '}') d--; }
+        ctorBody = body.slice(end, k - 1);
+        end = k;
+      }
+      const cparams = c[1].trim() ? splitParamList(c[1]).filter((p) => p.trim()) : [];
+      const index = (factories.get(className)?.length ?? 0) + 1;
+      const fname = `${className}__ctor${index}`;
+      if (!factories.has(className)) factories.set(className, []);
+      factories.get(className)!.push({ name: fname, min: cparams.filter((p) => !/=/.test(p)).length, max: cparams.length });
+      produced += `\nfun ${fname}(${c[1]}): ${className} = ${className}(${c[2]})${ctorBody.trim() ? `.apply {${ctorBody}}` : ''}\n`;
+      edits.push({ from: open + 1 + c.index, to: open + 1 + end, text: '' });
+    }
+    if (produced) additions.push({ at: i, text: produced });
+    classRe.lastIndex = open + 1;
+  }
+  if (!factories.size) return code;
+  // remove the constructor members and insert the factories after their class, from the end backwards
+  let out = code;
+  const ops = [...edits, ...additions.map((a) => ({ from: a.at, to: a.at, text: a.text }))].sort((a, b) => b.from - a.from);
+  for (const op of ops) out = out.slice(0, op.from) + op.text + out.slice(op.to);
+  // call sites: pick the factory by argument count
+  for (const [className, list] of factories) {
+    const callRe = new RegExp(`(?<![\\w.])${className}\\s*\\(`, 'g');
+    let result = '';
+    let last = 0;
+    let call: RegExpExecArray | null;
+    while ((call = callRe.exec(out)) !== null) {
+      if (/\b(?:class|fun)\s+$/.test(out.slice(Math.max(0, call.index - 12), call.index))) continue;
+      const open = call.index + call[0].length - 1;
+      let d = 1, k = open + 1;
+      for (; k < out.length && d > 0; k++) { if (out[k] === '(') d++; else if (out[k] === ')') d--; }
+      if (d !== 0) continue;
+      const argsText = out.slice(open + 1, k - 1);
+      const argCount = argsText.trim() ? splitParamList(argsText).length : 0;
+      const prim = primary.get(className)!;
+      if (/(?:^|,)\s*\w+\s*=(?!=)/.test(argsText)) continue; // named arguments stay with the primary constructor
+      if (argCount >= prim.min && argCount <= prim.max) continue;
+      const target = list.find((f) => argCount >= f.min && argCount <= f.max);
+      if (target) { result += out.slice(last, call.index) + `${target.name}(`; last = call.index + call[0].length; }
+    }
+    out = result + out.slice(last);
+  }
+  return out;
+}
+
+/**
+ * A member written with a one-line block body (`fun make(): Counter { created++; return Counter() }`, `init { a; b }`) is expanded onto
+ * real lines: members are found line by line, and the statements of a crammed body would otherwise be read as one.
+ */
+function expandInlineMemberBodies(lines: string[]): string[] {
+  return lines.flatMap((line) => {
+    const m = /^(\s*)((?:(?:private|protected|internal|public|open|override|abstract|final|suspend|operator|inline|infix)\s+)*(?:fun\b[^{=\n]*?|init|constructor\b[^{\n]*?|set\s*\([^)]*\)|get\s*\(\s*\)))\s*\{(.*)\}\s*$/.exec(line);
+    if (!m || !m[3].includes(';')) return [line];
+    const statements = splitKotlinPieces(m[3]);
+    return statements.length > 1 ? [`${m[1]}${m[2]} {`, ...statements.map((st) => `${m[1]}  ${st}`), `${m[1]}}`] : [line];
+  });
+}
+
+function transpileClassDeclarations(code: string, classNamesOut: Set<string>, interfaceMembers: Map<string, string[]> = new Map(), inherited?: InheritedMembers): string {
   // A supertype/interface in the `: ...` clause can itself carry a generic
   // type argument (`: Logger<Any>`, `: Formatter<User>`) -- the optional
   // `(?:\s*<[^>{}]+>)?` right after each supertype name (both the first
@@ -2148,7 +2520,8 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
   // the class's own type parameter list is already handled right after its
   // name. Without it, the `<...>` text is left unmatched and leaks out as
   // raw, unparseable trailing source after the class block.
-  const classRe = /\b(data\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*<[^>{}]+>)?\s*(?:\(([^)]*)\))?\s*(?:\:\s*(([A-Za-z_][A-Za-z0-9_]*)(?:\s*<[^>{}]+>)?(?:\s*\(([^)]*)\))?(?:\s+by\s+[A-Za-z_][A-Za-z0-9_]*)?(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*(?:\s*<[^>{}]+>)?(?:\s*\([^)]*\))?)*))?\s*(\{)?/g;
+  const NEST = String.raw`(?:[^()]|\([^()]*\))*`; // one level of nested parentheses: `= mutableListOf()`, `Base(listOf(1))`
+  const classRe = new RegExp(String.raw`\b(data\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*<[^>{}]+>)?\s*(?:\((${NEST})\))?\s*(?:\:\s*(([A-Za-z_][A-Za-z0-9_]*)(?:\s*<[^>{}]+>)?(?:\s*\((${NEST})\))?(?:\s+by\s+[A-Za-z_][A-Za-z0-9_]*)?(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*(?:\s*<[^>{}]+>)?(?:\s*\(${NEST}\))?)*))?\s*(\{)?`, 'g');
   let result = '';
   let cursor = 0;
   let match: RegExpExecArray | null;
@@ -2175,7 +2548,7 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
         continue;
       }
       blockEnd = i;
-      bodyLines = code.slice(openBraceIdx + 1, i - 1).split('\n');
+      bodyLines = expandInlineMemberBodies(code.slice(openBraceIdx + 1, i - 1).split('\n'));
       const body = bodyLines.join('\n');
       const companion = /\bcompanion\s+object(?:\s+([A-Za-z_][A-Za-z0-9_]*))?(?:\s*:\s*[A-Za-z_][A-Za-z0-9_]*)?\s*\{/.exec(body);
       if (companion && companion.index !== undefined) {
@@ -2188,7 +2561,7 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
         }
         if (companionDepth === 0) {
           companionName = companion[1];
-          companionLines = body.slice(open + 1, end - 1).split('\n').flatMap((line) => {
+          companionLines = expandInlineMemberBodies(body.slice(open + 1, end - 1).split('\n')).flatMap((line) => {
             // Support the compact factory form commonly used in the lesson
             // content: `fun of(x) { return Product(x) }`.
             const compact = line.match(/^(\s*fun\s+[A-Za-z_][A-Za-z0-9_]*\s*\([^)]*\)(?:\s*:\s*[A-Za-z_][A-Za-z0-9_<>?,\s]*)?)\s*\{\s*return\s+(.+?)\s*\}\s*$/);
@@ -2216,14 +2589,21 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
     if (delegateVar) classProps.add(delegateVar);
     for (const name of topLevelMemberProperties(bodyLines)) classProps.add(name);
     if (superName && superArgsRaw !== undefined) {
-      for (const inherited of getClassOwnPropertyNames(code, superName)) classProps.add(inherited);
+      for (const inheritedName of getClassOwnPropertyNames(code, superName)) classProps.add(inheritedName);
     }
+    // members of abstract superclasses / implemented interfaces, reached bare (`name()`, `$sides`)
+    if (inherited) for (const name of inheritedNamesOf(inherited, className)) if (!ctorParams.some((p) => p.name === name)) classProps.add(name);
 
+    // The companion's own members are reached bare from its functions (`created++`) and from the class's instance members
+    // (`BANK_NAME`): inside a static method `this` is the class, and an instance member names it explicitly.
+    const companionProps = new Set(topLevelMemberProperties(companionLines));
     const members = splitClassMembers(bodyLines);
     const ctorExtraLines: string[] = [];
     const methodLines: string[] = [];
     for (const member of members) {
-      const { ctorLines, methodLines: mLines } = transpileClassMember(member, classProps, new Set(ctorParams.map((p) => p.name)));
+      const { ctorLines, methodLines: mLines0 } = transpileClassMember(member, classProps, new Set(ctorParams.map((p) => p.name)));
+      // a companion member used bare in an instance member is `ClassName.member`
+      const mLines = companionProps.size ? rewriteClassPropertyAccess(mLines0, new Set([...companionProps].filter((n) => !classProps.has(n))), new Set(ctorParams.map((p) => p.name)), `${className}.`) : mLines0;
       ctorExtraLines.push(...ctorLines.map((l) => `    ${l}`));
       methodLines.push(...mLines);
     }
@@ -2248,7 +2628,7 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
         companionStaticLines.push(`  static ${property[1]} = ${property[2]};`);
         continue;
       }
-      const { methodLines: companionMethods } = transpileClassMember(member);
+      const { methodLines: companionMethods } = transpileClassMember(member, companionProps);
       companionStaticLines.push(...companionMethods.map((line, index) => index === 0 ? line.replace(/^  /, '  static ') : line));
     }
 
@@ -2269,6 +2649,8 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
           `  toString() { return '${className}' + '(' + ${ctorParams.map((p) => `'${p.name}=' + ${/^(?:Double|Float)\??$/.test(p.type ?? '') ? `__kt_decimalText(this.${p.name}${/^Float/.test(p.type ?? '') ? ', true' : ''})` : `this.${p.name}`}`).join(" + ', ' + ")} + ')'; }`,
           // \`val (a, b) = point\` and \`for ((a, b) in points)\` read component1(), component2()... in order.
           `  *[Symbol.iterator]() { ${ctorParams.filter((p) => p.isProperty).map((p) => `yield this.${p.name};`).join(' ')} }`,
+          ...ctorParams.filter((p) => p.isProperty).map((p, index) => `  component${index + 1}() { return this.${p.name}; }`),
+          `  hashCode() { return __kt_hashAll([${ctorParams.filter((p) => p.isProperty).map((p) => `this.${p.name}`).join(', ')}]); }`,
         ]
       : [];
 
@@ -2299,7 +2681,7 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
     ].join('\n');
 
     const defaultMixins = interfaceNames.length
-      ? `\nfor (const __kt_defaults of [${interfaceNames.map((name) => `__kt_interface_${name}`).join(', ')}]) for (const [__kt_name, __kt_method] of Object.entries(__kt_defaults)) if (!Object.prototype.hasOwnProperty.call(${className}.prototype, __kt_name)) ${className}.prototype[__kt_name] = __kt_method;\n${interfaceNames.map((name) => `${className}.prototype.__kt_implements_${name} = true;`).join('\n')}`
+      ? `\nfor (const __kt_defaults of [${interfaceNames.map((name) => `(typeof __kt_interface_${name} === 'undefined' ? {} : __kt_interface_${name})`).join(', ')}]) for (const [__kt_name, __kt_method] of Object.entries(__kt_defaults)) if (!Object.prototype.hasOwnProperty.call(${className}.prototype, __kt_name)) ${className}.prototype[__kt_name] = __kt_method;\n${interfaceNames.map((name) => `${className}.prototype.__kt_implements_${name} = true;`).join('\n')}`
       : '';
     // Interface delegation (`class Wrap(d: X) : X by d`): forward every
     // abstract member of the delegated interface(s) the wrapper does NOT
@@ -2443,7 +2825,7 @@ function transpileObjectDeclarations(code: string, objectInterfaces: Map<string,
     // `instanceof` can never work against one.
     const interfaces = objectInterfaces.get(name) ?? [];
     const defaultMixin = interfaces
-      .map((interfaceName) => `\nfor (const [__kt_name, __kt_method] of Object.entries(__kt_interface_${interfaceName})) if (typeof ${name}[__kt_name] !== 'function') ${name}[__kt_name] = __kt_method;\n${name}.__kt_implements_${interfaceName} = true;`)
+      .map((interfaceName) => `\nfor (const [__kt_name, __kt_method] of Object.entries(typeof __kt_interface_${interfaceName} === 'undefined' ? {} : __kt_interface_${interfaceName})) if (typeof ${name}[__kt_name] !== 'function') ${name}[__kt_name] = __kt_method;\n${name}.__kt_implements_${interfaceName} = true;`)
       .join('');
 
     result += code.slice(cursor, blockStart) + rewritten + defaultMixin;
@@ -2479,9 +2861,11 @@ function insertNewForInstantiation(code: string, classNames: Set<string>): strin
     .split('\n')
     .map((line) => {
       const chunks = splitCodeAndStrings(line);
+      const addNew = (text: string) => { for (const { name, re } of regexes) text = text.replace(re, `new ${name}(`); return text; };
       for (const chunk of chunks) {
-        if (chunk.isString) continue;
-        for (const { name, re } of regexes) chunk.text = chunk.text.replace(re, `new ${name}(`);
+        // a string's own text is left alone, but a `${...}` placeholder inside it is code: `"p=${Point(3, 4)}"`
+        if (chunk.isString) { if (chunk.text.includes('${')) chunk.text = replaceTemplatePlaceholders(chunk.text, (expression) => '${' + addNew(expression) + '}'); continue; }
+        chunk.text = addNew(chunk.text);
       }
       return chunks.map((c) => c.text).join('');
     })
@@ -2679,6 +3063,7 @@ function transpileNestedClasses(code: string): string {
  * pass once every class name is known.
  */
 function transpileOOPDeclarations(code: string): string {
+  const inherited = collectInheritedMembers(code);
   code = stripAbstractMemberDeclarations(code);
   code = stripModifierKeywords(code);
   // Captured before any interface-erasing transform below (both replace
@@ -2731,9 +3116,9 @@ function transpileOOPDeclarations(code: string): string {
   code = transpileDataClassCopyCalls(code);
   code = eraseGenericConstructorArguments(code);
   code = transpileEnumClasses(code);
-  code = transpileInterfaceDeclarations(code);
+  code = transpileInterfaceDeclarations(code, inherited);
   const classNames = new Set<string>(['StringBuilder', ...BUILTIN_EXCEPTION_NAMES]);
-  code = transpileClassDeclarations(code, classNames, interfaceMembers);
+  code = transpileClassDeclarations(code, classNames, interfaceMembers, inherited);
   code = transpileObjectDeclarations(code, objectInterfaces, objectSupers);
   code = insertNewForInstantiation(code, classNames);
   // Runs last: any `by lazy { ... }` still in the source at this point is
@@ -2743,6 +3128,44 @@ function transpileOOPDeclarations(code: string): string {
   code = transpileTopLevelLazyProperties(code);
   code = transpileTopLevelCustomDelegatedProperties(code, inferMapVars(code));
   return code;
+}
+
+/** Declared type of each property whose custom accessor hides it from the lowerer (`var degrees: Double = 0.0` + `get`/`set`). */
+function accessorPropertyTypes(blocks: string[], source: string): Record<string, string> {
+  const doubleProps = new Set([...source.matchAll(/\b(?:val|var)\s+([A-Za-z_]\w*)\s*:\s*Double\b(?!\?)/g)].map((x) => x[1]));
+  const out: Record<string, string> = {};
+  const clash = new Set<string>();
+  for (const block of blocks) {
+    let m = block.match(/\b(?:val|var)\s+([A-Za-z_]\w*)\s*:\s*(Int|Long|Double|Float|String|Boolean)\b(?!\?)/);
+    if (!m) {
+      // `val total get() = price * qty`: no declared type. A purely arithmetic expression over Double names/literals is a Double.
+      const g = block.match(/\bval\s+([A-Za-z_]\w*)\s+get\(\)\s*=\s*([^\n]+)$/);
+      if (g && /^[\w\s.+\-*/%()]+$/.test(g[2]) && !/\.\s*[A-Za-z_]|\b(?:if|when|true|false|null)\b/.test(g[2].replace(/\d+\.\d+/g, '0'))) {
+        const idents = [...g[2].replace(/\d+(?:\.\d+)?/g, ' ').matchAll(/[A-Za-z_]\w*/g)].map((x) => x[0]);
+        if (/\d\.\d/.test(g[2]) || idents.some((n) => doubleProps.has(n))) m = [g[0], g[1], 'Double'] as unknown as RegExpMatchArray;
+      }
+    }
+    if (!m) continue;
+    if (out[m[1]] && out[m[1]] !== m[2]) clash.add(m[1]);
+    out[m[1]] = m[2];
+  }
+  for (const name of clash) delete out[name];
+  return out;
+}
+
+/** Result type of each function declared in a companion object: an explicit `: Type`, or an expression body that constructs a class (`= Temp(...)`). */
+function companionResultTypes(blocks: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  const clash = new Set<string>();
+  for (const block of blocks) {
+    for (const m of block.matchAll(/\bfun\s+([A-Za-z_]\w*)\s*\([^)]*\)\s*(?::\s*([A-Z][\w]*)\s*(?=[={\n])|=\s*([A-Z][\w]*)\s*\()/g)) {
+      const type = m[2] ?? m[3];
+      if (out[m[1]] && out[m[1]] !== type) clash.add(m[1]);
+      out[m[1]] = type;
+    }
+  }
+  for (const name of clash) delete out[name];
+  return out;
 }
 
 /** Keeps companion members in Kotlin form while the general function lowerer
@@ -2792,7 +3215,7 @@ function protectCompanionBlocks(code: string): { code: string; blocks: string[] 
 function protectGetterProperties(code: string): { code: string; blocks: string[] } {
   const blocks: string[] = [];
   const newCode = code.replace(
-    /^[ \t]*(?:val|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_<>?,\s]*\s+get\(\)\s*=\s*[^\n]+$/gm,
+    /^[ \t]*(?:(?:private|protected|internal|public|override)\s+)*(?:val|var)\s+[A-Za-z_][A-Za-z0-9_]*(?:\s*:\s*[A-Za-z_][A-Za-z0-9_<>?,\s]*?)?\s+get\(\)\s*=\s*[^\n]+$/gm,
     (whole) => {
       const marker = `__KT_GETTERPROP_${blocks.length}__`;
       blocks.push(whole);
@@ -2818,24 +3241,33 @@ function protectGetterProperties(code: string): { code: string; blocks: string[]
  */
 function protectBlockGetterProperties(code: string): { code: string; blocks: string[] } {
   const blocks: string[] = [];
-  const re = /\b(?:val|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_<>?,\s]*\n\s*get\(\)\s*\{/g;
+  // header line (`val x: T`, `var y = 0.0`) whose NEXT line starts an accessor: `get() { }`, `get() = expr`, `set(v) { }`
+  const header = /^[ \t]*(?:(?:private|protected|internal|public|open|override|lateinit)\s+)*(?:val|var)\s+[A-Za-z_][A-Za-z0-9_]*(?:\s*:\s*[A-Za-z_][\w<>?,. ]*?)?(?:[ \t]*=[^\n]+)?\n(?=[ \t]*(?:get\s*\(\s*\)|set\s*\(\s*\w*\s*\)))/gm;
+  const accessor = /^[ \t]*(?:(?:private|protected|internal)\s+)?(?:get\s*\(\s*\)|set\s*\(\s*\w*\s*\))[ \t]*(?:=[^\n]*|\{)?/;
   let result = '';
   let cursor = 0;
   let match: RegExpExecArray | null;
-  while ((match = re.exec(code)) !== null) {
-    const openIdx = match.index + match[0].length - 1;
-    let depth = 1;
-    let end = openIdx + 1;
-    for (; end < code.length && depth > 0; end++) {
-      if (code[end] === '{') depth++;
-      else if (code[end] === '}') depth--;
+  while ((match = header.exec(code)) !== null) {
+    let end = match.index + match[0].length;
+    // consume the whole accessor chain (any order of get/set, each a block or a single expression)
+    for (;;) {
+      const rest = code.slice(end);
+      const skip = /^(?:[ \t]*\n)*/.exec(rest)![0].length;
+      const next = accessor.exec(rest.slice(skip));
+      if (!next) break;
+      const start = end + skip;
+      if (next[0].endsWith('{')) {
+        let depth = 1, i = start + next[0].length;
+        for (; i < code.length && depth > 0; i++) { if (code[i] === '{') depth++; else if (code[i] === '}') depth--; }
+        if (depth !== 0) break;
+        end = i;
+      } else end = start + next[0].length;
     }
-    if (depth !== 0) continue;
-    const marker = `__KT_BLOCKGETTER_${blocks.length}__`;
+    // a trailing `private set` style modifier line is dropped by the member splitter; the span ends here
     blocks.push(code.slice(match.index, end));
-    result += code.slice(cursor, match.index) + marker;
+    result += code.slice(cursor, match.index) + `__KT_BLOCKGETTER_${blocks.length - 1}__`;
     cursor = end;
-    re.lastIndex = end;
+    header.lastIndex = end;
   }
   return { code: result + code.slice(cursor), blocks };
 }
@@ -3131,6 +3563,13 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // is modifier metadata for this deliberately synchronous teaching subset.
   // The helper's lexical scan preserves matching text in strings/comments.
   kotlinCode = prepareCoroutineSource(kotlinCode);
+  kotlinCode = transpileSecondaryConstructors(hoistAnonymousObjects(transpileRichEnums(transpileDelegatesObservable(kotlinCode))));
+  // a bare `apply { }` / `also { }` (an implicit `this` receiver, e.g. `fun add(x) = apply { items.add(x) }`) is `this.apply { }`
+  kotlinCode = kotlinCode.replace(/(?<![.\w$])(apply|also)(\s*\{)/g, 'this.$1$2');
+  // `::name.isInitialized` (lateinit): the property holds a value
+  kotlinCode = kotlinCode.replace(/::\s*([A-Za-z_]\w*)\s*\.\s*isInitialized\b/g, '($1 != null)');
+  // `data object Name` prints its name; a plain object keeps the default text
+  kotlinCode = kotlinCode.replace(/\bdata\s+object\s+([A-Za-z_]\w*)(\s*:\s*[^{\n]+?)?(\s*\{)?[ \t]*(?=\n|$|\{)/g, (_w, name: string, supers: string | undefined, brace: string | undefined) => brace ? `object ${name}${supers ?? ''} { override fun toString() = "${name}";` : `object ${name}${supers ?? ''} { override fun toString() = "${name}" }`);
   // Java-style factories and constructors map onto the Kotlin collection factories (`ArrayList<Int>()`, `HashMap(other)`, `hashSetOf(...)`).
   kotlinCode = kotlinCode
     .replace(/\b(?:hashSetOf|linkedSetOf)\s*\(/g, 'mutableSetOf(').replace(/\b(?:hashMapOf|linkedMapOf)\s*\(/g, 'mutableMapOf(')
@@ -3150,7 +3589,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // reach until AFTER function lowering has already run; strip it here too
   // so it never lingers as stray leftover text in front of the generated
   // `function getValue(...)`.
-  kotlinCode = kotlinCode.replace(/KProperty<[^>]*>/g, 'KProperty').replace(/\boperator\s+(?=fun\b)/g, '');
+  kotlinCode = kotlinCode.replace(/KProperty<[^>]*>/g, 'KProperty');
   // World 16: `async<Int> { ... }` / `runBlocking<Unit> { ... }` (an explicit type argument on a
   // coroutine builder call whose block is a trailing LAMBDA, not a call
   // with parens) is real, common Kotlin used to pin a Deferred's result
@@ -3230,6 +3669,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // chained expression across lines. The post-lowering scan below still
   // catches declarations introduced or normalized by the lowering passes.
   const sourceMapVars = inferMapVars(kotlinCode);
+  const operatorIndexVars = inferOperatorIndexVars(kotlinCode);
   const sourceInterfaceNames = getAllInterfaceNames(kotlinCode);
   const sourceMutableListVars = inferMutableListVars(kotlinCode);
   // Class headers (`class Sensor(var celsius: Int)`) are gone after the OOP lowering, so Int-typed names are read from the source too.
@@ -3249,7 +3689,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   const protectedSequenceBuilders = protectSequenceBuilders(kotlinCode);
   kotlinCode = protectedSequenceBuilders.code;
   kotlinCode = annotateWhenExpressionTypes(kotlinCode);
-  kotlinCode = lowerKotlinFunctions(kotlinCode);
+  kotlinCode = lowerKotlinFunctions(kotlinCode, { wholeProgram: true, companionResults: companionResultTypes(protectedCompanions.blocks), accessorProps: accessorPropertyTypes([...protectedGetters.blocks, ...protectedBlockGetters.blocks], kotlinCode) });
   protectedSequenceBuilders.blocks.forEach((block, index) => {
     // `yield(x)` is already valid JS as-is inside a `function*` (a plain
     // parenthesized operand of the `yield` keyword) -- only `yieldAll(x)`
@@ -3445,6 +3885,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
       return `${factory === 'mutableMapOf' ? '__kt_mutableMapOf' : '__kt_mapOf'}(${pairs.join(', ')})`;
     });
     // Map element access: `m[k]` -> get, `m[k] = v` -> set (keys may themselves contain brackets: m[names[i]]).
+    line = rewriteIndexAccess(line, operatorIndexVars, 'operator');
     line = rewriteIndexAccess(line, mapVars, 'map');
     // `map.keys` / `.values` / `.entries` are properties in Kotlin (JS Maps have same-named methods).
     for (const mapVar of mapVars) {
@@ -3504,12 +3945,15 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     // negative lookahead excludes a real `.size(...)` METHOD call (a class
     // or object member happens to be named `size`, distinct from a
     // collection's `.size` PROPERTY) from being mistaken for one.
-    line = line.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\.size\b(?!\s*\()/g, '__kt_size($1)');
+    // (not after `)` / `]`: in `Wrapper(x).value.size` the receiver is the whole call chain, not just `value`)
+    line = line.replace(/(?<![)\]]\.?)\b([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\.size\b(?!\s*\()/g, '__kt_size($1)');
     // Kotlin's String.split returns a List, but JS split returns a plain Array with no `.size`/`.first()`, so
     // `"a,b".split(",").size` printed null. Route the call through `__kt_split` (see its definition).
     line = line.replace(/\.split\(/g, '.__kt_split(');
     // `outer@ for (...)` / `break@outer` / `continue@outer` are JavaScript labels (`return@name` is a lambda return: untouched).
     line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/\b([A-Za-z_]\w*)@\s*(?=(?:for|while|do)\b)/g, '$1: ').replace(/\b(break|continue)@([A-Za-z_]\w*)/g, '$1 $2'))).join('');
+    // `eval` / `arguments` cannot be called by those names in strict JavaScript (a `when` branch result never passes the lowerer)
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/(?<![.\w$])(eval|arguments)(?=\s*\()/g, '__kt_$1'))).join('');
     // `f(*array)`: the spread operator (a `*` that starts an argument can never be multiplication)
     line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/([(,]\s*)\*(?=\s*[A-Za-z_])/g, '$1...'))).join('');
     // `String(charArray)` joins the chars (JavaScript's String([...]) would put commas between them).
@@ -4265,9 +4709,11 @@ export async function compileAndRunKotlin(
     }
     Object.defineProperty(Object.prototype, '__kt_forEach', { value: function (this: any, fn: any) { return this.forEach(fn); }, configurable: true, writable: true });
   }
-  const __kt_mapOf = (...pairs: [any, any][]) => withMapChecks(new Map(pairs.map(pair => Array.from(pair) as [any, any])));
+  const __kt_mapOf = (...pairs: [any, any][]) => { const m = makeStructural(new Map()) as Map<any, any>; for (const pair of pairs) { const [k, v] = Array.from(pair) as [any, any]; m.set(k, v); } return withMapChecks(m); };
   const __kt_mutableMapOf = (...pairs: [any, any][]) => {
-    const map = withMapChecks(new Map(pairs.map(pair => Array.from(pair) as [any, any]))) as Map<any, any> & { remove?: (key: any) => any };
+    const structuralMap = makeStructural(new Map()) as Map<any, any>;
+    for (const pair of pairs) { const [k, v] = Array.from(pair) as [any, any]; structuralMap.set(k, v); }
+    const map = withMapChecks(structuralMap) as Map<any, any> & { remove?: (key: any) => any };
     // Kotlin's MutableMap.remove(key) returns the removed value (or null if
     // absent) and deletes the entry -- mirroring how mutableSetOf's .remove
     // already delegates to Set.prototype.delete, this delegates to
@@ -4309,10 +4755,12 @@ export async function compileAndRunKotlin(
     (set as any).asSequence = () => new KotlinSequence(() => set[Symbol.iterator](), false);
     return set;
   };
-  const __kt_setOf = (...items: any[]) => withSetContains(new Set(items));
+  const __kt_setOf = (...items: any[]) => { const set = makeStructural(new Set()) as Set<any>; for (const item of items) set.add(item); return withSetContains(set); };
   (globalThis as any).__kt_setOf = __kt_setOf;
   const __kt_mutableSetOf = (...items: any[]) => {
-    const set = withSetContains(new Set(items)) as Set<any> & { remove?: (item: any) => boolean };
+    const structuralSet = makeStructural(new Set()) as Set<any>;
+    for (const item of items) structuralSet.add(item);
+    const set = withSetContains(structuralSet) as Set<any> & { remove?: (item: any) => boolean };
     // Kotlin's MutableSet.add returns true when the element was NEW and false when it was already present
     // (JS's Set.add returns the set itself).
     const nativeAdd = Set.prototype.add;
@@ -4329,7 +4777,8 @@ export async function compileAndRunKotlin(
   (KotlinList.prototype as any).joinAll = function () { kotlinJoinAll(this as any); };
   (KotlinList.prototype as any).awaitAll = function () { return new KotlinList(kotlinAwaitAll(this as any)); };
   (KotlinList.prototype as any).toMutableList = function () { return __kt_mutableListOf(...Array.from(this as any)); };
-  const __kt_size = (value: any) => value instanceof Map || value instanceof Set ? value.size : value.length;
+  // `x.size`: a collection's size; anything else (a user class with its own `size` property or getter) keeps its own `size`
+  const __kt_size = (value: any) => value instanceof Map || value instanceof Set ? value.size : (value != null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof KotlinList) && 'size' in value ? value.size : value.length);
   // The factories are also needed by kotlinStdlib.ts (buildList, Set/Map operators, ArrayList(...) ...), which cannot see this scope.
   Object.assign(globalThis as any, { __kt_listOf, __kt_mutableListOf, __kt_mapOf, __kt_mutableMapOf, __kt_mutableSetOf, __kt_MapEntry: KotlinMapEntry });
   const __kt_notNull = (value: any) => {

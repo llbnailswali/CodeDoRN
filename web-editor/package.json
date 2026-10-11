@@ -80,7 +80,8 @@
     "test:stage-source": "tsx scripts/test-stage-source.ts",
     "generate:stage-keys": "tsx scripts/generate-stage-lesson-keys.ts",
     "check:stage-keys": "tsx scripts/generate-stage-lesson-keys.ts --check",
-    "audit:quiz-bank": "tsx scripts/audit-quiz-bank.ts"
+    "audit:quiz-bank": "tsx scripts/audit-quiz-bank.ts",
+    "audit:quiz-standard": "tsx scripts/audit-quiz-standard.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",

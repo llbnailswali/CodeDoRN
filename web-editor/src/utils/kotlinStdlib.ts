@@ -153,6 +153,47 @@ function installCollections() {
   G.Integer = Object.freeze({ MAX_VALUE: 2147483647, MIN_VALUE: -2147483648, parseInt: (s: string, radix = 10) => (s as any).toInt(radix), valueOf: (v: any) => (typeof v === 'string' ? (v as any).toInt() : v), toString: (n: number, radix = 10) => n.toString(radix), compare: (a: number, b: number) => natural(a, b), max: Math.max, min: Math.min, sum: (a: number, b: number) => (a + b) | 0 });
 }
 
+/**
+ * Sets and Maps of OBJECTS compare keys by `equals` (a data class is equal by value), not by identity: the instance's `has`/`add`/`get`/
+ * `set`/`delete` look an equal element up first. Primitives and objects without `equals` keep the native (fast) behaviour.
+ */
+export function makeStructural<T extends Set<any> | Map<any, any>>(collection: T): T {
+  const isObject = (v: any) => v !== null && typeof v === 'object' && typeof v.equals === 'function';
+  const target: any = collection;
+  const nativeHas = collection.has.bind(collection), nativeDelete = collection.delete.bind(collection);
+  const keys = () => (collection instanceof Map ? collection.keys() : collection.values());
+  const existing = (key: any) => { for (const k of keys()) if (k === key || k.equals?.(key) === true) return k; return undefined; };
+  const find = (key: any) => (isObject(key) ? existing(key) : key);
+  const found = (key: any) => (isObject(key) ? existing(key) !== undefined : nativeHas(key));
+  target.has = (key: any) => found(key);
+  target.delete = (key: any) => nativeDelete(find(key));
+  if (collection instanceof Map) {
+    const nativeGet = collection.get.bind(collection), nativeSet = collection.set.bind(collection);
+    target.get = (key: any) => nativeGet(find(key));
+    target.set = (key: any, value: any) => { const k = find(key); nativeSet(isObject(key) && k !== undefined ? k : key, value); return collection; };
+  } else {
+    const nativeAdd = (collection as Set<any>).add.bind(collection);
+    target.add = (value: any) => { if (!found(value)) nativeAdd(value); return collection; };
+  }
+  return collection;
+}
+
+/** Kotlin's hashCode of a value, for the data class `hashCode()`: Int as is, Double via its bits, String as Java, Boolean 1231/1237. */
+function hashOf(value: any): number {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') {
+    if (Number.isInteger(value)) return value | 0;
+    const view = new DataView(new ArrayBuffer(8));
+    view.setFloat64(0, value);
+    return (view.getInt32(0) ^ view.getInt32(4)) | 0;
+  }
+  if (typeof value === 'string') return javaHashCode(value);
+  if (typeof value === 'boolean') return value ? 1231 : 1237;
+  if (typeof value.hashCode === 'function') return value.hashCode() | 0;
+  if (Array.isArray(value)) return value.reduce((h, v) => (Math.imul(31, h) + hashOf(v)) | 0, 1);
+  return 0;
+}
+
 function installStrings() {
   const S: any = String.prototype;
   const text = (self: unknown) => String(self);
@@ -367,6 +408,7 @@ function installGlobals() {
     if (a instanceof KotlinList) return a.minus(b);
     return a - b;
   };
+  G.__kt_hashAll = (values: unknown[]) => values.reduce((h: number, v) => (Math.imul(31, h) + hashOf(v)) | 0, 0);
   G.__kt_charPlus = (c: string, n: number) => String.fromCodePoint((c.codePointAt(0) ?? 0) + n);
   G.__kt_charDiff = (a: string, b: string) => (a.codePointAt(0) ?? 0) - (b.codePointAt(0) ?? 0);
   G.__kt_javaDouble = javaDoubleToString;

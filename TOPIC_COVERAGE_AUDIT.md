@@ -52,21 +52,28 @@ We cannot support everything, so: **never be wrong or confusing**.
 | exceptions (15) | 41/42 | DONE, 1 known limit (JDK message of a 1-element list) |
 | builders (13: StringBuilder, buildString/buildList, scope functions) | 24/25 | DONE, 1 known limit (`sb[i]`) |
 | functions (5) (default/named args, vararg + spread, recursion, local functions, Pair returns, overloads, higher-order basics) | 57/57 | DONE |
-| classes/OOP (8, 11), generics (12), lambdas (9), sequences (14), coroutines (16) | no topic cases yet | write cases first |
+| classes/OOP (8, 11) (classes, ctors/secondary ctors, init, accessors with `field`, companion, data/enum (members, constant bodies, companion)/interface/abstract/sealed, `object`, anonymous objects, operator overloading, `lazy`/`observable`/`vetoable`, lateinit, generics-in-classes basics) | 90/90 | DONE (in gate) |
+| generics (12), lambdas (9), sequences (14), coroutines (16) | no topic cases yet | write cases first |
 
-795 cases in 14 topics are replayed by `npm run test:topic-coverage` (in `check:all`). kotlinc error agreement: 93.7%, no false rejections.
+885 cases in 15 topics are replayed by `npm run test:topic-coverage` (in `check:all`). kotlinc error agreement: 93.7%, no false rejections.
+
+
+## Tier progress (2026-10-11)
+
+- **Tier 1:** done for Worlds 1-8, 10, 11, 13, 15 (15 topics, 885 cases). NOT done: Worlds 9, 12, 14, 16, 17.
+- **Tier 2:** no dedicated sweep; only extras that surfaced while auditing the done topics were added.
+- **Tier 3 ("not supported" message):** done for Flow, Java I/O, kotlinx.serialization. Not confirmed for threads/timing, reflection, Java time/net, exact Long beyond 2^53.
 
 ## Next steps (in order)
 
-1. Worlds 8, 11 (classes, data classes, enums, interfaces, sealed, delegation, objects), 12 (generics), 9 (lambdas / higher-order), 14
-   (sequences), 16 (coroutines basics). Write cases first, then audit.
+1. Worlds 12 (generics), 9 (lambdas / higher-order), 14 (sequences), 16 (coroutines basics). Write cases first, then audit.
 2. Run the two big ChatGPT-style programs again as end-to-end checks (banking and food-delivery are described in PITFALLS; the food
    program was last stopped at `toTypedArray`, which now exists, so it is worth re-running).
 3. Re-check the Tier 2 list below only if a topic needs it.
 
 ## Known open problems (not in the audit yet)
 
-- A whole Double inside a generic CLASS or a data class property prints without `.0` (`Success(value=46000)` for `Success<T>(46000.0)`):
+- A whole Double inside a generic CLASS (type parameter `T` holding 46000.0) prints without `.0` (`Success(value=46000)` for `Success<T>(46000.0)`):
   JS has no Int/Double at runtime. Fixed statically for List/Set/Map literals and their common operations, declared Double data class
   properties, and typed println/templates; NOT for a generic class's type parameter or a collection nested in another container.
 - A function with a block body and no `return` still yields `undefined` (prints `null`), not `Unit`; `println`/`print`/`assert` do return Unit.
@@ -82,7 +89,7 @@ We cannot support everything, so: **never be wrong or confusing**.
   parser, nested-class hoisting call, unsupported-library message.
 - `web-editor/src/utils/kotlinFunctions.ts`: token lowerer and type inference (Char/Float/Int typing, chains, named arguments).
 - `web-editor/src/utils/kotlinNestedClasses.ts`: nested classes moved to top level.
-- `PITFALLS.md`: three entries describe this work ("A Worlds 1-16 program...", "Topic-level capability audit (Worlds 1-4)", "Topic audit round 2").
+- `PITFALLS.md`: four entries describe this work (the last: "Worlds 8/11 classes topic") ("A Worlds 1-16 program...", "Topic-level capability audit (Worlds 1-4)", "Topic audit round 2").
 - Other tests added: `npm run test:program-gaps` (`scripts/test-program-gaps.ts`, 40 cases from the two ChatGPT programs, checked
   against kotlinc with `-- --kotlinc`).
 

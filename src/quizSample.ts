@@ -119,7 +119,7 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "concept": "print vs println",
   "difficulty": "medium",
   "xp": 15,
-  "question": "What will this code print?",
+  "question": "What does this code output?",
   "code": [
    "print(\"Hi\")",
    "print(\"!\")",
@@ -145,7 +145,7 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "concept": "val is read-only",
   "difficulty": "medium",
   "xp": 15,
-  "question": "Tap the line that contains an error.",
+  "question": "Tap the line that does not compile.",
   "code": [
    "val lives = 3",
    "lives = 2",
@@ -179,7 +179,7 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   "concept": "Char vs String",
   "difficulty": "medium",
   "xp": 15,
-  "question": "Tap the line that contains an error.",
+  "question": "Tap the line that does not compile.",
   "code": [
    "val first = 'K'",
    "val second = \"L\"",

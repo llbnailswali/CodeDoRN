@@ -262,8 +262,24 @@ Every lesson is used at least once: Arithmetic 1, 3, 4, 5, 6, 8, 12; Comparison 
 1. Confirm the three two-lesson sets are the right grouping for World 2.
 2. Confirm 10 questions per lesson plus six per set is the desired depth; this yields 78 regular questions and a separate 12-question Boss quiz.
 3. Confirm whether String relational comparisons from Comparison Operators should be quiz-tested only after runner support is verified.
-4. Before publishing, audit all question ideas against the actual lesson stages and ensure the simulator's current support covers every executable example.
+4. Content audit is complete. Remaining review items are the soft type-mix warnings and phone-width rendering.
 
 ## Collection status
 
-Authored: 10 questions per lesson, 6 cross-lesson questions per set, and 12 Boss questions. The regular bank has 78 questions; the Boss bank has 12. World 2 set and Boss metadata are registered in `quizSets.ts`, and the regular bank is added to the quiz-bank registry. The current quiz flow opens a world's full regular bank; it does not yet provide a set picker or a separate Boss-quiz entry point. The planned validation scripts have not yet been run against World 2.
+Authored: 10 questions per lesson, 6 cross-lesson questions per set, and 12 Boss questions. The regular bank has 78 questions; the Boss bank has 12. World 2 set and Boss metadata are registered in `quizSets.ts`, and the regular bank is added to the quiz-bank registry. The current quiz flow opens a world's full regular bank; it does not yet provide a set picker or a separate Boss-quiz entry point.
+
+## Audit findings and evidence
+
+Content audit completed 2026-10-11. All 78 regular questions and 12 Boss questions were read in full dump batches. Single-choice facts and every multi-select option were checked individually. No wrong answer keys were found. Real kotlinc agreed with all 76 executable lesson/set cases and all 12 keyed Boss cases checked after answer reordering.
+
+| Question IDs / scope | Finding | Repair / evidence |
+| --- | --- | --- |
+| `w2q-logic-7` | Exact duplicate of `w2q-precedence-5`. | Replaced with a distinct Boolean-variable trace. |
+| `w2q-logic-8`, `w2q-precedence-9` | Same scenario/code with renamed values. | Reworked `w2q-logic-8` into a distinct two-group condition. |
+| `w2q-comparison-9`, `w2q-set-ac-4` | “Find error” keys described valid comparison logic, not a Kotlin compile/runtime error. | Replaced with Int/String comparison type errors; real kotlinc reports the keyed lines. |
+| `w2q-increment-7` | Asked “which two” in an A/B code-comparison question; both snippets left the same final count. | Now asks which program prints the incremented value; prefix prints 6, postfix prints 5. |
+| `w2q-set-ac-6` | Multi-select did not say how many options were correct. | Prompt now explicitly asks for the 3 correct statements. |
+| All single-choice, prediction and code-comparison questions | Correct positions were concentrated in one slot. | Added deterministic balanced shuffling: choice positions 15/14/14/14; comparison A/B 5/5. True/false is now 5 false / 4 true. |
+| All prediction cases | Check against actual Kotlin output. | `real.ts`: 76 executable cases, 0 problems. Boss recheck: 12 keyed executable cases, 0 mismatches. |
+
+Mechanical scan after repairs: no duplicate code or code-plus-options, no duplicate explanations, and no filler options. `npx tsc --noEmit`, `npm run test:quiz-bank`, `npm run audit:quiz-bank`, `npx tsx scripts/quiz-audit/std-scan.ts`, `npm run audit:dash-collision`, and native-data generation pass. The optional `npm run check:native-data` reports stale generated `src/world1Quiz.ts` and `src/contentStats.ts`; both were already modified in the worktree before this audit, so that unrelated drift was left untouched. The quality scan still reports six soft type-mix warnings: prediction questions reach 70% in Arithmetic Operators and 44–60% in the other affected lesson/set groupings. String relational comparisons remain untested because they are not needed by the audited bank and runner support was not assumed. Phone-width rendering was not checked; the user will review it.

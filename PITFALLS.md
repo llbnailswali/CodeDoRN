@@ -3138,3 +3138,27 @@ only; kotlinc agrees on the line and still rejects the program).
   function references (`::square`), and overloads inside classes.
 - `(Int) -> Int = { it + n }` was rejected: a lambda with no declared parameter takes the implicit `it` when one parameter is expected.
 - `c in "aeiou"` used JavaScript `in`; a string literal is a collection of chars for `in`/`!in`.
+
+## Topic audit round 3 (Worlds 8/11 classes): enums with members, template Doubles, companion/accessor types, `memberNames` in templates
+
+`classes` topic (90 cases) now matches kotlinc. Things worth knowing:
+
+1. **Rich enums are rewritten at source level BEFORE the lowerer** (`transpileRichEnums`, called next to `hoistAnonymousObjects`): an enum with
+   members after `;`, per-constant bodies or a `companion object` becomes `class X__Enum(ctor, name, ordinal)` + one subclass per constant with a
+   body + `object X { val A = ...; entries; values(); valueOf() }`. Plain enums still use the old `transpileEnumClasses`. Doing it in the OOP
+   pass (after lowering) failed: raw single-expression members were never lowered. Lines shift for a rich enum (error lines after it are off).
+2. **`"${obj.price}"` printed `2` for a Double property**: the nested template lowering had no class property types. `LowerOptions` now carries
+   `classPropTypes`, `accessorProps`, `companionResults`, `memberNames`, `wholeProgram`. The runner lowers each remaining `${...}` placeholder
+   with no options, so the whole-program member names are kept in a module variable (`programMemberNames`, reset per program).
+3. **A member named `apply`/`run`/`let` inside `"${o.apply(3, 4)}"`** was lowered as the scope function (`memberNames` fixes it).
+4. **Types hidden by protection passes**: companion function results (`Temp.zero().c`) and properties with accessors (`var degrees: Double = 0.0`
+   + `get`/`set`, `val total get() = price * qty`) are hidden from the lowerer; the runner extracts their types from the text
+   (`companionResultTypes`, `accessorPropertyTypes`). Method results that are user classes are now typed too.
+5. `val name: String by lazy { println("x"); "v" }` matched the bare-property branch (no `=`), giving null: that regex now excludes `by`.
+6. `Delegates.observable/vetoable` is a source rewrite into a property with a custom setter (`transpileDelegatesObservable`); `new` is a JS keyword
+   so the parameter is renamed `__kt_new`.
+7. `data object` toString must stay on the SAME line as the declaration (a multi-line rewrite shifted every later error line and cost 0.1% in
+   `compare:errors`; found only by that comparison, not by `check:all`).
+8. `Wrapper(x).value.size`: the `x.size` rewrite started at `value` after `).`; it must not start a chain after `).`/`].`.
+9. `xs.maxByOrNull { ... } is Sq` (a call with a trailing lambda before `is`) is bound to a lambda parameter first; the guard set
+   `isLambdaSubjects` stops the recursion.

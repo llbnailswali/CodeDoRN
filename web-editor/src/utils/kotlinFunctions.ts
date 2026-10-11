@@ -95,9 +95,23 @@ export interface LowerOptions {
   classes?: ReadonlySet<string>;
   /** The program text BEFORE an embedded expression, so a null check written earlier still counts as a guard there. */
   priorText?: string;
+  /** Names the enclosing program declares as members (they win over the `apply`/`run`/`let` scope functions). */
+  memberNames?: ReadonlySet<string>;
+  /** The whole program (not an embedded expression): remember its member names for the runner's later `${...}` lowering. */
+  wholeProgram?: boolean;
+  /** Result type names of functions declared in companion objects, by function name. */
+  companionResults?: Record<string, string>;
+  /** Declared types of class properties with a custom getter/setter (hidden from this pass), by property name. */
+  accessorProps?: Record<string, string>;
+  /** Property types of the enclosing program's classes, so a `${obj.prop}` placeholder knows `prop` is a Double. */
+  classPropTypes?: ReadonlyMap<string, unknown>;
 }
 
+/** Member names the last whole program declared: the runner lowers each `${...}` placeholder separately, with no options. */
+let programMemberNames: ReadonlySet<string> = new Set();
+
 export function lowerKotlinFunctions(source: string, options: LowerOptions = {}): string {
+  if (options.wholeProgram) programMemberNames = new Set();
   const t = lex(source);
   const pairs = new Map<number, number>();
   const stack: number[] = [];
@@ -295,7 +309,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     let result: Type | undefined;
     if (at(body) === ':') {
       const start = ++body;
-      while (body < t.length && !['{', '=', ';'].includes(at(body)) && !newline(body - 1, body)) {
+      while (body < t.length && !['{', '=', ';', '}'].includes(at(body)) && !newline(body - 1, body)) {
         if (pairs.has(body) && pairs.get(body)! > body) body = pairs.get(body)!;
         body++;
       }
@@ -306,7 +320,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   const functions = new Map<string, Signature>(options.functions as Map<string, Signature> | undefined);
   // A class that declares its own `fun apply(...)` / `fun run(...)` / `fun let(...)` as a MEMBER wins over the scope function of
   // that name (a member beats an extension), so a member call must not be lowered as the scope function.
-  const userMemberNames = new Set<string>();
+  const userMemberNames = new Set<string>(options.memberNames ?? (options.wholeProgram ? [] : programMemberNames));
   const declaredShapes = new Map<string, string>();
   const overloadCandidates = new Map<string, { at: number; signature: Signature; key: string }[]>();
   /** Overloaded functions (same name, different parameter types): each declaration's JS name, and the candidates a call chooses from. */
@@ -337,7 +351,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   const declarationBodies = new Set<number>();
   const constructors = new Map<string, Type[]>();
   // class name -> property name -> declared type (primary-constructor `val`/`var` and body `val`/`var name: T`), so `user.email` is known to be `String?`.
-  const classProps = new Map<string, Map<string, Type>>();
+  const classProps = new Map<string, Map<string, Type>>(options.classPropTypes as Map<string, Map<string, Type>> | undefined);
   // Token range of every class/object body (and its primary-constructor parameter types), so an expression inside a
   // member (`this.amount * rate / 100`, `base * tax / 100` in init) can be typed from the class it sits in.
   const classRanges: { name: string; start: number; end: number; ctorTypes: Map<string, Type> }[] = [];
@@ -555,7 +569,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           }
           functions.set(h.name, h.signature);
         }
-        if (h.name && !h.signature.receiver && at(h.name ? i - 1 : i) !== '.') userMemberNames.add(h.name);
+        if (h.name && !h.signature.receiver && at(h.name ? i - 1 : i) !== '.') { userMemberNames.add(h.name); if (options.wholeProgram) programMemberNames = userMemberNames; }
         if (h.name && h.signature.receiver) {
           if (!extensionsByReceiver.has(h.name)) extensionsByReceiver.set(h.name, new Map());
           extensionsByReceiver.get(h.name)!.set(h.signature.receiver.name, h.signature);
@@ -653,6 +667,11 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   // up by name only, so a name is typed only when EVERY function of that name resolves to the same type; one that differs or
   // cannot be typed leaves the name untyped (silence is safer than a wrong type).
   const methodResults = new Map<string, Type>();
+  /** `operator fun plus(...)` and friends the program declares, plus any `compareTo` (also reached through `Comparable`). */
+  const declaredOperators = new Set<string>([...source.matchAll(/\boperator\s+fun\s+(?:[A-Za-z_]\w*\.)?([A-Za-z_]\w*)/g)].map((m) => m[1]));
+  if (/\bfun\s+compareTo\b/.test(source)) declaredOperators.add('compareTo');
+  const OPERATOR_METHOD: Record<string, string> = { '+': 'plus', '-': 'minus', '*': 'times', '/': 'div', '%': 'rem' };
+  const isOperatorClass = (type: Type, method: string) => declaredOperators.has(method) && classes.has(type.name) && !type.nullable;
   {
     const PLAIN = new Set(['Int', 'Long', 'Double', 'Float', 'String', 'Boolean']);
     const byName = new Map<string, Header[]>();
@@ -662,7 +681,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     }
     const resolved = new Map<Header, Type>();
     for (const list of byName.values()) for (const h of list) {
-      if (h.signature.result && PLAIN.has(h.signature.result.name) && !h.signature.result.nullable) resolved.set(h, h.signature.result);
+      if (h.signature.result && (PLAIN.has(h.signature.result.name) || classes.has(h.signature.result.name)) && !h.signature.result.nullable) resolved.set(h, h.signature.result);
     }
     const rebuild = () => {
       methodResults.clear();
@@ -678,14 +697,22 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         if (resolved.has(h) || h.signature.result || at(h.body) !== '=') continue;
         const params = new Map<string, Type>();
         for (const p of h.signature.params) if (p.type) params.set(p.name, p.type);
+        // the class's own constructor parameters and properties are in scope in an expression-bodied member (`override fun area() = s * s`)
+        const owner = enclosingClass(h.open);
+        if (owner) {
+          for (const [n, tp] of owner.ctorTypes) if (!params.has(n)) params.set(n, tp);
+          for (const [n, tp] of classProps.get(owner.name) ?? []) if (!params.has(n)) params.set(n, tp);
+        }
         try {
           const inferred = infer(h.body + 1, expressionEnd(h.body + 1, t.length), { vars: params, frames: [] });
-          if (PLAIN.has(inferred.name) && !inferred.nullable) { resolved.set(h, { name: inferred.name }); changed = true; }
+          if ((PLAIN.has(inferred.name) || classes.has(inferred.name)) && !inferred.nullable) { resolved.set(h, { name: inferred.name }); changed = true; }
         } catch { /* an expression the typer cannot read simply stays untyped */ }
       }
       rebuild();
       if (!changed) break;
     }
+    // functions declared inside a companion object are hidden from this pass (see protectCompanionBlocks): the runner reads their result types from the text
+    for (const [name, typeName] of Object.entries(options.companionResults ?? {})) if (!byName.has(name) && !methodResults.has(name)) methodResults.set(name, { name: typeName });
     // final gate: every function of a name must be typed, and agree
     for (const [name, list] of byName) {
       const names = list.map((h) => resolved.get(h)?.name);
@@ -941,9 +968,10 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       if (open > a + 2 && ['sumOf', 'maxOf', 'minOf'].includes(at(open - 1)) && at(open - 2) === '.' && top(open + 1, b - 1, '->') < 0) {
         const container = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(infer(a, open - 2, ctx).name);
         const element = (container?.[1] ?? container?.[2] ?? '').trim();
-        if (element) {
+        // an unknown element type still lets `it.area()` be typed through the method's declared result
+        {
           const inner = child(ctx);
-          inner.vars.set('it', element.endsWith('?') ? { name: element.slice(0, -1), nullable: true } : { name: element });
+          inner.vars.set('it', element ? (element.endsWith('?') ? { name: element.slice(0, -1), nullable: true } : { name: element }) : unknown);
           const value = infer(open + 1, b - 1, inner);
           if (['Int', 'Long', 'Double', 'Float'].includes(value.name) && !value.nullable) return value;
         }
@@ -1042,7 +1070,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     // `obj.prop` / `obj?.prop`: the property's declared type (this is how `user.email` is known to be `String?`).
     if (b - a >= 3 && (at(b - 2) === '.' || at(b - 2) === '?.') && isName(at(b - 1))) {
       const receiverType = infer(a, b - 2, ctx);
-      const prop = classProps.get(receiverType.name)?.get(at(b - 1));
+      const prop = classProps.get(receiverType.name)?.get(at(b - 1)) ?? (classProps.has(receiverType.name) && options.accessorProps?.[at(b - 1)] ? { name: options.accessorProps[at(b - 1)] } : undefined);
       if (prop) {
         // `if (s.score != null) { f(s.score) }`: a val property checked earlier in the source is smart-cast to its non-null type.
         const expression = text(a, b).replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1148,7 +1176,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // Inside a class body, a bare name is one of the class's constructor parameters or properties.
       const owner = enclosingClass(a);
       if (owner) {
-        const member = owner.ctorTypes.get(at(a)) ?? classProps.get(owner.name)?.get(at(a));
+        const member = owner.ctorTypes.get(at(a)) ?? classProps.get(owner.name)?.get(at(a)) ?? (options.accessorProps?.[at(a)] ? { name: options.accessorProps[at(a)] } : undefined);
         // Only plain value types are trusted here: a library type (CoroutineDispatcher, Comparable) has subtype relations this engine does not model.
         if (member && ['Int', 'Long', 'Double', 'Float', 'String', 'Boolean', 'Char'].includes(member.name) && !member.nullable) return member;
       }
@@ -1382,12 +1410,12 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // decode to lower the expression as code, then re-encode the result because
       // it goes back inside a string token that must stay free of raw slashes.
       const expression = encoded.replace(/\\u002f/g, '/').split(NESTED_QUOTE).join('"');
-      const typed = lowerKotlinFunctions(expression, { vars: ctx.vars, decimalResult: true, functions, classes, priorText: (options.priorText ?? '') + source.slice(0, outerStart) });
+      const typed = lowerKotlinFunctions(expression, { vars: ctx.vars, decimalResult: true, functions, classes, memberNames: userMemberNames, accessorProps: options.accessorProps, classPropTypes: classProps, companionResults: options.companionResults, priorText: (options.priorText ?? '') + source.slice(0, outerStart) });
       // Back inside a string token: hide slashes and the quotes of nested string literals again.
       // The untyped lowering is only a "did typing change anything?" probe. It can legitimately THROW where the typed one
       // succeeds (`(third as? Int)` needs third's known runtime type), and that must not discard the typed result.
       let untyped: string | null = null;
-      try { untyped = lowerKotlinFunctions(expression); } catch { untyped = null; }
+      try { untyped = lowerKotlinFunctions(expression, { memberNames: userMemberNames }); } catch { untyped = null; }
       return typed !== untyped ? typed.replace(/\//g, '\\u002f').split('"').join(NESTED_QUOTE) : null;
     } catch (e) {
       // A null-safety compile error inside `${...}` is a real error in the program, not a reason to fall back to the
@@ -1427,6 +1455,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     }
     return changed ? `"${out}"` : null;
   }
+  const isLambdaSubjects = new Set<string>();
   function lower(a: number, b: number, ctx: Context, expected?: Type, callLabel?: string, inline = false, allowInlineValue = false): string {
     if (a >= b) return '';
     const expression = !['val', 'var', 'fun', 'return', 'if', 'for', 'while', 'when', 'class', 'throw'].includes(at(a)) && expressionEnd(a, b) === b;
@@ -1608,6 +1637,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const op = operators[n]; const next = primaries[n + 1];
         if (op === '+' || op === '-') { groups.push(current); additive.push(op); additiveAt.push(n); current = { text: render(next), type: next.type }; continue; }
         if (current.type.name === 'String' && !current.type.nullable && stringOperator[op]) fail(`Unresolved reference: ${stringOperator[op]} (String has no operator ${op})`, operatorToken(n));
+        if (isOperatorClass(current.type, OPERATOR_METHOD[op])) {
+          current = { text: `(${current.text}).${OPERATOR_METHOD[op]}(${render(next)})`, type: methodResults.get(OPERATOR_METHOD[op]) ?? current.type }; changed = true; continue;
+        }
         const promoted = promoteNumeric(current.type, next.type) ?? unknown;
         if (promoted.name === 'Float' && ['*', '/', '%'].includes(op)) {
           current = { text: `Math.fround(${current.text} ${op} ${render(next)})`, type: promoted }; changed = true; continue;
@@ -1628,6 +1660,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       for (let n = 0; n < additive.length; n++) {
         const op = additive[n]; const next = groups[n + 1];
         if (op === '-' && acc.type.name === 'String' && !acc.type.nullable) fail('Unresolved reference: minus (String has no operator -)', operatorToken(additiveAt[n]));
+        if (isOperatorClass(acc.type, OPERATOR_METHOD[op])) {
+          acc = { text: `(${acc.text}).${OPERATOR_METHOD[op]}(${next.text})`, type: methodResults.get(OPERATOR_METHOD[op]) ?? acc.type }; changed = true; continue;
+        }
         // Collection operators: list + element / list + list / set - element / map + pair ... (a JS `+` would stringify)
         if ((op === '+' || op === '-') && /^(?:Mutable)?(?:List|Set|Map)\b|^Array\b/.test(acc.type.name) && !acc.type.nullable) {
           acc = { text: `${op === '+' ? '__kt_plus' : '__kt_minus'}(${acc.text}, ${next.text})`, type: acc.type }; changed = true; continue;
@@ -1792,6 +1827,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       if (at(i) === 'is' && at(i + 1) === 'Char') fail('Char runtime type checks are not simulated', i);
       if (at(i) === 'typealias') { const end = expressionEnd(i + 3, b); emit(i, end, ''); i = end - 1; continue; }
       if (at(i) === 'inline' && at(i + 1) === 'fun') { emit(i, i + 1, ''); continue; }
+      if (['operator', 'infix'].includes(at(i)) && at(i + 1) === 'fun') { emit(i, i + 1, ''); continue; }
       const h = headers.get(i);
       if (h && ['{', '='].includes(at(h.body))) {
         const inner = child(ctx);
@@ -1835,7 +1871,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           const actual: Type = { name: 'Function', params: params.map(p => p.type), receiver: sig.receiver ?? fnExpected?.receiver, result: sig.result ?? result ?? unknown };
           check(fnExpected, actual, i);
         }
-        const declaredName = h.anonymous ? '' : sig.receiver ? extensionJsName(h.name, sig.receiver.name) : overloadJsName.get(i) ?? h.name;
+        const declaredName = h.anonymous ? '' : sig.receiver ? extensionJsName(h.name, sig.receiver.name) : overloadJsName.get(i) ?? (h.name === 'eval' || h.name === 'arguments' ? `__kt_${h.name}` : h.name);
         emit(i, end, `${h.anonymous ? 'function' : 'fun ' + declaredName}(${paramCode})${h.anonymous ? '' : ': ' + (sig.result?.name === 'Function' ? 'Function' : (sig.result?.name === '?' ? 'Any' : sig.result?.name) ?? 'Any')} {\n${wrap(body, f)}\n}`);
         i = end - 1; continue;
       }
@@ -2171,6 +2207,52 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // `run { }`, `repeat(3) { }`, a `::` reference). A bare `delay` / `yield` / `run` is an
       // ordinary variable that merely shares the name (`var delay = 2`, `"${delay}s"`).
       if (builtins.has(at(i)) && !(ctx.receiver && at(i) === 'repeat') && !functions.has(at(i)) && !ctx.vars.has(at(i)) && !['.', '?.'].includes(at(i - 1)) && (['(', '{', '<'].includes(at(i + 1)) || at(i - 1) === '::')) emit(i, i + 1, `__kt_${at(i)}`);
+      // `xs.maxByOrNull { ... } is Sq`: the checked value is a call with a trailing lambda; bind it to a name the text-level `is` pass can read
+      if (startsChain(i) && !isLambdaSubjects.has(`${a}:${i}:${b}`)) {
+        const subjectEnd = primaryEnd(i);
+        if (subjectEnd > i && subjectEnd < b && (at(subjectEnd) === 'is' || (at(subjectEnd) === '!' && at(subjectEnd + 1) === 'is'))) {
+          let hasLambda = false;
+          for (let k = i; k < subjectEnd; k++) if (at(k) === '{') hasLambda = true;
+          const typeAt = subjectEnd + (at(subjectEnd) === '!' ? 2 : 1);
+          if (hasLambda && isName(at(typeAt))) {
+            const typeEnd = typeAt + 1 + (at(typeAt + 1) === '?' ? 1 : 0);
+            const guardKey = `${a}:${i}:${b}`; isLambdaSubjects.add(guardKey);
+            const inner = lower(i, subjectEnd, ctx);
+            isLambdaSubjects.delete(guardKey);
+            emit(i, typeEnd, `((__kt_is) => __kt_is ${at(subjectEnd) === '!' ? '!is' : 'is'} ${at(typeAt)})(${inner})`);
+            i = typeEnd - 1; continue;
+          }
+        }
+      }
+      // unary operators on a class that declares them: `-a` is `a.unaryMinus()`, `!a` is `a.not()`
+      if (['-', '+', '!'].includes(at(i)) && startsChain(i)) {
+        const method = at(i) === '-' ? 'unaryMinus' : at(i) === '+' ? 'unaryPlus' : 'not';
+        if (declaredOperators.has(method)) {
+          const operandEnd = primaryEnd(i + 1);
+          if (operandEnd > i + 1 && classes.has(infer(i + 1, operandEnd, ctx).name)) { emit(i, operandEnd, `(${lower(i + 1, operandEnd, ctx)}).${method}()`); i = operandEnd - 1; continue; }
+        }
+      }
+      // `c++` / `c--` as a statement on a class that declares inc / dec: `c = c.inc()`
+      if (isName(at(i)) && (at(i + 1) === '++' || at(i + 1) === '--') && (i === a || newline(i - 1, i) || [';', '{', '}'].includes(at(i - 1))) && !['.', '?.'].includes(at(i - 1))) {
+        const method = at(i + 1) === '++' ? 'inc' : 'dec';
+        const variable = ctx.vars.get(at(i));
+        if (variable && isOperatorClass(variable, method)) { emit(i, i + 2, `${at(i)} = (${at(i)}).${method}()`); i += 1; continue; }
+      }
+      // `p(args)` where `p` holds an instance of a class that declares `operator fun invoke`
+      if (isName(at(i)) && at(i + 1) === '(' && !['.', '?.', '::', 'fun'].includes(at(i - 1))) {
+        const variable = ctx.vars.get(at(i));
+        if (variable && isOperatorClass(variable, 'invoke')) { emit(i, i + 1, `${at(i)}.invoke`); continue; }
+      }
+      // `a < b` between instances of a class that declares compareTo is `a.compareTo(b) < 0`
+      if (declaredOperators.has('compareTo') && startsChain(i)) {
+        const left = primaryEnd(i);
+        if (left > i && ['<', '>', '<=', '>='].includes(at(left)) && classes.has(infer(i, left, ctx).name)) {
+          const right = primaryEnd(left + 1);
+          if (right > left + 1) { emit(i, right, `(${lower(i, left, ctx)}).compareTo(${lower(left + 1, right, ctx)}) ${at(left)} 0`); i = right - 1; continue; }
+        }
+      }
+      // `eval` and `arguments` cannot be bound or called by those names in the strict JavaScript the runner generates
+      if ((at(i) === 'eval' || at(i) === 'arguments') && !['.', '?.', '::'].includes(at(i - 1)) && !classProps.has(at(i))) { emit(i, i + 1, `__kt_${at(i)}`); continue; }
       // a call to an overloaded function: pick the declaration by argument types and call it by its own JS name
       if (isName(at(i)) && at(i + 1) === '(' && overloadSets.has(at(i)) && !['.', '?.', '::', 'fun'].includes(at(i - 1)) && !ctx.vars.has(at(i))) {
         const chosen = chooseOverload(at(i), i + 1, ctx);
@@ -2213,7 +2295,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     for (let k = a; k < b; k++) {
       const previous = at(k - 1);
       const headerClose = previous === ')' && pairs.has(k - 1) && ['if', 'while', 'for', 'when', 'catch'].includes(at(pairs.get(k - 1)! - 1));
-      if (k === a || (newline(k - 1, k) && !operatorsEnding.has(previous) && !operatorsStarting.has(at(k)) && !headerClose)) starts.push(k);
+      // a statement also starts after a `;` (`{ n++; return this }` on one line)
+      if (k === a || (previous === ';' && at(k) !== ';') || (newline(k - 1, k) && !operatorsEnding.has(previous) && !operatorsStarting.has(at(k)) && !headerClose)) starts.push(k);
       if (pairs.has(k) && pairs.get(k)! > k && pairs.get(k)! < b) k = pairs.get(k)!;
     }
     return starts;

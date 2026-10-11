@@ -86,11 +86,11 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     explanation: "Kotlin's type system is designed to catch accidental null-related crashes early, before the program runs, instead of letting them surprise users later.",
   },
   {
-    id: 'w1q-what-5', type: 'single_choice', worldId: W, lessonId: L.what, topic: T.what, concept: 'Java interoperability', difficulty: 'medium', xp: 15,
-    question: 'A team has a large Java project and wants to start using Kotlin in it. What makes this possible?',
-    options: ['Kotlin code can call Java code and the other way round', 'Kotlin cannot work with Java', 'All the Java code must be deleted first', 'Kotlin only runs in a web browser'], answer: 0,
-    hint: 'The two languages were designed to work together.',
-    explanation: 'Kotlin is fully interoperable with Java: Kotlin code can call Java code and the reverse. That is why existing Java and Android projects could adopt Kotlin step by step.',
+    id: 'w1q-what-5', type: 'single_choice', worldId: W, lessonId: L.what, topic: T.what, concept: 'Where Kotlin runs', difficulty: 'medium', xp: 15,
+    question: 'A team wants to write server (backend) code in Kotlin. Which platform does that Kotlin code run on?',
+    options: ['The JVM (Java Virtual Machine)', 'Only Android phones', 'Only a web browser', 'Only iOS devices'], answer: 0,
+    hint: 'Kotlin is not limited to one type of app.',
+    explanation: 'Beyond Android, Kotlin runs on the JVM for backend and server code. It also compiles to JavaScript and targets native platforms, so it is not limited to one type of app.',
   },
   {
     id: 'w1q-what-6', type: 'multi_select', worldId: W, lessonId: L.what, topic: T.what, concept: 'Facts about Kotlin', difficulty: 'hard', xp: 20,
@@ -133,7 +133,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-syntax-5', type: 'find_error', worldId: W, lessonId: L.syntax, topic: T.syntax, concept: 'Statements belong in main()', difficulty: 'medium', xp: 15,
-    question: 'Tap the line that contains an error.',
+    question: 'Tap the line that does not compile.',
     code: ['fun main() {', '  println("A")', '}', 'println("B")'], errorLine: 3,
     hint: 'Which line is outside the curly braces of main()?',
     errorNote: 'println("B") is outside main(), so it cannot run.',
@@ -141,10 +141,26 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-syntax-6', type: 'multi_select', worldId: W, lessonId: L.syntax, topic: T.syntax, concept: 'What a program needs', difficulty: 'hard', xp: 20,
-    question: 'Which of these does a Kotlin program need in order to run? Select all that apply.',
-    options: ['A main function', 'Curly braces around its body', 'A println call', 'A class declaration'], answers: [0, 1],
-    hint: 'A program that prints nothing can still run.',
-    explanation: 'A program starts at `main()` and its body goes between curly braces. A println call is optional: an empty `main()` is a valid program that prints nothing. Kotlin does not require a class around `main()`.',
+    question: 'A Kotlin program can run without which of these? Select all that apply.',
+    options: ['println("Hi")', 'class Box', 'fun helper()', 'fun main()'], monoOptions: true, answers: [0, 1, 2],
+    hint: 'Which one does the program start from?',
+    explanation: 'A program starts at `main()`, so that function is required. An empty `main()` is a valid program that prints nothing, so println and extra functions are optional, and Kotlin does not require a class around `main()`.',
+  },
+  {
+    id: 'w1q-syntax-7', type: 'predict_output', worldId: W, lessonId: L.syntax, topic: T.syntax, concept: 'Statements run top to bottom', difficulty: 'medium', xp: 15,
+    question: 'What will this program print?',
+    code: ['fun main() {', '  println("First")', '  println("Second")', '  println("Third")', '}'],
+    options: ['Third\nSecond\nFirst', 'First\nSecond\nThird', 'First\nThird\nSecond', 'Second'], monoOptions: true, answer: 1,
+    hint: 'Statements run in the order they are written.',
+    explanation: 'The statements inside main run one after another, from top to bottom, so the lines appear in the order First, Second, Third.',
+  },
+  {
+    id: 'w1q-syntax-8', type: 'find_error', worldId: W, lessonId: L.syntax, topic: T.syntax, concept: 'Closing quote of a String', difficulty: 'medium', xp: 15,
+    question: 'Tap the line that contains an error.',
+    code: ['fun main() {', '  println("Hello, Kotlin!)', '}'], errorLine: 1,
+    hint: 'Where does the text start, and where does it end?',
+    errorNote: 'The closing double quote is missing.',
+    explanation: 'A String must start and end with a double quote. Without the closing quote after Kotlin!, the compiler cannot tell where the text ends, so it reports a syntax error.',
   },
 
   // Comments
@@ -165,7 +181,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-comments-3', type: 'predict_output', worldId: W, lessonId: L.comments, topic: T.comments, concept: 'Comment after code', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['println("A") // println("B")'],
     options: ['AB', 'A', 'B', 'Error'], monoOptions: true, answer: 1,
     hint: 'Everything after // on a line is ignored.',
@@ -177,7 +193,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     a: ['/* println("Debug")', 'println("Ready!")'],
     b: ['/* println("Debug") */', 'println("Ready!")'], answer: 1,
     hint: 'Check that every /* has a matching */.',
-    explanation: 'Code A closes its block comment with `*/`, so only `println("Ready!")` runs. In code B the comment is never closed, so it swallows the rest of the program and the code does not compile.',
+    explanation: 'Code B closes its block comment with `*/`, so only `println("Ready!")` runs. In code A the comment is never closed, so it swallows the rest of the program and the code does not compile.',
   },
   {
     id: 'w1q-comments-5', type: 'predict_output', worldId: W, lessonId: L.comments, topic: T.comments, concept: 'Block comment hides lines', difficulty: 'hard', xp: 20,
@@ -198,7 +214,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   // print() and println()
   {
     id: 'w1q-print-1', type: 'predict_output', worldId: W, lessonId: L.print, topic: T.print, concept: 'print vs println', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['print("Hi")', 'print("!")', 'println(" there")'],
     options: ['Hi!there', 'Hi! there', 'Hi ! there', 'Hi!'], monoOptions: true, answer: 1,
     hint: 'print does not move to a new line. Look at the space inside " there".',
@@ -244,7 +260,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-print-7', type: 'predict_output', worldId: W, lessonId: L.print, topic: T.print, concept: 'Spaces on one line', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['print("Go")', 'print(" ")', 'print("Kotlin")', 'println("!")'],
     options: ['Go Kotlin!', 'Go Kotlin !', 'GoKotlin!', 'Go! Kotlin'], monoOptions: true, answer: 0,
     hint: 'Each print continues where the last one stopped, and the second call prints a space.',
@@ -252,25 +268,24 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-print-8', type: 'predict_output', worldId: W, lessonId: L.print, topic: T.print, concept: 'Counting lines', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['print("A")', 'println("B")', 'print("C")', 'println("D")'],
     options: ['A\nB\nC\nD', 'AB\nCD', 'ABCD', 'AB CD'], monoOptions: true, answer: 1,
     hint: 'A new line starts only after println.',
     explanation: 'A and B share the first line (println ends it), and C and D share the second, so the output is two lines: AB and CD.',
   },
   {
-    id: 'w1q-print-9', type: 'find_error', worldId: W, lessonId: L.print, topic: T.print, concept: 'Keeping text on one line', difficulty: 'hard', xp: 20,
-    question: 'The output should be `Total: 5` on ONE line. Tap the line that breaks this.',
-    code: ['println("Total: ")', 'println(5)'], errorLine: 0,
-    hint: 'Which call ends the line too early?',
-    errorNote: 'println ends the line, so 5 appears on the next line.',
-    explanation: '`println("Total: ")` ends the line after the label, so 5 is printed on a second line. Use `print("Total: ")` so both parts stay on one line.',
+    id: 'w1q-print-9', type: 'multi_select', worldId: W, lessonId: L.print, topic: T.print, concept: 'Which calls end the line', difficulty: 'hard', xp: 20,
+    question: 'Which calls end the current line after they run? Select all that apply.',
+    options: ['println("Hi")', 'print("Hi")', 'println()', 'print("")'], monoOptions: true, answers: [0, 2],
+    hint: 'Which call names end with ln?',
+    explanation: 'println ends the line after its text, and println() with nothing inside still ends the current line. print never ends the line, even when its text is empty.',
   },
 
   // val vs var
   {
     id: 'w1q-valvar-1', type: 'find_error', worldId: W, lessonId: L.valvar, topic: T.valvar, concept: 'val is read-only', difficulty: 'medium', xp: 15,
-    question: 'Tap the line that contains an error.',
+    question: 'Tap the line that does not compile.',
     code: ['val lives = 3', 'lives = 2', 'println(lives)'], errorLine: 1,
     hint: 'Look for a line that changes a value declared with val.',
     errorNote: 'lives is a val, so it cannot get a new value.',
@@ -309,7 +324,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-valvar-6', type: 'predict_output', worldId: W, lessonId: L.valvar, topic: T.valvar, concept: 'Reassigning a String var', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['var message = "Hi"', 'message = "Bye"', 'println(message)'],
     options: ['Bye', 'Hi', 'HiBye', 'Error'], monoOptions: true, answer: 0,
     hint: 'A var can hold a new value, and println shows the latest one.',
@@ -339,12 +354,12 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     explanation: 'y is a var, so y = 5 and y = y + 1 both work. x is a val, so x = 5 and x = x + 1 are errors: a val cannot be reassigned, even to a value calculated from itself.',
   },
   {
-    id: 'w1q-valvar-10', type: 'predict_output', worldId: W, lessonId: L.valvar, topic: T.valvar, concept: 'Tracing a var and a val', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
-    code: ['var count = 1', 'val step = 2', 'count = count + step', 'count = count + step', 'println(count)'],
-    options: ['3', '4', '5', 'Error'], monoOptions: true, answer: 2,
-    hint: 'The var changes twice; the val never does.',
-    explanation: 'count starts at 1. It becomes 3 and then 5, because step stays 2 each time. Reading a val is always allowed; only changing it is not.',
+    id: 'w1q-valvar-10', type: 'predict_output', worldId: W, lessonId: L.valvar, topic: T.valvar, concept: 'A val keeps the value it was given', difficulty: 'hard', xp: 20,
+    question: 'What does this code output?',
+    code: ['var count = 1', 'val snapshot = count', 'count = count + 5', 'println(snapshot)'],
+    options: ['6', '5', '1', 'Error'], monoOptions: true, answer: 2,
+    hint: 'snapshot is set once, at its declaration.',
+    explanation: 'snapshot copies the value 1 when it is created. Changing count afterwards does not change snapshot, so the program prints 1, not 6.',
   },
 
   // Variables & Type Inference
@@ -396,7 +411,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-infer-7', type: 'find_error', worldId: W, lessonId: L.infer, topic: T.infer, concept: 'Type stays fixed', difficulty: 'hard', xp: 20,
-    question: 'Tap the line that contains an error.',
+    question: 'Tap the line that does not compile.',
     code: ['var title = "Kotlin"', 'var count = 10', 'count = count + 1', 'title = 5'], errorLine: 3,
     hint: 'Compare each variable with the kind of value it is given.',
     errorNote: 'title was inferred as a String, so it cannot hold the Int 5.',
@@ -420,7 +435,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   // Int & Long
   {
     id: 'w1q-int-1', type: 'predict_output', worldId: W, lessonId: L.int, topic: T.int, concept: 'Long literals', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val big = 5_000_000_000L', 'println(big)'],
     options: ['5_000_000_000', '5000000000L', '5000000000', 'Error'], monoOptions: true, answer: 2,
     hint: 'The underscores only make the number easier to read.',
@@ -458,7 +473,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-int-6', type: 'predict_output', worldId: W, lessonId: L.int, topic: T.int, concept: 'Underscore separators', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val total = 1_500 + 500', 'println(total)'],
     options: ['1_500500', 'Error', '2_000', '2000'], monoOptions: true, answer: 3,
     hint: 'The compiler ignores underscores inside a number.',
@@ -474,7 +489,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-int-8', type: 'find_error', worldId: W, lessonId: L.int, topic: T.int, concept: 'Int to Long', difficulty: 'medium', xp: 15,
-    question: 'Tap the line that contains an error.',
+    question: 'Tap the line that does not compile.',
     code: ['val small = 100', 'val big: Long = small', 'println(big)'], errorLine: 1,
     hint: 'Compare the type of small with the type of big.',
     errorNote: 'small is an Int, and an Int is not turned into a Long automatically.',
@@ -498,7 +513,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-int-11', type: 'predict_output', worldId: W, lessonId: L.int, topic: T.int, concept: 'Converting before arithmetic', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val daily = 50_000', 'val year = daily.toLong() * 365L', 'println(year)'],
     options: ['18250000L', '50000365', '18250000', 'Error'], monoOptions: true, answer: 2,
     hint: 'Convert first, then multiply. Only the number is printed.',
@@ -522,7 +537,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-float-2', type: 'predict_output', worldId: W, lessonId: L.float, topic: T.float, concept: 'Float arithmetic', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val f: Float = 2.5f', 'println(f * 2)'],
     options: ['5.0', '5', '2.5', 'Error'], monoOptions: true, answer: 0,
     hint: 'A Float multiplied by 2 is still a decimal type.',
@@ -537,11 +552,11 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     explanation: 'Without the f suffix, 1.5 is a Double, which does not fit a Float variable. Write 1.5f.',
   },
   {
-    id: 'w1q-float-4', type: 'true_false', worldId: W, lessonId: L.float, topic: T.float, concept: 'Float suffix', difficulty: 'easy', xp: 10,
-    question: 'A decimal literal such as `3.14` is a `Float` by default.',
+    id: 'w1q-float-4', type: 'true_false', worldId: W, lessonId: L.float, topic: T.float, concept: 'Float versus Double precision', difficulty: 'easy', xp: 10,
+    question: 'A `Float` keeps as many decimal digits accurately as a `Double`.',
     answer: false,
-    hint: 'Which type does a plain decimal number get? What does a Float need?',
-    explanation: 'A plain decimal literal is a Double by default. It only becomes a Float when it ends with f, for example 3.14f, so the statement is false.',
+    hint: 'Which of the two types is the larger, more precise one?',
+    explanation: 'A Double has more precision (64 bits against 32), so it keeps more digits accurately than a Float. That is why Double is the default for decimals.',
   },
   {
     id: 'w1q-float-5', type: 'predict_output', worldId: W, lessonId: L.float, topic: T.float, concept: 'Double arithmetic', difficulty: 'medium', xp: 15,
@@ -561,7 +576,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-float-7', type: 'predict_output', worldId: W, lessonId: L.float, topic: T.float, concept: 'Adding Floats', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val a: Float = 1.5f', 'val b: Float = 2.0f', 'println(a + b)'],
     options: ['3', '3.5', '1.52.0', 'Error'], monoOptions: true, answer: 1,
     hint: 'Two Floats added together give a Float.',
@@ -569,7 +584,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-float-8', type: 'predict_output', worldId: W, lessonId: L.float, topic: T.float, concept: 'Converting with toDouble()', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val temp: Float = 21.5f', 'val exact: Double = temp.toDouble()', 'println(exact)'],
     options: ['21', '21.5f', 'Error', '21.5'], monoOptions: true, answer: 3,
     hint: 'toDouble() changes the type, not the value.',
@@ -623,7 +638,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-bool-4', type: 'predict_output', worldId: W, lessonId: L.bool, topic: T.bool, concept: 'Comparison gives a Boolean', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val age = 15', 'val canVote = age >= 18', 'println(canVote)'],
     options: ['false', 'true', '15', 'Error'], monoOptions: true, answer: 0,
     hint: 'A comparison produces true or false.',
@@ -631,18 +646,19 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-bool-5', type: 'predict_output', worldId: W, lessonId: L.bool, topic: T.bool, concept: 'NOT of a comparison', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val a = 10', 'val b = 20', 'println(!(a > b))'],
     options: ['false', '10', 'true', 'Error'], monoOptions: true, answer: 2,
     hint: 'Work out a > b first, then flip it.',
     explanation: 'a > b is false because 10 is not greater than 20. The ! operator flips false to true, so the program prints true.',
   },
   {
-    id: 'w1q-bool-6', type: 'single_choice', worldId: W, lessonId: L.bool, topic: T.bool, concept: 'Strict Boolean type', difficulty: 'medium', xp: 15,
-    question: 'Which declaration compiles?',
-    options: ['val ok: Boolean = 1', 'val ok: Boolean = "true"', 'val ok: Boolean = 5 > 3', 'val ok: Boolean = 0'], monoOptions: true, answer: 2,
-    hint: 'Kotlin does not treat other values as true or false.',
-    explanation: 'Kotlin has a strict Boolean type: only true, false or a comparison result such as `5 > 3` is a Boolean. The number 1, the number 0 and the String "true" are not accepted in its place.',
+    id: 'w1q-bool-6', type: 'find_error', worldId: W, lessonId: L.bool, topic: T.bool, concept: 'Strict Boolean type', difficulty: 'medium', xp: 15,
+    question: 'The program compares a Boolean with text. Tap the line that does not compile.',
+    code: ['val age = 20', 'val isAdult = age >= 18', 'println(isAdult == "true")'], errorLine: 2,
+    hint: 'What type is isAdult, and what type is "true"?',
+    errorNote: 'A Boolean cannot be compared with a String.',
+    explanation: 'isAdult is a Boolean, and "true" in quotes is a String. Kotlin does not compare a Boolean with a String, so the line is rejected. Write isAdult == true, or just use isAdult.',
   },
   {
     id: 'w1q-bool-7', type: 'predict_output', worldId: W, lessonId: L.bool, topic: T.bool, concept: 'Two steps and a NOT', difficulty: 'hard', xp: 20,
@@ -665,7 +681,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     a: ['val x = 4', 'println(x > 3)'],
     b: ['val x = 4', 'println(!(x > 3))'], answer: 0,
     hint: 'One of them applies a NOT to the comparison.',
-    explanation: 'x > 3 is true because 4 is greater than 3. Code B prints that true. Code A flips it with ! and prints false.',
+    explanation: 'x > 3 is true because 4 is greater than 3. Code A prints that true. Code B flips it with ! and prints false.',
   },
 
   // Char
@@ -678,7 +694,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-char-2', type: 'find_error', worldId: W, lessonId: L.char, topic: T.char, concept: 'Char vs String', difficulty: 'medium', xp: 15,
-    question: 'Tap the line that contains an error.',
+    question: 'Tap the line that does not compile.',
     code: ["val first = 'K'", 'val second = "L"', 'val third: Char = "M"', 'println(first)'], errorLine: 2,
     hint: 'Look at which quotes a Char needs.',
     errorNote: 'A Char needs single quotes: \'M\'.',
@@ -686,7 +702,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-char-3', type: 'predict_output', worldId: W, lessonId: L.char, topic: T.char, concept: 'Escape sequences', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['println("Say \\"Hi\\"")'],
     options: ['Say "Hi"', 'Say \\"Hi\\"', 'Say Hi', 'Error'], monoOptions: true, answer: 0,
     hint: 'What does a backslash before a quote do inside a string?',
@@ -708,7 +724,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-char-6', type: 'predict_output', worldId: W, lessonId: L.char, topic: T.char, concept: 'Printing a Char', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ["val grade = 'B'", 'println(grade)'],
     options: ["'B'", '66', 'B', 'Error'], monoOptions: true, answer: 2,
     hint: 'The quotes are part of the code, not of the value.',
@@ -781,7 +797,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-string-4', type: 'predict_output', worldId: W, lessonId: L.string, topic: T.string, concept: 'String plus number', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val label = "Score: " + 10', 'println(label)'],
     options: ['Score:10', 'Score + 10', 'Error', 'Score: 10'], monoOptions: true, answer: 3,
     hint: 'The number is turned into text and joined to the String.',
@@ -789,7 +805,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-string-5', type: 'predict_output', worldId: W, lessonId: L.string, topic: T.string, concept: 'length counts spaces', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val greeting = "Hi there"', 'println(greeting.length)'],
     options: ['7', '2', '8', 'Hi there'], monoOptions: true, answer: 2,
     hint: 'Count every character, including the space.',
@@ -801,7 +817,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     a: ['val first = "Ada"', 'val last = "Lovelace"', 'println(first + " " + last)'],
     b: ['val first = "Ada"', 'val last = "Lovelace"', 'println(first + last)'], answer: 0,
     hint: 'Look for the space between the two names.',
-    explanation: 'Code A joins the two Strings directly and prints AdaLovelace. Code B adds a String with one space between them, so it prints Ada Lovelace.',
+    explanation: 'Code A joins the two Strings with one space between them, so it prints Ada Lovelace. Code B joins them directly and prints AdaLovelace.',
   },
   {
     id: 'w1q-string-8', type: 'predict_output', worldId: W, lessonId: L.string, topic: T.string, concept: 'Joining then counting', difficulty: 'hard', xp: 20,
@@ -813,7 +829,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-string-10', type: 'predict_output', worldId: W, lessonId: L.string, topic: T.string, concept: 'trimIndent()', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val text = """', '  Hi', '""".trimIndent()', 'println(text.length)'],
     options: ['4', '2', '5', '6'], monoOptions: true, answer: 1,
     hint: 'trimIndent() removes the shared indentation and the empty first and last lines.',
@@ -825,7 +841,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     a: ['val text = "', '  Line 1', '  Line 2', '"'],
     b: ['val text = """', '  Line 1', '  Line 2', '"""'], answer: 1,
     hint: 'A normal String cannot continue onto the next line.',
-    explanation: 'Triple quotes start a raw String, which may span several lines. A String in single double quotes must end on the same line, so code B does not compile.',
+    explanation: 'Triple quotes start a raw String, which may span several lines. A String in single double quotes must end on the same line, so code A does not compile.',
   },
   {
     id: 'w1q-string-12', type: 'multi_select', worldId: W, lessonId: L.string, topic: T.string, concept: 'length and joining', difficulty: 'hard', xp: 20,
@@ -845,7 +861,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-template-2', type: 'predict_output', worldId: W, lessonId: L.template, topic: T.template, concept: 'Expression templates', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val a = 3', 'val b = 4', 'println("Sum: ${a + b}")'],
     options: ['Sum: 3 + 4', 'Sum: ${a + b}', 'Sum: 34', 'Sum: 7'], monoOptions: true, answer: 3,
     hint: 'Kotlin calculates what is inside ${ }.',
@@ -885,7 +901,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-template-8', type: 'predict_output', worldId: W, lessonId: L.template, topic: T.template, concept: 'Braces after the name', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val word = "Kotlin"', 'println("Size: $word.length")'],
     options: ['Size: Kotlin.length', 'Size: 6', 'Size: $word.length', 'Error'], monoOptions: true, answer: 0,
     hint: 'Without braces, the template stops at the end of the variable name.',
@@ -893,7 +909,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-template-9', type: 'predict_output', worldId: W, lessonId: L.template, topic: T.template, concept: 'Several templates in a row', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val a = 2', 'println("$a${a + 1}$a")'],
     options: ['232', '233', '22', 'Error'], monoOptions: true, answer: 0,
     hint: 'Work through the three templates from left to right.',
@@ -1017,16 +1033,16 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
     explanation: '42 is an Int by default and 3.14 is a Double by default. 5L has the L suffix, so it is a Long.',
   },
   {
-    id: 'w1q-setnum-2', type: 'predict_output', worldId: W, lessonId: L.bool, setId: SET.numbers, topic: S.numbers, concept: 'Long values compared', difficulty: 'medium', xp: 15,
+    id: 'w1q-setnum-2', type: 'predict_output', worldId: W, lessonId: L.bool, setId: SET.numbers, topic: S.numbers, concept: 'Decimal comparison at the boundary', difficulty: 'medium', xp: 15,
     question: 'What will this code print?',
-    code: ['val population = 8_000_000_000L', 'val isHuge = population > 5_000_000_000L', 'println(isHuge)'],
-    options: ['false', '8000000000', 'true', 'Error'], monoOptions: true, answer: 2,
-    hint: 'A comparison produces a Boolean, not a number.',
-    explanation: 'Underscores and the L suffix only describe the numbers. 8000000000 is greater than 5000000000, so the comparison gives the Boolean true.',
+    code: ['val rate = 2.5', 'val isHigh = rate >= 2.5', 'println(isHigh)'],
+    options: ['false', '2.5', 'true', 'Error'], monoOptions: true, answer: 2,
+    hint: 'Does >= include the equal case?',
+    explanation: '>= is true when the two values are equal, and rate is exactly 2.5, so the comparison gives the Boolean true.',
   },
   {
     id: 'w1q-setnum-3', type: 'predict_output', worldId: W, lessonId: L.bool, setId: SET.numbers, topic: S.numbers, concept: 'Decimal comparison and NOT', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val temp = 98.6', 'val fever = temp > 99.5', 'println(!fever)'],
     options: ['false', '99.5', 'Error', 'true'], monoOptions: true, answer: 3,
     hint: 'First decide what temp > 99.5 is, then apply the NOT.',
@@ -1034,7 +1050,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-setnum-4', type: 'find_error', worldId: W, lessonId: L.bool, setId: SET.numbers, topic: S.numbers, concept: 'No automatic widening', difficulty: 'medium', xp: 15,
-    question: 'Tap the line that contains an error.',
+    question: 'Tap the line that does not compile.',
     code: ['val weight: Float = 68.5f', 'val exact: Double = weight', 'println(exact)'], errorLine: 1,
     hint: 'Compare the two declared types.',
     errorNote: 'A Float is not turned into a Double automatically.',
@@ -1042,7 +1058,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-setnum-5', type: 'predict_output', worldId: W, lessonId: L.bool, setId: SET.numbers, topic: S.numbers, concept: 'Long, comparison and NOT', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val limit = 5_000_000_000L', 'val cap = 4_000_000_000L', 'val ok = !(limit > cap)', 'println(ok)'],
     options: ['true', 'false', 'Error', '1000000000'], monoOptions: true, answer: 1,
     hint: 'Work from the inside of the parentheses outwards.',
@@ -1074,7 +1090,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-settext-3', type: 'predict_output', worldId: W, lessonId: L.template, setId: SET.text, topic: S.text, concept: 'Char in a template', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ["val star = '*'", 'println("$star$star$star")'],
     options: ['$star$star$star', '* * *', '***', 'Error'], monoOptions: true, answer: 2,
     hint: 'Each $star inserts the value of star.',
@@ -1082,7 +1098,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-settext-4', type: 'predict_output', worldId: W, lessonId: L.template, setId: SET.text, topic: S.text, concept: 'length inside a template', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['val first = "Ada"', 'val last = "Lovelace"', 'println("${first.length + last.length}")'],
     options: ['11', '3 + 8', 'AdaLovelace', 'Error'], monoOptions: true, answer: 0,
     hint: 'The code inside ${...} is calculated before it is printed.',
@@ -1107,7 +1123,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   // Set: Getting Started (What is Kotlin?, Syntax & main(), Comments, print and println). Questions that combine these lessons; lessonId is the last lesson of the set.
   {
     id: 'w1q-setstart-1', type: 'fill_blank', worldId: W, lessonId: L.print, setId: SET.start, topic: S.start, concept: 'main needs parentheses', difficulty: 'easy', xp: 10,
-    question: 'Fill in the blank so the program prints Hello.',
+    question: 'Fill in the blank so the program prints `Hello`.',
     code: ['fun main___ {', '  println("Hello")', '}'],
     chips: ['()', '[]', '<>', '{}'], answer: '()',
     hint: 'Look at how main is written.',
@@ -1115,7 +1131,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-setstart-2', type: 'predict_output', worldId: W, lessonId: L.print, setId: SET.start, topic: S.start, concept: 'Comment, print and println', difficulty: 'medium', xp: 15,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['fun main() {', '  // print("A")', '  print("B")', '  println("C")', '}'],
     options: ['ABC', 'BC', 'C', 'B'], monoOptions: true, answer: 1,
     hint: 'The first line inside main() is a comment.',
@@ -1131,7 +1147,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-setstart-4', type: 'single_choice', worldId: W, lessonId: L.print, setId: SET.start, topic: S.start, concept: 'Static typing and main()', difficulty: 'medium', xp: 15,
-    question: 'Kotlin is statically typed. Which mistake can the compiler report before `main()` ever runs?',
+    question: 'Kotlin is `statically typed`. Which mistake can the compiler report before `main()` ever runs?',
     options: ['Giving a String to a variable declared as Int', 'A user who types the wrong text', 'A println that prints the wrong message', 'A comment that is too long'],
     answer: 0,
     hint: 'Types are checked before the program runs.',
@@ -1139,7 +1155,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-setstart-5', type: 'predict_output', worldId: W, lessonId: L.print, setId: SET.start, topic: S.start, concept: 'Comments hiding print calls', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What does this code output?',
     code: ['fun main() {', '  print("A") // println("B")', '  print("C")', '  /* println("D")', '  print("E") */', '  println("F")', '}'],
     options: ['ABCDEF', 'ACF', 'ACEF', 'AF'], monoOptions: true, answer: 1,
     hint: 'Cross out everything after // and everything between /* and */.',
@@ -1172,7 +1188,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-setvar-3', type: 'find_error', worldId: W, lessonId: L.infer, setId: SET.variables, topic: S.variables, concept: 'val with an explicit type', difficulty: 'medium', xp: 15,
-    question: 'Tap the line that contains an error.',
+    question: 'Tap the line that does not compile.',
     code: ['val city: String = "Pune"', 'city = "Delhi"', 'println(city)'], errorLine: 1,
     hint: 'The type is fine; look at the keyword.',
     errorNote: 'city is a val, so it cannot be reassigned.',
@@ -1188,7 +1204,7 @@ export const WORLD_1_QUIZ: QuizQuestion[] = [
   },
   {
     id: 'w1q-setvar-5', type: 'predict_output', worldId: W, lessonId: L.infer, setId: SET.variables, topic: S.variables, concept: 'A var copied from a val', difficulty: 'hard', xp: 20,
-    question: 'What will this code print?',
+    question: 'What is printed by this code?',
     code: ['val base: Int = 10', 'var total = base', 'total = total + base', 'total = total + base', 'println(total)'],
     options: ['10', '30', '20', 'Error'], monoOptions: true, answer: 1,
     hint: 'base never changes; total starts as a copy of it.',

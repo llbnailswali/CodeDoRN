@@ -105,6 +105,16 @@ A question outside its type's range fails the check.
   prose quoting an exact output through `renderProseWithUnbreakableQuotes`.
 - Check the rendered question on a phone-width screen after content or UI changes. Data correctness is not render correctness.
 
+### Highlighting code in prompts and explanations (World 1 set 1 is the model)
+
+- **Mark code with explicit backticks.** The author writes `` `statically typed` ``, `` `Hello` `` or `` `fun greet(name: String)` `` in the question text; the app draws it as a code chip. The automatic highlighter (`emphasizeQuizPrompt`, Worlds 2, 3, 4, 5, 7, 8 only) never touches text inside backticks, and a world without a list (1, 6, 9, 10) shows only what the author marked.
+- **What to mark:** anything a learner could type: keywords, types, operators, literals, function and variable names, exact output text (`` `Total: 5` ``), and a whole signature or expression as ONE chip (`` `List<String?>` ``, `` `x in 1..5` ``). Mark the first mention and keep the same term marked everywhere (for example `statically typed` in every question that uses it).
+- **What not to mark:** ordinary English that happens to be a keyword (`in`, `is`, `if`, `step`, `open`, `data`, `class`) unless it is code in that sentence; company or product names (Kotlin, Java, JetBrains); generic prompts ("What will this code print?") and words that only describe a concept (null safety).
+- **Never split an expression.** Do not leave half an expression marked (`` `List<Animal` > ``, `` `Int = n` * `2` ``). When unsure, put the whole expression in one pair of backticks.
+- **The same rule applies to explanations.** The app draws an explanation one sentence per paragraph and turns backticked text into chips (`ExplainText`), on the answer screen and in the review. Mark code, operators and exact output in explanations the way you do in prompts. Hints are plain text: do not put backticks in a hint until the app supports it.
+- **Options are plain text.** Backticks in an option are shown literally. To mark code in options, make the options code snippets and set `monoOptions: true` (for example `println("Hi")`, `class Box`, `fun main()`), but keep them within the lesson's concepts (the lesson-order audit applies to options too).
+- **Checks:** `real.ts`/`scan.ts` do not check highlighting yet; a broken-chip check (odd number of backticks, a chip ending in `<` or `=`, a chip containing only part of an expression) is still to be added to `audit:quiz-standard`.
+
 ## 9. Gates before shipping
 
 ```sh
@@ -160,7 +170,8 @@ Last updated 2026-10-11. Update this section at the end of every quiz work sessi
 - Standard written (sections 1-11) and imported by CLAUDE.md (it is the only file loaded automatically for quiz work).
 - Type/difficulty ranges (section 5a): all 10 worlds have 0 violations (45 questions rewritten to fit, difficulty kept).
 - Boss quizzes (section 10): all 10 worlds rewritten to 12 questions, 1/5/6, ordered, no true/false, type guide followed, every answer
-  checked with real kotlinc. Each world's `QUIZ_WORLD_<N>_CONCEPT_MAP.md` has a "Boss coverage (authored)" table. World 1 total is 145.
+  checked with real kotlinc. Each world's `QUIZ_WORLD_<N>_CONCEPT_MAP.md` has a "Boss coverage (authored)" table. World 1 total was 145 after the Boss rewrite and is 147 after the content audit.
+- Highlighting rule written (section 8, "Highlighting code in prompts and explanations"); applied to World 1 set 1 (`setstart-1`, `setstart-4`, `syntax-6` options). Other worlds' prompts have not been reviewed against it.
 - Quiz code formatter bugs fixed (`formatQuizCodeQuestion`: closing-brace indent, `} else {`, `{ n ->`); see PITFALLS.md.
 - `test-world8-quiz-kotlin.ts` offset fixed (+4). Simulator gaps found are listed at the end of PITFALLS.md.
 - World 7 lesson/set questions rewritten and audited: 80 executable snippets checked with real kotlinc; quiz-bank tests, duplicate/later-lesson audit, and World 7 curriculum quality audit pass. Phone-width rendering remains pending; findings are recorded in `QUIZ_WORLD_7_CONCEPT_MAP.md`.
@@ -172,19 +183,31 @@ Last updated 2026-10-11. Update this section at the end of every quiz work sessi
 - World 8 content audit done (Claude, 2026-10-11): all 158 questions read; 12 questions rewritten (duplicates, out-of-scope enum members, trivial "hard" ones), 5 multi-selects de-patterned, `object`-vs-instance wording fixed, prompt highlighter fixed for generic types (`List<Animal>`); real kotlinc agrees with every key. Findings in `QUIZ_WORLD_8_CONCEPT_MAP.md`. Phone rendering pending.
 - World 5 content audit done (Claude, 2026-10-11): all 104 questions read, 95 executable programs checked with real kotlinc; 1 wrong key (`named-10`), 1 question not matching its code (`param-5`), 2 "errors" that were not compile errors, 6 trivial "hard" ones and broken code chips fixed. Findings in `QUIZ_WORLD_5_CONCEPT_MAP.md`. Phone rendering pending.
 - World 6 quiz content audit complete: all 128 questions pass structure/scope/runner checks; 12 multi-select prompts now state the answer count; comparison snippets and two repeated lesson questions were improved. Real Kotlin verifies all 10 comparison pairs and all 13 error cases. Phone-width visual review remains for the user; evidence is in `QUIZ_WORLD_6_CONCEPT_MAP.md`.
+- World 4 content audit complete (2026-10-11): all 116 lesson/set questions and 12 Boss questions reviewed. Twelve quiz items rewritten: duplicate progression, three output whitespace/layout mismatches, one infinite-loop find-error changed to a real compile error, and seven T/F statements rebalanced to 7 true/7 false. Real kotlinc checked 91 executable cases; every predicted output matches, the negative-step runtime exception is confirmed, and the known `w4q-range-8` flake did not reproduce. All requested code-quality gates pass; phone-width rendering remains for the user. Evidence: `QUIZ_WORLD_4_CONCEPT_MAP.md`.
+- World 2 content audit complete (2026-10-11): all 78 regular and 12 Boss questions reviewed. Fixed two duplicate scenarios, two false “find error” claims, an ambiguous prefix/postfix comparison, and a multi-select prompt missing its answer count; rebalanced true/false and answer positions. Real kotlinc: 76 lesson/set executable cases and 12 keyed Boss cases, zero mismatches. Requested quality gates pass; six soft type-mix warnings and phone-width rendering remain. Evidence: `QUIZ_WORLD_2_CONCEPT_MAP.md`.
+- World 3 content audit done (Claude, 2026-10-11): all 88 questions read, 67 executable programs checked with real kotlinc; 1 wrong explanation (`types-7`), 1 find-error keyed on the wrong line (`expression-7`), 1 question with the code as an option (`set-wh-1`), 8 duplicate scenarios, 3 trivial "hard" ones and the true/false skew fixed. Polish pass added 5 questions (World 3 now 94) and converted 1; predict-the-output stays at 45% by design (override recorded in the concept map). Findings in `QUIZ_WORLD_3_CONCEPT_MAP.md`. Phone rendering pending.
+- World 1 content audit done (Claude, 2026-10-11): all 147 questions read, 134 executable programs and every multi-select/single-choice fact checked with real kotlinc; 4 reversed explanations (`comments-4`, `bool-9`, `string-7`, `string-11`), 1 wrong key claim (`syntax-6`), 1 "error" that compiles (`print-9`), 3 duplicate facts and 1 trivial "hard" fixed, 2 questions added (World 1 is now 147). Findings in `QUIZ_WORLD_1_CONCEPT_MAP.md`. Phone rendering pending.
+- Enforcement (Claude, 2026-10-11): `npm run audit:quiz-standard` (`web-editor/scripts/audit-quiz-standard.ts`) now fails on type/difficulty range, XP, Boss shape (12, 1/5/6, ordered, no true/false, no type above 4, 5+ types), filler options, generic "True or false:" prompts, repeated explanations and repeated question+code+options for Worlds 1-10; type mix (40%, 3 types) and the world difficulty mix are warnings (36 today). It also runs in `scripts/run-all-checks.sh`. Writing it exposed and fixed: 34 template failures in Worlds 6, 7, 9, 10 (10 true/false prompts, 20 shared explanations, 3 duplicates) and a real World 7 bug (9 of 10 `find_error` keys pointed one line above the real error; one true/false key was wrong: "A val variable can be reassigned" keyed true).
 - Audit tools in `web-editor/scripts/quiz-audit/` (see the audit procedure above): `scan.ts <world>`, `dump.ts <world> <from> <to>`, `real.ts <world>`, `std-scan.ts` (all worlds).
 - Gates pass: `tsc`, `test:quiz-bank`, `audit:quiz-bank`, `test:world8-quiz-kotlin`; app data regenerated (`generate:native-data`).
+- Follow-up real-Kotlin sweep defects are resolved for Worlds 4, 6, 9 and 10 (details below). `real.ts` confirms no prediction mismatch in World 6, no issue in World 9, and the corrected compile-error line markers in Worlds 4 and 10. Remaining reports are documented runtime failures or comparison fragments, not incorrect keys. Typecheck, quiz-bank tests, duplicate/scope audit, standard audit, and native-data generation pass after these fixes.
+
+**Resolved by the follow-up real-Kotlin sweep:**
+- World 6 predictions `w6q-map-8`, `w6q-change-4`, and `w6q-change-8` now compile and match their keys. Runtime-error prompts `w6q-arr-9` and `w6q-create-9` say the line crashes when run.
+- World 4 `w4q-break-7`, `w4q-cont-7`, and `w4q-nested-8` now contain genuine compile errors; `w4q-step-8` clearly identifies its runtime crash. Remaining `real.ts 4` reports are expected runtime behavior and comparison-fragment limitations.
+- World 9 `w9q-11-8` now marks the prohibited `return`; World 10 `w10q-1-8` now marks the `it + 1` expression. World 10 runtime-error prompts already say that the marked line may crash when run.
+- The remaining reports in Worlds 4 and 6 include expected runtime-error cases and code-comparison fragments that are not standalone programs; these are documented false alarms, not unresolved answer-key defects.
 
 **Not done (in priority order)**
-1. User to complete phone-width visual reviews for Worlds 6-10; then audit Worlds 1-4 (Worlds 5 and 8 are content-audited too).
+1. User to complete phone-width visual reviews for all 10 worlds. Content audits are done for all 10 worlds (World 1 last, by Claude).
 2. Type-mix soft guideline (no type above 40% of a lesson, at least 3 types): Worlds 7, 9, 10 are clean; Worlds 1-5 and 8 still warn,
    mostly predict_output at 45-67% in Worlds 2-4. Scan with `npx tsx scripts/quiz-audit/std-scan.ts`.
    World 6 has two documented 50% lesson-level cases: operation tracing in mutation and type selection in choosing a collection.
-3. Make the type/difficulty ranges, Boss mix (1/5/6) and type-mix warnings part of `test-quiz-bank.ts` / `audit-quiz-bank.ts`
-   (today only `scripts/quiz-audit/std-scan.ts` checks them).
-4. Not rendered-checked on a phone: multi-line options, single_choice with code, and the formatter fix.
-5. Worlds 6, 7 and 8 are not registered in `web-editor/src/data/quizBank/index.ts` (`NEW_QUIZ_BANKS`); confirm whether the app uses them.
-6. Concept maps still list old per-lesson allocations in places; update each when its lesson questions are re-audited.
-7. `w4q-range-8` printed "true.0" once in a test run (flake, not reproduced): possible state leak in the runner.
+3. DONE: `audit:quiz-standard` enforces the ranges, Boss mix and smells (see Enforcement above). Still open: make `real.ts` (find-error line vs compiler line, prediction vs real output) a permanent test for all worlds.
+4. Review the other worlds' prompts and explanations against the highlighting rule (section 8; Worlds 2 and 6 have almost no chips in explanations: 0 of 90 and 1 of 128) and add the broken-chip check to `audit:quiz-standard`.
+5. Not rendered-checked on a phone: multi-line options, single_choice with code, and the formatter fix.
+6. Worlds 6, 7 and 8 are not registered in `web-editor/src/data/quizBank/index.ts` (`NEW_QUIZ_BANKS`); confirm whether the app uses them.
+7. Concept maps still list old per-lesson allocations in places; update each when its lesson questions are re-audited.
+8. `w4q-range-8` printed "true.0" once in a test run (flake, not reproduced): possible state leak in the runner.
 
-**How to resume:** Quiz content audits are complete for Worlds 5-10. The user owns phone-width visual reviews for Worlds 6-10. Next content audit: Worlds 1-4.
+**How to resume:** Quiz content audits are complete for all 10 worlds. The user owns phone-width visual reviews. Next: the open items above (type-mix polish, enforcing the standard in `test-quiz-bank.ts`, bank registration, phone rendering), then Worlds 11+ when their quiz banks exist.

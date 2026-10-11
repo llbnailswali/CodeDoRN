@@ -1,4 +1,4 @@
-/** Runs a world's executable questions through real kotlinc: predictions, find-error lines (code line + 4), fill-in chips, code comparisons.
+/** Runs a world's executable questions through real kotlinc: predictions, find-error lines (code line + 4 for full programs, + 5 for fragments without fun main), fill-in chips, code comparisons.
  *  npx tsx scripts/quiz-audit/real.ts <world>. Comparisons whose snippets show only calls report false alarms; check those by hand. */
 import { runRealKotlin } from '../minikotlin/real-kotlin';
 const n=process.argv[2]; const m:any=await import(`../../src/data/quizBank/world${n}Quiz`);
@@ -13,7 +13,7 @@ const r=await runRealKotlin(cases);
 let bad=0;
 for(const q of qs){
  if(q.type==='predict_output'){const a:any=r.get(q.id);const exp=q.options[q.answer];if(a.stage!=='ok'||a.output.trim()!==exp){bad++;console.log('PREDICT MISMATCH',q.id,a.stage,JSON.stringify(a.output?.trim()??a.errors?.[0]),'key',JSON.stringify(exp));}}
- if(q.type==='find_error'){const a:any=r.get(q.id);const want=q.errorLine+4;const lines=(a.errors||[]).map((e:string)=>Number((e.match(/^line (\d+)/)||[])[1]));
+ if(q.type==='find_error'){const a:any=r.get(q.id);const want=q.errorLine+(q.code.some((l:string)=>/\bfun main\b/.test(l))?4:5);const lines=(a.errors||[]).map((e:string)=>Number((e.match(/^line (\d+)/)||[])[1]));
   if(a.stage!=='compile'||!lines.includes(want)){bad++;console.log('FIND_ERROR',q.id,a.stage,'keyed line',want,'compiler:',JSON.stringify(a.errors?.slice(0,3)),'| keyed:',q.code[q.errorLine]);}}
  if(q.type==='fill_blank'){const res=q.chips.map((c:string)=>{const a:any=r.get(q.id+'::'+c);return [c,a.stage,a.output?.trim()];});const good=res.find((x:any)=>x[0]===q.answer) as any;
   const others=res.filter((x:any)=>x[0]!==q.answer&&x[1]==='ok'&&x[2]===good[2]);if(good[1]!=='ok'||others.length){bad++;console.log('FILL',q.id,JSON.stringify(res));}}
