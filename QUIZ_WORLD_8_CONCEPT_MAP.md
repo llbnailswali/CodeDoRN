@@ -7,8 +7,8 @@ Status: **Question bank collected and registered for the React Native app.** It 
 - 13 regular lessons × 10 questions = **130 lesson questions**. Each lesson: 2 easy, 5 medium, 3 hard.
 - 4 sets × 4 extra questions = **16 set questions**. Each set: 1 easy, 2 medium, 1 hard; these combine lessons within that set.
 - Full regular quiz = **146 questions**: 30 easy, 73 medium, 43 hard.
-- Separate Boss quiz = **12 questions**: 2 easy, 6 medium, 4 hard.
-- World total = **158 questions**: 32 easy, 79 medium, 47 hard (**20.3% / 50.0% / 29.7%**).
+- Separate Boss quiz = **12 questions**: 1 easy, 5 medium, 6 hard (10/40/50, QUIZ_QUALITY_STANDARD.md section 10).
+- World total = **158 questions**: 31 easy, 78 medium, 49 hard.
 
 The collected bank has all seven supported quiz question types. The quiz-bank validator confirms the 158-question count, IDs, ownership, answer structure, and difficulty mix. The local real Kotlin compiler checks **79 program variants** covering prediction, fill-in, find-error, and code-comparison questions. All **53 prediction programs** also produce their keyed output in the app runner. The React Native TypeScript check passes. Two valid Kotlin forms exposed app-runner bugs; they are recorded in `KOTLIN_RUNNER_KNOWN_ISSUES.md`, and the quiz examples use equivalent code the app runner can execute.
 
@@ -23,7 +23,7 @@ The set count follows the lessons and is not fixed across worlds. Every regular 
 | Type Design & Access | Visibility modifiers; Data classes; Enums | 30 | 4 | **34** | 7 | 17 | 10 |
 | Inheritance & Contracts | Basic inheritance; Interfaces; Overriding members | 30 | 4 | **34** | 7 | 17 | 10 |
 | **Full regular quiz** | **13 lessons** | **130** | **16** | **146** | **30** | **73** | **43** |
-| **Boss, separate** | Student Grade Manager | — | — | **12** | **2** | **6** | **4** |
+| **Boss, separate** | Student Grade Manager | — | — | **12** | **1** | **5** | **6** |
 
 ## Lesson question scope
 
@@ -58,7 +58,7 @@ Four per set: 1 easy, 2 medium, 1 hard. Every extra question must combine at lea
 
 ## Boss quiz — Student Grade Manager
 
-Plan **12 questions: 2 easy, 6 medium, 4 hard**. Use small, independent student and grade scenarios that combine World 8 classes, methods, constructors, properties, visibility, data classes, enums, interfaces, and overriding where relevant. Earlier worlds may supply lists, maps, loops, functions, conditions, and null safety. Do not require later-world features such as generics beyond collection types already taught, lambdas, coroutines, or advanced delegation.
+Plan **12 questions: 1 easy, 5 medium, 6 hard**, ordered easy to hard. Use small, independent student and grade scenarios that combine World 8 classes, methods, constructors, properties, visibility, data classes, enums, interfaces, and overriding where relevant. Earlier worlds may supply lists, maps, loops, functions, conditions, and null safety. Do not require later-world features such as generics beyond collection types already taught, lambdas, coroutines, or advanced delegation.
 
 Examples: construct two students with different scores, calculate a simple grade by a method, handle an optional score safely, print a data class summary, or process an ordered list of students through an interface method. Keep all data needed for each question in that question. Avoid relying on an unspecified collection iteration order or on another Boss answer.
 
@@ -79,3 +79,38 @@ Examples: construct two students with different scores, calculate a simple grade
 - Real compiler test: `web-editor/scripts/test-world8-quiz-kotlin.ts`.
 - Generator: `web-editor/scripts/generate-native-data.ts`.
 - Generated React Native files: `src/world8Quiz.ts`, `src/quizSets.ts`, and `src/contentStats.ts`.
+
+### Boss coverage (authored)
+
+All 12 questions follow one program, the Student Grade Manager, and each combines two or more World 8 lessons. Real kotlinc confirmed every predicted output, both compile errors (and their lines), each fill-in chip, both code-comparison programs, every option of both multi-select questions and every option of the interface question.
+
+| # | Diff | Type | Lessons combined |
+| ---: | --- | --- | --- |
+| 1 | easy | single_choice | Classes, primary constructors, properties (`val` versus `var`) |
+| 2 | medium | fill_blank | Enums, methods, classes |
+| 3 | medium | predict_output | Data classes, classes, methods, properties |
+| 4 | medium | single_choice | Interfaces, overriding members, methods |
+| 5 | medium | code_comparison | Visibility modifiers, primary constructors, methods |
+| 6 | medium | predict_output | Objects, `init`, constructors |
+| 7 | hard | predict_output | Basic inheritance, overriding members, methods, primary constructors |
+| 8 | hard | find_error | Visibility modifiers, basic inheritance, constructors |
+| 9 | hard | multi_select | Data classes, properties (`val` reference versus `var` property) |
+| 10 | hard | find_error | Interfaces, overriding members, enums |
+| 11 | hard | multi_select | Constructors, primary constructors, `init`, properties |
+| 12 | hard | predict_output | Interfaces, overriding, inheritance, enums, data classes (boundary score) |
+
+Every one of the 13 lessons is used at least once. The old Boss (2/6/4) was replaced because it had two single-fact questions, a true/false and one-lesson questions.
+
+## Audit findings and evidence (content audit, 2026-10-11)
+
+All 158 questions were read one by one (lesson, set and Boss). Mechanical scans were clean: no filler options, no repeated explanations or hints, answer positions balanced (28/27/26/25).
+`npm run test:world8-quiz-kotlin` (real kotlinc, 96 variants) and a separate probe of the single-choice and multi-select facts agreed with every key.
+
+- **Fixed: duplicate scenarios.** `w8q-prop-7` repeated `w8q-prop-3`; `w8q-data-6` repeated `w8q-data-3`; `w8q-set-reuse-3` repeated `w8q-override-3`; `w8q-set-state-3` repeated `w8q-prop-4`; `w8q-set-construction-1` repeated `w8q-init-7`. Each now has its own scenario (Boolean toggle, two-property data class, inherited interface implementation, shared limit versus per-instance count, `init` using a constructor property).
+- **Fixed: set questions outside the lesson scope.** `w8q-set-design-1` and `w8q-set-design-3` assumed an enum with a `private` member and a public method. Enum members are not taught or supported (see PITFALLS.md), so they now combine enum + data class and a data class with a private and a public property.
+- **Fixed: "hard" questions that were easy.** `w8q-class-8`, `w8q-object-8`, `w8q-primary-8`, `w8q-enum-8`, `w8q-data-8` now need a trap or an extra step (two variables on one instance, an alias of a singleton, named arguments, reassigning an enum variable, two data objects in a template).
+- **Fixed: guessable multi-select pattern.** 13 of 15 "Select every true statement" questions had exactly three correct answers. Five (`class`, `object`, `prop`, `method`, `ctor`) now have two.
+- **Fixed: wording.** `object` (the keyword) was used for "an instance" in `w8q-method-6`, `w8q-init-2`, `w8q-init-7`, which the prompt highlighter shows as the keyword. Now "instance".
+- **Fixed in shared code:** the prompt highlighter wrapped `List<Animal` and left the `>` outside (`w8q-override-7`). Generic types are now one code chip (`emphasizeQuizPrompt` in `quizQuestions.ts`).
+- **Open (content):** five questions test only that a data class prints `Name(prop=value)`; the lessons do not teach `==`, `copy()` or destructuring for data classes, so there is nothing more to ask. No question uses `when` over an enum (`when` is World 3). 40 questions open with "What prints?".
+- **Open (display):** no phone-width screenshot review has been done.

@@ -1,6 +1,6 @@
 # World 6 Quiz — Collection Valley
 
-Status: **Question bank collected and registered in the React Native app.** Questions follow the shared rules: simple English, lesson-scoped concepts, helpful hints and explanations, plausible misconception-based answers, and selective highlighting of important code in prompts. Target difficulty is **20% easy / 50% medium / 30% hard**. The bank contains 100 lesson questions, 16 cross-lesson set questions, and 12 separate Boss questions.
+Status: **Quiz content audit complete; phone-width visual review pending.** The 116 regular lesson/set questions and 12 Boss questions have passed structural, scope, answer-key, and executable checks. Visual rendering is left for the user.
 
 ## Source and lesson-count note
 
@@ -11,8 +11,8 @@ World 6 currently has **10 lesson titles** in `src/curriculumData.ts`, despite i
 - 10 regular lessons × 10 questions each = **100 lesson questions** (2 easy, 5 medium, 3 hard per lesson).
 - 4 sets × 4 cross-lesson questions = **16 set questions** (1 easy, 2 medium, 1 hard per set).
 - Regular quiz = **116 questions**: 24 easy, 58 medium, 34 hard (20.7% / 50.0% / 29.3%).
-- Separate Boss quiz = **12 questions**: 2 easy, 6 medium, 4 hard.
-- World total including Boss = **128 questions**: 26 easy, 64 medium, 38 hard (20.3% / 50.0% / 29.7%).
+- Separate Boss quiz = **12 questions**: 1 easy, 5 medium, 6 hard (10/40/50, section 10 of the quiz standard).
+- World total including Boss = **128 questions**: 21 easy, 61 medium, 46 hard.
 
 Sets group related lessons; set count is not fixed across Worlds. Every regular lesson belongs to exactly one set. Set questions are additional and combine concepts from their set. The Boss quiz is separate and can combine the completed World 6 concepts.
 
@@ -66,7 +66,7 @@ Suggested cross-lesson combinations:
 
 ## Boss quiz — Student Records
 
-Plan **12 questions: 2 easy, 6 medium, 4 hard**. The Boss can combine all World 6 lessons. Use a small, clear scenario such as a student roster, unique course names, and a map from student name to score. Test choosing appropriate types, adding a record, key lookup, safe iteration/destructuring, and a basic operation. Keep questions independent enough that one wrong answer does not make later questions impossible. Do not introduce classes, nullable values, lambdas, or other later-World concepts.
+**12 questions: 1 easy, 5 medium, 6 hard** (authored; verified with real kotlinc). The Boss can combine all World 6 lessons. Use a small, clear scenario such as a student roster, unique course names, and a map from student name to score. Test choosing appropriate types, adding a record, key lookup, safe iteration/destructuring, and a basic operation. Keep questions independent enough that one wrong answer does not make later questions impossible. Do not introduce classes, nullable values, lambdas, or other later-World concepts.
 
 ## Question types and quality checks
 
@@ -86,4 +86,36 @@ Execution/authoring cautions:
 - Quiz bank registry: `web-editor/src/data/quizBank/index.ts`
 - Generated native copy: `src/world6Quiz.ts`
 
-The World 6 bank passed `npm run test:quiz-bank` with 128 questions, 10 questions for each regular lesson, four questions in each of four sets, and 12 Boss questions. The test runner verified all predict-output answers and all fill-blank alternatives. `find_error` cases are still compiler-unverified by the lightweight runner and should receive a real Kotlin compiler review before final acceptance.
+The World 6 bank contains 128 total questions: 100 lesson, 16 set, and 12 Boss. Standard gates verify structure, keys, answer positions, predictions, fill-blank alternatives, duplicate scenarios, and concept scope.
+
+## Quiz audit findings and repairs
+
+- Every multi-select prompt now states the number of correct choices. The audit found and repaired 12 prompts that were missing this count.
+- Reformatted compressed semicolon-separated code-comparison snippets as readable multiline Kotlin.
+- Removed two repeated lesson checks: `w6q-list-4` now tests repeated List entries rather than repeating the List factory question; `w6q-map-8` now combines two keyed lookups rather than repeating a single lookup.
+- Clarified `w6q-list-7` to ask what the code prints and explain its index result. Rewrote the `w6q-set-map-3` explanation to avoid an ambiguous line number.
+- Real Kotlin verifies all 10 comparison pairs and their answer keys, plus all 13 `find_error` questions (11 compile errors with marked-line checks and 2 expected out-of-range runtime failures).
+- `npm run test:quiz-bank` checks all prediction answers and fill-blank alternatives. `npm run audit:quiz-bank` reports no duplicate scenarios or later-lesson concepts. `npm run lint` and native-data consistency checks pass.
+- Correct-choice positions across the 85 single-choice, prediction, and comparison questions are balanced: **29 / 19 / 19 / 18**.
+- Type-mix note: eight lesson-only banks keep every type at or below 40%. The mutation lesson uses 50% predictions to assess distinct change sequences; the collection-choice lesson uses 50% single-choice to assess suitable types without contrived code-tracing questions.
+
+Visual phone-width review was not performed; it remains the user's check.
+
+### Boss coverage (authored)
+
+All 12 questions follow one story, Student Records (roster, score book, tags). Real kotlinc confirmed every predicted output, both compile errors and their lines, every fill_blank chip, both code_comparison programs and each option of the single_choice and multi_select questions.
+
+| # | Diff | Type | Lessons combined |
+| ---: | --- | --- | --- |
+| 1 | easy | single_choice | Mutable vs read-only, Lists, Arrays, Choosing a type |
+| 2 | medium | predict_output | Sets (contains), Maps, Iterating (destructuring) |
+| 3 | medium | fill_blank | Maps, Adding/removing (remove by key), Mutable |
+| 4 | medium | predict_output | Arrays (update, contentToString), Iterating |
+| 5 | medium | single_choice | Lists, Basic operations (sorted copy), Creating |
+| 6 | medium | code_comparison | Maps, Iterating (entry destructuring) |
+| 7 | hard | find_error | Arrays (fixed size), Mutable vs read-only |
+| 8 | hard | predict_output | Lists, Adding/removing (remove vs removeAt), Updating |
+| 9 | hard | multi_select | Sets, Maps, Creating/accessing, Mutable vs read-only |
+| 10 | hard | find_error | Iterating, Lists, Updating by index |
+| 11 | hard | multi_select | Lists, Sets, Basic operations (indexOf, last, isNotEmpty) |
+| 12 | hard | predict_output | Lists, Sets, Maps, Adding/removing, Iterating, Basic operations (indexOf -1) |

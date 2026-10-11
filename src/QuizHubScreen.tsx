@@ -177,7 +177,7 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
               <Pressable
                 onPress={() =>
                   level !== 'all'
-                    ? levelQuestions.length > 0 && onExplore(levelQuestions, `${set.title} · ${level[0].toUpperCase()}${level.slice(1)}`)
+                    ? levelQuestions.length > 0 && onExplore(levelQuestions, set.title)
                     : status.state === 'review'
                     ? onReviewSet(set.questions.filter(isMissed), set.title)
                     : done

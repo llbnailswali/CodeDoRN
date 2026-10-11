@@ -1,6 +1,6 @@
 # World 9 Quiz Plan — Lambda Lab
 
-Status: **Planning only.** No World 9 quiz bank should be changed until this map is reviewed against the lesson content and the Kotlin runner/compiler limitations.
+Status: **Content audit complete; phone-width rendering pending.** The bank is collected and registered. Lesson, set, and Boss explanations have been reviewed and made specific to the answer, code, and relevant distractors. Structural/scope and executable Kotlin checks pass. No phone-width screenshot review has been performed.
 
 World 9 has 11 regular lessons and a separate Functional Utility Engine Boss lesson. The target mix is **20% easy / 50% medium / 30% hard**. Questions may use earlier World 9 concepts, but must not require a later lesson unless they are explicitly marked as cross-lesson or Boss questions.
 
@@ -9,7 +9,7 @@ World 9 has 11 regular lessons and a separate Functional Utility Engine Boss les
 - 11 regular lessons × 10 questions = **110 lesson questions**. Each lesson: 2 easy, 5 medium, 3 hard.
 - 4 sets × 4 cross-lesson questions = **16 set questions**. Each set: 1 easy, 2 medium, 1 hard.
 - Full regular quiz = **126 questions**: 26 easy, 63 medium, 37 hard.
-- Separate Boss quiz = **12 questions**: 2 easy, 6 medium, 4 hard.
+- Separate Boss quiz = **12 questions**: 1 easy, 5 medium, 6 hard (10/40/50), per `QUIZ_QUALITY_STANDARD.md` section 10.
 - World total = **138 questions**: 28 easy, 69 medium, 41 hard (**20.3% / 50.0% / 29.7%**).
 
 The regular lessons have different Stage 2 prediction counts; those counts describe the lesson activity and do not determine the quiz-bank count.
@@ -56,7 +56,7 @@ Four questions per set: 1 easy, 2 medium, 1 hard. Set questions must combine at 
 
 ## Boss quiz — Functional Utility Engine
 
-Plan **12 questions: 2 easy, 6 medium, 4 hard**. Use small independent utility scenarios: a formatter, calculator, validator, transformer, or dispatcher that accepts function values. Combine World 9 concepts with earlier collections, loops, conditions, and classes only where the lesson has already established them.
+**12 questions: 1 easy, 5 medium, 6 hard** (authored; verified with real kotlinc). Use small independent utility scenarios: a formatter, calculator, validator, transformer, or dispatcher that accepts function values. Combine World 9 concepts with earlier collections, loops, conditions, and classes only where the lesson has already established them.
 
 The Boss should assess choosing a function type, passing a lambda or `::` reference, applying a higher-order operation, reading `it`, and reasoning about labelled/non-local returns. Use `inline`, `noinline`, and `crossinline` primarily for compiler-rule questions rather than pretending they alter ordinary output. Keep every code sample self-contained and avoid coroutines, reflection, generics beyond previously taught collection types, and unspecified collection order.
 
@@ -78,3 +78,29 @@ The Boss should assess choosing a function type, passing a lambda or `::` refere
 - React Native generated bank: `src/world9Quiz.ts` plus regenerated quiz metadata files.
 - Structure test: `web-editor/scripts/test-quiz-bank.ts`.
 - A dedicated compiler audit should cover function references and inline-return cases before calling the bank complete.
+
+### Boss coverage (authored)
+
+Real kotlinc confirmed every predicted output, every compile error and its line, each fill-in chip, both code-comparison programs, each option of the two multi-select questions, and the inline/noinline/crossinline rules.
+
+| # | Diff | Type | Lessons combined |
+| ---: | --- | --- | --- |
+| 1 | easy | single_choice | Function types, parameter and return positions |
+| 2 | medium | fill_blank | Function types, higher-order functions, trailing lambda, `it` |
+| 3 | medium | single_choice | Lambdas, `it`, function types |
+| 4 | medium | predict_output | Higher-order functions, `::` reference, trailing lambda, `it` |
+| 5 | medium | code_comparison | Anonymous functions, lambdas, return rules |
+| 6 | medium | predict_output | Lambdas, final-expression result, invocation |
+| 7 | hard | find_error | Local returns, labels, higher-order `forEach` |
+| 8 | hard | predict_output | `it`, local return, `forEach` |
+| 9 | hard | multi_select | Inline, `noinline`, `crossinline`, non-local returns |
+| 10 | hard | find_error | Inline, `noinline`, function types, returning a function |
+| 11 | hard | multi_select | `::` references, lambdas, anonymous functions, function types |
+| 12 | hard | predict_output | Function returning a function, higher-order, `it`, collections, loop |
+
+## Audit findings and evidence
+
+- **Resolved — explanation quality.** Replaced generic lesson explanations with concept-specific rationales for the correct answer and plausible wrong forms, kept each trace explanation tied to its code/output, authored separate explanations for all four question types in each set, and strengthened Boss rationales for distractor-specific issues. See the lesson/set builders and Boss explanations in `web-editor/src/data/quizBank/world9Quiz.ts`.
+- **Fixed — `w9q-9-8` (hard, inline functions).** Its original example claimed an inline function with no function parameters would fail, but real kotlinc compiles that declaration. Replaced it with an inline higher-order function whose body returns `Int` while its declared return type is `String`; real kotlinc rejects it with a return-type mismatch. The line key remains 0 in the displayed code array.
+- **Verification evidence.** `npx tsc --noEmit`, `npm run test:quiz-bank`, `npm run audit:quiz-bank`, and `npm run audit:world9-quality` pass. Real Kotlin checked 76 lesson/set/Boss snippets: 46 compile and 30 expected-rejection cases reject; all 34 `predict_output` results match their answer keys. Native data was regenerated and the check passes. These checks establish code/key correctness, not visual rendering.
+- **Rendering pending.** No phone-width screenshot review has been performed for this bank; the current environment has no installed browser or screenshot automation tool. Review representative code, options, and explanation layouts on a phone before calling visual QA complete.

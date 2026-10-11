@@ -1,6 +1,6 @@
 # World 10 Quiz Plan — Collection Wizardry
 
-Status: **Planning only.** No World 10 quiz bank should be changed until this map is reviewed against the lesson examples, collection ordering assumptions, and Kotlin runner support.
+Status: **Content audit complete; visual review pending.** All 114 lesson, set, and Boss questions received a question-by-question content review. Answer keys and executable examples were checked with real Kotlin; phone-width visual review is left for the user.
 
 World 10 has 9 regular lessons and a separate Data Transformation Engine Boss lesson. The target mix is **20% easy / 50% medium / 30% hard**. Questions may use earlier collection, loop, function, lambda, and null-safety concepts, but must not require a later World 10 operation unless explicitly marked as cross-lesson or Boss content.
 
@@ -9,8 +9,8 @@ World 10 has 9 regular lessons and a separate Data Transformation Engine Boss le
 - 9 regular lessons × 10 questions = **90 lesson questions**. Each lesson: 2 easy, 5 medium, 3 hard.
 - 3 sets × 4 cross-lesson questions = **12 set questions**. Each set: 1 easy, 2 medium, 1 hard.
 - Full regular quiz = **102 questions**: 21 easy, 51 medium, 30 hard.
-- Separate Boss quiz = **12 questions**: 2 easy, 6 medium, 4 hard.
-- World total = **114 questions**: 23 easy, 57 medium, 34 hard (**20.2% / 50.0% / 29.8%**).
+- Separate Boss quiz = **12 questions**: 1 easy, 5 medium, 6 hard (10/40/50), per `QUIZ_QUALITY_STANDARD.md` section 10.
+- World total = **114 questions**: 22 easy, 56 medium, 36 hard (**19.3% / 49.1% / 31.6%**).
 
 The curriculum's per-lesson `questionsCount` values describe Stage 2 prediction activities and do not determine quiz-bank counts.
 
@@ -52,7 +52,7 @@ Four questions per set: 1 easy, 2 medium, 1 hard. Set questions must combine at 
 
 ## Boss quiz — Data Transformation Engine
 
-Plan **12 questions: 2 easy, 6 medium, 4 hard**. Use small, self-contained datasets such as orders, temperatures, scores, inventory, or student records. Questions should combine `map`/filtering, grouping or pairing, aggregation, and a final pipeline decision. Use earlier lambdas, function types, collections, loops, and null safety where useful.
+**12 questions: 1 easy, 5 medium, 6 hard** (authored; verified with real kotlinc). Use small, self-contained datasets such as orders, temperatures, scores, inventory, or student records. Questions should combine `map`/filtering, grouping or pairing, aggregation, and a final pipeline decision. Use earlier lambdas, function types, collections, loops, and null safety where useful.
 
 The Boss should test choosing the right operation, tracing intermediate collection shapes, handling nullable results, and respecting order. Every question must specify enough input and ordering information; do not depend on unspecified `Set`/`Map` iteration order or on another Boss answer. Avoid operations not taught in World 10, such as `onEach`, `scan`, sequences, coroutines, or advanced destructuring beyond the lesson content.
 
@@ -73,4 +73,40 @@ The Boss should test choosing the right operation, tracing intermediate collecti
 - Web quiz registry: `web-editor/src/data/quizBank/index.ts`.
 - React Native generated bank: `src/world10Quiz.ts` plus regenerated quiz metadata files.
 - Structure test: `web-editor/scripts/test-quiz-bank.ts`.
-- A dedicated compiler audit should cover nested collections, empty aggregations, type filtering, and pipeline output before calling the bank complete.
+- Dedicated compiler audit: `web-editor/scripts/test-world10-quiz-kotlin.ts` covers predictions, comparisons, fill-blank options, and error cases.
+
+## Plain-English review
+
+Reviewed wording and answer/explanation accuracy across all 90 lesson questions, 12 set questions, and 12 Boss questions. Simplified technical wording (for example, “predicate” to “test” and “accumulator” to “running total”), rewrote set-identification questions, and split long Boss explanations into shorter sentences. Phone-width rendering is intentionally not included; the user will check visuals.
+
+- `w10q-1-1`: the answer now describes what `map` does specifically; the earlier correct choice mixed the jobs of `map`, `mapNotNull`, and `filter`.
+- Replaced repetitive “can this operation be used with a list?” checks with lesson-specific behavior questions; true/false items now test concrete operation facts rather than generic applicability.
+- `w10q-1-3`: corrected the answer from `[4, 6, 8]` to `[4, 5, 6]`, matching the code that adds 3 to each of 1, 2, and 3.
+- Set and Boss explanations: replaced dense phrasing with shorter descriptions and plain-language steps.
+- Multi-select prompts now state exactly how many answers to choose. Clarified the set-3 fill-blank prompt to describe the program's printed `-1`, and corrected several explanations that omitted behavior or described it imprecisely.
+
+### Executable audit evidence
+
+- `npm run test:world10-quiz-kotlin`: checks all 114 records and unique IDs; validates all 28 prediction outputs, 10 code-comparison outcomes, all 16 fill-blank chips, and 11 find-error cases with real Kotlin.
+- `npm run test:world10-kotlin`: the World 10 lesson reference passes 122 exact outputs with 3 expected runtime failures.
+- `npm run audit:world10-quality`: curriculum quality checks pass.
+- Native quiz data must be regenerated and checked after any bank edit. Overall visual sign-off remains pending the user's phone-width review.
+
+### Boss coverage (authored)
+
+Real kotlinc confirmed every predicted output, both compile errors and their lines, each fill-in chip, both code-comparison programs (B throws at runtime), and each option of the two multi-select questions. No question depends on Map or Set order.
+
+| # | Diff | Type | Lessons combined |
+| ---: | --- | --- | --- |
+| 1 | easy | single_choice | Boolean-returning versus list-returning operations (`any`, `map`, `filter`, `sorted`) |
+| 2 | medium | fill_blank | `filter`, `sum` |
+| 3 | medium | single_choice | `find`, nullable result |
+| 4 | medium | predict_output | `flatMap`, `filter` |
+| 5 | medium | code_comparison | `fold`, `reduce`, empty list |
+| 6 | medium | predict_output | `partition`, `maxOrNull`, `sorted` |
+| 7 | hard | find_error | Nullable elements, `sum`, `filterNotNull` |
+| 8 | hard | predict_output | `groupBy`, Map lookup, safe call, Elvis |
+| 9 | hard | multi_select | `distinct`, `sorted`, `windowed`, `chunked` |
+| 10 | hard | find_error | `average` result type |
+| 11 | hard | multi_select | `filter`, `filterNot`, `partition`, `map`, `sum` |
+| 12 | hard | predict_output | `zip`, `filter`, `sortedBy`, `map` |

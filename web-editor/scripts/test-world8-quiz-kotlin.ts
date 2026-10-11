@@ -7,7 +7,7 @@ import { runRealKotlin } from './minikotlin/real-kotlin';
 const questions = [...WORLD_8_QUIZ, ...WORLD_8_BOSS_QUIZ];
 assert.equal(WORLD_8_QUIZ.length, 146);
 assert.equal(WORLD_8_BOSS_QUIZ.length, 12);
-assert.deepEqual(['easy','medium','hard'].map((d) => questions.filter((q) => q.difficulty === d).length), [32, 79, 47]);
+assert.deepEqual(['easy','medium','hard'].map((d) => questions.filter((q) => q.difficulty === d).length), [31, 78, 49]);
 assert.deepEqual(WORLD_8_QUIZ_SETS.map((set) =>
   WORLD_8_QUIZ.filter((q) => q.setId === set.id || (!q.setId && set.lessonIds.includes(q.lessonId))).length
 ), [34, 44, 34, 34]);
@@ -41,7 +41,7 @@ for (const test of cases) {
     if (actual.stage !== 'compile') failures.push(test.id + ': intended compiler error, got ' + actual.stage);
     else {
       const question = questions.find((q) => q.id === test.questionId);
-      if (!question || question.type !== 'find_error' || !actual.errors?.some((message) => message.includes('line ' + (question.errorLine + 2) + ':')))
+      if (!question || question.type !== 'find_error' || !actual.errors?.some((message) => message.includes('line ' + (question.errorLine + 4) + ':')))
         failures.push(test.id + ': compiler error does not point to the keyed line; got ' + JSON.stringify(actual.errors));
     }
   } else if (test.expected === 'correct') {

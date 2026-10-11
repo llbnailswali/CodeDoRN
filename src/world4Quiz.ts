@@ -75,7 +75,7 @@ export const WORLD_4_QUIZ: QuizQuestion[] = [
   po('w4q-do-7',L.doWhile,T.doWhile,'Post-body state','medium','What prints?',['fun main() {','  var n = 4','  do {','    n++','  } while (n < 4)','  println(n)','}'],['4','5','6','Nothing'],1,'The body increments n to 5 once; then 5 < 4 is false.','The first increment happens before the check.'),
   cc('w4q-do-8',L.doWhile,T.doWhile,'Choose guaranteed first action','hard','A prompt must be shown once before checking whether input is valid. Which loop guarantees that?',['do { showPrompt() } while (!valid)'],['while (!valid) { showPrompt() }'],0,'do-while shows the prompt before it checks valid, even if input is already valid.','Consider a valid value on the first check.'),
   po('w4q-do-9',L.doWhile,T.doWhile,'Condition after body update','hard','What prints?',['fun main() {','  var attempts = 0','  do {','    attempts++','    print(attempts)','  } while (attempts < 2)','}'],['1','12','0','12\n'],1,'The first pass prints 1 and repeats; the second prints 2 and then stops.','The updated attempts value controls the next check.'),
-  sc('w4q-do-10',L.doWhile,T.doWhile,'Use case for do-while','hard','When is do-while especially useful?',['When the body must happen before its first check','When a fixed range is known','When the body must never execute','When stepping backward'],0,'Use do-while when an action must happen at least once before checking whether to repeat.','Look for the required first run.'),
+  po('w4q-do-10',L.doWhile,T.doWhile,'Body runs once before the first check','hard','What does this code print?',['fun main() {','  var tries = 5','  do {','    println("try")','    tries++','  } while (tries < 3)','}'],['try','Nothing','try\ntry','try\ntry\ntry'],0,'do-while runs its body before checking the condition. tries < 3 is already false, but the body still ran once, so try is printed one time.','Which comes first, the body or the check?'),
 
   // Ranges
   tf('w4q-range-1',L.ranges,T.ranges,'Inclusive range endpoints','easy','The range 2..5 includes both 2 and 5.',true,'The .. range is inclusive at both ends.','Check each endpoint.'),
@@ -97,7 +97,7 @@ export const WORLD_4_QUIZ: QuizQuestion[] = [
   po('w4q-prog-5',L.progressions,T.progressions,'Accumulate progression','medium','What prints?',['fun main() {','  var total = 0','  for (n in 2..8 step 2) total += n','  println(total)','}'],['12','20','16','18'],1,'The values 2 + 4 + 6 + 8 total 20.','List the values visited.'),
   sc('w4q-prog-6',L.progressions,T.progressions,'Step does not change direction','medium','What determines whether a progression counts up or down?',['The sign of step','The range form','The loop variable name','The body'],1,'.. and until count up; downTo counts down. step controls the gap.','Direction and interval are separate.'),
   po('w4q-prog-7',L.progressions,T.progressions,'Variable step size','medium','What prints?',['fun main() {','  val gap = 3','  for (n in 0..8 step gap) print(n)','}'],['036','0369','012345678','048'],0,'The values are 0, 3 and 6; 9 would exceed 8.','Use the variable as the step size.'),
-  tf('w4q-prog-8',L.progressions,T.progressions,'Endpoint may be skipped','hard','If a step does not land exactly on the range endpoint, the progression stops before it.',true,'It never visits the first value that would pass the bound.','Trace the next value after the last valid one.'),
+  po('w4q-prog-8',L.progressions,T.progressions,'Step that misses the endpoint','hard','What does this code print?',['fun main() {','  for (n in 1..10 step 4) print(n)','}'],['159','15910','14710','1'],0,'The values are 1, 5 and 9. The next value would be 13, which passes 10, so the progression stops without visiting 10.','Add 4 each time and stop before passing 10.'),
   po('w4q-prog-9',L.progressions,T.progressions,'Non-dividing step','hard','What prints?',['fun main() {','  for (n in 2..12 step 5) print(n)','}'],['2712','2710','2611','2'],0,'The sequence is 2, 7, 12; printed without separators, that is 2712.','Add 5 each time from 2.'),
   cc('w4q-prog-10',L.progressions,T.progressions,'Step and direction','hard','Which expression counts down by 3 from 10 without using a negative step?',['10 downTo 0 step 3'],['10..0 step -3'],0,'downTo supplies the descending direction; step 3 is positive.','Use the range form to choose direction.'),
 
@@ -180,18 +180,61 @@ export const WORLD_4_QUIZ: QuizQuestion[] = [
   spo('w4q-set-ctl-4',L.nested,SET.control,'Nested count with skipped inner value','hard','What prints?',['fun main() {','  for (r in 1..2) {','    for (c in 1..3) {','      if (c == 2) continue','      print("x")','    }','  }','}'],['xx','xxxx','xxxxxx','xxx'],1,'Each of two rows prints for c=1 and c=3: two per row, xxxx in total.','Continue skips one inner pass, not the outer loop.'),
 ];
 
-/** Separate 12-question World 4 challenge: 2 easy, 6 medium, 4 hard. */
+const boss = (n: number, difficulty: Diff, concept: string, question: string, explanation: string, hint: string, type: string, data: Record<string, unknown>): QuizQuestion =>
+  formatQuizCodeQuestion({ ...base(`w4q-boss-${n}`, L.boss, T.boss, concept, difficulty, question, explanation, hint), type, ...data } as QuizQuestion);
+
+/**
+ * Boss quiz: the Pattern & Number Analyzer. 12 questions, 1 easy / 5 medium / 6 hard (10/40/50), ordered easy to hard.
+ * Every question combines at least two World 4 lessons (plus earlier-world ideas such as if, %, += and val).
+ */
 export const WORLD_4_BOSS_QUIZ: QuizQuestion[] = [
-  sc('w4q-boss-1',L.boss,T.boss,'Loop purpose','easy','Which loop form is best when a known range supplies each value?',['while','for','do-while','break'],1,'for is designed to visit values in a range or progression.','The number of values is known.'),
-  tf('w4q-boss-2',L.boss,T.boss,'Loop body guarantee','easy','A do-while body runs at least once, even if its condition starts false.',true,'Its condition is checked only after the first body execution.','Compare test position.'),
-  po('w4q-boss-3',L.boss,T.boss,'Stepped range analysis','medium','What prints?',['fun main() {','  for (n in 2..10 step 4) println(n)','}'],['2\n6\n10','2\n6','2\n4\n6\n8\n10','6\n10'],0,'The sequence is 2, 6, 10; the endpoint is reached.','Add 4 from the start value.'),
-  po('w4q-boss-4',L.boss,T.boss,'Count-up then countdown','medium','What prints?',['fun main() {','  for (n in 1..2) print(n)','  for (n in 2 downTo 1) print(n)','}'],['1212','1221','1122','21'],1,'The first loop prints 12; the second prints 21.','Trace each loop in source order.'),
-  po('w4q-boss-5',L.boss,T.boss,'Continue in progression','medium','What prints?',['fun main() {','  for (n in 0..6 step 2) {','    if (n == 2) continue','    print(n)','  }','}'],['0246','046','026','246'],1,'The progression is 0, 2, 4, 6; continue skips printing 2.','Continue does not stop later iterations.'),
-  po('w4q-boss-6',L.boss,T.boss,'Break with nested loops','medium','What prints?',['fun main() {','  for (r in 1..2) {','    for (c in 1..3) {','      if (c == 2) break','      print("$r$c ")','    }','  }','}'],['11 21','11 12 21 22','11','12 22'],0,'Each inner loop prints its first column, then break exits that inner loop only.','The outer loop continues.'),
-  sc('w4q-boss-7',L.boss,T.boss,'Range membership rule','medium','Which expression includes both endpoints 4 and 9?',['4 until 9','4..9','4 downTo 9','4 step 9'],1,'.. is inclusive on both ends.','Compare the upper-bound behavior.'),
-  po('w4q-boss-8',L.boss,T.boss,'Nested total','medium','What prints?',['fun main() {','  var total = 0','  for (a in 1..2) for (b in 1..2) total += a + b','  println(total)','}'],['8','12','6','10'],1,'For a=1 the inner sum is 5; for a=2 it is 7; total 12.','Add each inner-loop contribution carefully.'),
-  po('w4q-boss-9',L.boss,T.boss,'do-while guaranteed first pass','hard','What prints?',['fun main() {','  var n = 3','  do { print(n); n++ } while (n < 3)','}'],['Nothing','3','34','4'],1,'The body prints 3 and increments once before the false condition is checked.','The condition cannot prevent the first pass.'),
-  po('w4q-boss-10',L.boss,T.boss,'Descending step not landing on bound','hard','What prints?',['fun main() {','  for (n in 11 downTo 1 step 4) println(n)','}'],['11\n7\n3','11\n7\n3\n1','1\n5\n9','11\n8\n5\n2'],0,'Subtracting 4 visits 11, 7 and 3; the next value -1 passes 1.','Stop before crossing the lower bound.'),
-  ms('w4q-boss-11',L.boss,T.boss,'Loop form facts','hard','Select every correct statement.',['while checks before its body','do-while checks after its body','continue exits the entire loop','break exits the nearest enclosing loop'],[0,1,3],'while is pre-test, do-while is post-test, and break exits the nearest loop; continue only skips the current iteration.','Distinguish condition timing and loop control effects.'),
-  cc('w4q-boss-12',L.boss,T.boss,'Pattern dimensions','hard','Which nested loops make 3 rows with 2 stars in each row?',['for (r in 1..3) { for (c in 1..2) print("*"); println() }'],['for (r in 1..2) { for (c in 1..3) print("*"); println() }'],0,'The outer loop controls three rows and the inner loop prints two stars per row.','Match the outer bound to rows and the inner bound to columns.'),
+  boss(1, 'easy', 'Inclusive range with a step', 'The analyzer must check every fifth number: 0, 5, 10, 15 and 20, including 20. Which loop header does that?',
+    '`0..20 step 5` is inclusive, so it visits 0, 5, 10, 15 and 20. `until` leaves out 20, `downTo` counts the wrong way, and a negative step is not allowed.',
+    'Check the last value of each header.', 'single_choice',
+    { ...spread(['for (n in 0..20 step 5)', 'for (n in 0 until 20 step 5)', 'for (n in 20 downTo 0 step 5)', 'for (n in 0..20 step -5)'], 0), monoOptions: true }),
+  boss(2, 'medium', 'do-while with a counter step', 'Complete the loop so that it prints 0, 2 and 4.',
+    'A do-while runs its body first and checks the condition after it. The keyword before the condition is `while`. n goes 0, 2, 4, then 6 fails `n <= 4`.',
+    'The body comes first, then the check.', 'fill_blank',
+    { code: ['fun main() {', '  var n = 0', '  do {', '    println(n)', '    n += 2', '  } ___ (n <= 4)', '}'], chips: ['while', 'until', 'if', 'for'], answer: 'while' }),
+  boss(3, 'medium', 'Exclusive range with a filter', 'The analyzer counts multiples of 4 below 20. What does this program print?',
+    '`1 until 20` stops at 19, so the multiples are 4, 8, 12 and 16. That is 4. With `1..20` the value 20 would count too and give 5.',
+    'Is 20 part of the range?', 'predict_output',
+    { ...spread(['4', '5', '3', '19'], 0), code: ['fun main() {', '  var count = 0', '  for (n in 1 until 20) {', '    if (n % 4 == 0) count++', '  }', '  println(count)', '}'], monoOptions: true }),
+  boss(4, 'medium', 'Nested loops with until', 'The analyzer prints a grid cell label for every row and column. How many lines does this program print?',
+    'The outer loop runs 4 times. The inner `0 until 5` runs 5 times for each row (0, 1, 2, 3, 4). That is 4 x 5 = 20 lines.',
+    'Count the values of each range separately, then multiply.', 'single_choice',
+    { ...spread(['20', '24', '9', '16'], 0), code: ['fun main() {', '  for (row in 1..4) {', '    for (col in 0 until 5) {', '      println("$row-$col")', '    }', '  }', '}'], monoOptions: true }),
+  boss(5, 'medium', 'continue versus break', 'Which program prints the multiples of 3 from 1 to 12 (3, 6, 9, 12), one per line?',
+    'In A, `continue` skips only the numbers that are not multiples of 3. In B, `break` stops the whole loop at n = 1, so nothing prints.',
+    'What does each keyword do to the rest of the loop?', 'code_comparison',
+    { a: ['fun main() {', '  for (n in 1..12) {', '    if (n % 3 != 0) continue', '    println(n)', '  }', '}'], b: ['fun main() {', '  for (n in 1..12) {', '    if (n % 3 != 0) break', '    println(n)', '  }', '}'], answer: 0 }),
+  boss(6, 'medium', 'while loop with an early break', 'What does this program print?',
+    'Without the break, n would stop at 6, because 6 x 6 = 36 is more than 30. But n reaches 4 first, and `4 % 4 == 0` runs break. So n is 4.',
+    'Which one ends the loop first: the condition or the break?', 'predict_output',
+    { ...spread(['4', '6', '5', '30'], 0), code: ['fun main() {', '  var n = 1', '  while (n * n <= 30) {', '    if (n % 4 == 0) break', '    n++', '  }', '  println(n)', '}'], monoOptions: true }),
+  boss(7, 'hard', 'Accumulating in a for loop', 'Tap the line that does not compile.',
+    'n * 1.5 is a Double, and `total += ...` on an Int variable cannot store a Double. The compiler reports a type mismatch on that line.',
+    'Look at the type of the value added to total.', 'find_error',
+    { code: ['fun main() {', '  var total = 0', '  for (n in 1..4) {', '    total += n * 1.5', '  }', '  println(total)', '}'], errorLine: 3, errorNote: 'An Int variable cannot be increased by a Double.' }),
+  boss(8, 'hard', 'break inside nested loops', 'Read the program below. Which two statements are true?',
+    'Row 1 breaks at once, because c == r on the first inner pass. Row 2 prints 21, then breaks. Row 3 prints 31 and 32, then breaks. That is 3 prints. The break only leaves the inner loop, and the value 33 is never printed.',
+    'Trace each row and note when c equals r.', 'multi_select',
+    { options: ['Row 1 prints nothing', 'The print runs 3 times in total', 'The first break stops the whole program', 'The last pair printed is 33'], answers: [0, 1],
+      code: ['fun main() {', '  for (r in 1..3) {', '    for (c in 1..3) {', '      if (c == r) break', '      print("$r$c ")', '    }', '  }', '}'] }),
+  boss(9, 'hard', 'downTo with a step and continue', 'What does this program print?',
+    '10 downTo 1 step 3 visits 10, 7, 4 and 1. The value 7 is skipped by continue. So the total is 10 + 4 + 1 = 15. Without continue it would be 22.',
+    'List the visited values before you apply continue.', 'predict_output',
+    { ...spread(['15', '22', '12', '18'], 0), code: ['fun main() {', '  var total = 0', '  for (n in 10 downTo 1 step 3) {', '    if (n == 7) continue', '    total += n', '  }', '  println(total)', '}'], monoOptions: true }),
+  boss(10, 'hard', 'do-while counter declared with val', 'Tap the line that does not compile.',
+    'tries is declared with `val`, so it cannot change. `tries++` tries to reassign it, which is an error. The counter must be a `var`.',
+    'Which line changes a value that is read-only?', 'find_error',
+    { code: ['fun main() {', '  val tries = 0', '  do {', '    println("Try")', '    tries++', '  } while (tries < 3)', '}'], errorLine: 4, errorNote: 'A val cannot be reassigned.' }),
+  boss(11, 'hard', 'Countdown headers', 'Which loop headers visit exactly 8, 6, 4 and 2? Select the 2 correct headers.',
+    '`8 downTo 2 step 2` and `8 downTo 1 step 2` both give 8, 6, 4, 2 (the next value 0 is below 1). `8 downTo 0 step 2` also visits 0, and `2..8 step 2` counts up.',
+    'Write out the values of each header.', 'multi_select',
+    { options: ['for (n in 8 downTo 2 step 2)', 'for (n in 8 downTo 1 step 2)', 'for (n in 8 downTo 0 step 2)', 'for (n in 2..8 step 2)'], answers: [0, 1], monoOptions: true }),
+  boss(12, 'hard', 'Complete analyzer with continue and break', 'What does this program print?',
+    'The values are 1, 4, 7, 10, 13, 16, 19, 22 and so on. Odd values are skipped. 4, 10 and 16 are added (count 3, sum 30). Then 22 would make the sum 52, which is more than 40, so break ends the loop. The output is 3 30.',
+    'Watch when the sum would pass 40.', 'predict_output',
+    { ...spread(['3 30', '5 80', '4 52', '2 14'], 0), code: ['fun main() {', '  var evens = 0', '  var sum = 0', '  for (n in 1..30 step 3) {', '    if (n % 2 != 0) continue', '    if (sum + n > 40) break', '    evens++', '    sum += n', '  }', '  println("$evens $sum")', '}'], monoOptions: true }),
 ];

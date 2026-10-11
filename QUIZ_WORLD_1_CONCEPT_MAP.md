@@ -247,12 +247,12 @@ Batches 2 to 5 are done, plus the final audit. The review filter is gone, so eve
 | Variables | 5 to 6 | 19 | 6 | 25 |
 | Numbers & Logic | 7 to 9 | 32 | 6 | 38 |
 | Text | 10 to 12 | 31 | 6 | 37 |
-| Boss quiz (Personal Profile Program) | 13 | 14 | n/a | 14 |
+| Boss quiz (Personal Profile Program) | 13 | 12 | n/a | 12 |
 
 The full quiz is the four sets (133 questions); the Boss quiz is separate, unlocked when every set is finished.
 
 Per lesson (total): What is Kotlin? 6, Syntax & main() 6, Comments 6, print/println 9, val vs var 10, Type Inference 9, Int & Long 12, Float & Double 11,
-Boolean 9, Char 11, Strings 10, String Templates 10, Boss 14.
+Boolean 9, Char 11, Strings 10, String Templates 10, Boss 12 (1 easy / 5 medium / 6 hard, rewritten to the Boss rules, see below).
 
 Checks that gate every change (all pass):
 - `npm run test:quiz-bank`: structure, answer keys, and every predict-output / fill-in-the-blank answer through the engine.
@@ -262,3 +262,24 @@ Checks that gate every change (all pass):
 
 Answers verified only by hand (the engine cannot reject them): `syntax-5` (a `println` outside `main()`), `infer-7`, `setvar-4` (a var keeps its type),
 `print-9`/`bool-9`/`char-8` (their outputs differ rather than one failing to compile).
+
+### Boss coverage (authored)
+
+12 questions (1 easy / 5 medium / 6 hard, ordered easy to hard), all on the Personal Profile Program theme, every one combining two or more lessons. World 1 now has 145 questions (133 in the sets + 12 Boss). Real kotlinc 2.0.21 confirmed every predicted output, both compile errors (and their lines), each fill chip, the two programs of the comparison, and each option of the two multi-select questions.
+
+| # | Diff | Type | Lessons combined |
+| ---: | --- | --- | --- |
+| 1 | easy | single_choice | What is Kotlin (static typing), Variables & Type Inference, Strings |
+| 2 | medium | fill_blank | Strings (`length`), String Templates |
+| 3 | medium | predict_output | Syntax & main(), Comments, print/println, Strings |
+| 4 | medium | single_choice | Float & Double, Int & Long, Char, Strings |
+| 5 | medium | code_comparison | val vs var, String Templates, Int |
+| 6 | medium | predict_output | Float & Double, Type Inference, String Templates |
+| 7 | hard | find_error | Int & Long, Strings, String Templates |
+| 8 | hard | multi_select | Char, Boolean, Float & Double, Strings, Int & Long |
+| 9 | hard | predict_output | Int & Long, Boolean, String Templates |
+| 10 | hard | find_error | Char, Type Inference, val vs var, String Templates |
+| 11 | hard | multi_select | print/println, Strings, Char, String Templates, Int |
+| 12 | hard | predict_output | Syntax & main(), Int & Long, Boolean, print/println, Strings (escape) |
+
+Every lesson of the world is used at least once. Simulator blind spots (the key follows real kotlinc): in 7 the simulator does not flag `val views: Int = 5_000_000_000`; in 10 it does not tell a Char from a String; in the fill-blank of 2, `size` and `count()` are accepted by the simulator but rejected by kotlinc, so those chips were replaced by `len`, `chars` and `length()`.

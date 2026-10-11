@@ -71,14 +71,14 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
  },
  {
   "id": "w1q-comments-1",
-  "type": "predict_output",
+  "type": "single_choice",
   "worldId": "world-1",
   "lessonId": "world-1-comments",
   "topic": "Comments",
   "concept": "Line comments",
   "difficulty": "easy",
   "xp": 10,
-  "question": "What will this code print?",
+  "question": "Which output does this program produce?",
   "code": [
    "fun main() {",
    "  // println(\"A\")",

@@ -7,8 +7,8 @@ Status: **Question bank collected and registered; editorial/compiler review rema
 - Eight regular lessons, 10 questions each: **80 lesson questions** (2 easy, 5 medium, 3 hard per lesson).
 - Three sets, four cross-lesson questions each: **12 set questions** (1 easy, 2 medium, 1 hard per set).
 - Regular quiz total: **92 questions** — 19 easy, 46 medium, 27 hard (21/50/29 when rounded).
-- Separate Boss quiz: **12 questions** — 2 easy, 6 medium, 4 hard.
-- World 5 total, including the separate Boss quiz: **104 questions** — 21 easy, 52 medium, 31 hard (20/50/30 when rounded).
+- Separate Boss quiz: **12 questions** — 1 easy, 5 medium, 6 hard (10/40/50, ordered easy to hard; see "Boss coverage (authored)").
+- World 5 total, including the separate Boss quiz: **104 questions** — 20 easy, 51 medium, 33 hard (19/49/32 when rounded).
 
 The set count follows lesson groupings, not a fixed number. Every regular lesson belongs to exactly one set. Set questions use concepts from multiple lessons in that set and are assigned the final lesson's ID. The Boss lesson is a separate quiz, not a set.
 
@@ -20,10 +20,10 @@ The set count follows lesson groupings, not a fixed number. Every regular lesson
 | Flexible & Concise Calls | 30 | 4 | 34 | 7 (20.6%) | 17 (50.0%) | 10 (29.4%) | 20.6 / 50.0 / 29.4% |
 | Local & Flexible Functions | 20 | 4 | 24 | 5 (20.8%) | 12 (50.0%) | 7 (29.2%) | 20.8 / 50.0 / 29.2% |
 | Regular quiz | 80 | 12 | 92 | 19 (20.7%) | 46 (50.0%) | 27 (29.3%) | 20.7 / 50.0 / 29.3% |
-| Boss quiz (separate) | — | — | 12 | 2 (16.7%) | 6 (50.0%) | 4 (33.3%) | 16.7 / 50.0 / 33.3% |
-| World 5 overall | 80 | 12 + 12 Boss | 104 | 21 (20.2%) | 52 (50.0%) | 31 (29.8%) | 20.2 / 50.0 / 29.8% |
+| Boss quiz (separate) | — | — | 12 | 1 (8.3%) | 5 (41.7%) | 6 (50.0%) | 8.3 / 41.7 / 50.0% |
+| World 5 overall | 80 | 12 + 12 Boss | 104 | 20 (19.2%) | 51 (49.0%) | 33 (31.7%) | 19.2 / 49.0 / 31.7% |
 
-Percentages are based on each row's total and rounded to one decimal. The regular quiz meets the target closely; the overall World total rounds to exactly 20/50/30. The Boss's 12-question split is necessarily coarser, so its standalone percentages differ slightly.
+Percentages are based on each row's total and rounded to one decimal. The regular quiz meets the target closely; the Boss uses its own 10/40/50 mix (section 10 of the quiz standard).
 
 ## Sets and lesson coverage
 
@@ -61,7 +61,7 @@ Four per set: one easy, two medium, one hard. These are additional questions, no
 
 ## Boss quiz scope
 
-The Boss can combine all regular World 5 concepts, but should stay within the Utility Toolkit lesson and avoid introducing new syntax. Use 12 questions (2 easy, 6 medium, 4 hard), including direct checks and multi-step traces of a small toolkit. Questions may combine parameter passing, defaults/named calls, local helpers, vararg, and returned values only where those interactions are valid and taught. Keep Boss questions distinct from the set questions and from one another.
+The Boss can combine all regular World 5 concepts, but should stay within the Utility Toolkit lesson and avoid introducing new syntax. Use 12 questions (1 easy, 5 medium, 6 hard), including direct checks and multi-step traces of a small toolkit. Questions may combine parameter passing, defaults/named calls, local helpers, vararg, and returned values only where those interactions are valid and taught. Keep Boss questions distinct from the set questions and from one another.
 
 ## Question type coverage and quality checks
 
@@ -86,3 +86,36 @@ Before final acceptance:
 - Set and Boss definitions: `web-editor/src/data/quizBank/quizSets.ts`
 - Web bank registration: `web-editor/src/data/quizBank/index.ts`
 - Generated native copy: `src/world5Quiz.ts`
+
+### Boss coverage (authored)
+
+All 12 questions follow one story: a small price and receipt toolkit. Every question combines at least two World 5 lessons. Real kotlinc confirmed every predicted output, every compile error and its line, every fill-in chip, both code-comparison programs, and each option of the two multi-select questions and of Boss 1.
+
+| # | Diff | Type | Lessons combined |
+| ---: | --- | --- | --- |
+| 1 | easy | single_choice | Function parameters, default parameters, single-expression functions |
+| 2 | medium | fill_blank | Named arguments, default parameters, single-expression functions |
+| 3 | medium | single_choice | Local functions (scope), return values, single-expression functions |
+| 4 | medium | predict_output | `vararg`, function parameters, return values |
+| 5 | medium | code_comparison | Named arguments, default parameters, positional order |
+| 6 | medium | predict_output | Local functions, default parameters, single-expression functions |
+| 7 | hard | find_error | Local functions (declare before use), single-expression functions |
+| 8 | hard | predict_output | Default parameters, `vararg`, positional arguments, string templates |
+| 9 | hard | multi_select | Default parameters, named arguments, single-expression `if` |
+| 10 | hard | find_error | Named arguments, default parameters, single-expression functions |
+| 11 | hard | multi_select | Local functions, return values versus printing, function parameters |
+| 12 | hard | predict_output | Local functions, defaults before a required parameter, named arguments, `vararg`, return values (empty `vararg` edge case) |
+
+Defining functions is used by every question; every other World 5 lesson appears in at least one row. Boss 8 avoids `pack(label = "x")` (named argument to a function whose next parameter is `vararg`): real Kotlin gives `x:0`, but the simulator printed `x:1`, so the question uses a positional call instead.
+
+## Audit findings and evidence (content audit, 2026-10-11)
+
+All 104 questions were read one by one (92 lesson/set questions plus the 12 Boss questions audited earlier). Every executable question (95 programs) was run through real kotlinc 2.0.21; predictions, compile errors and their lines, fill-in chips and comparisons agree with the keys after the fixes below. Mechanical scans were clean (no filler, no repeated explanations, balanced answer positions).
+
+- **Fixed: wrong key.** `w5q-named-10` listed `f(a = 2, "ok")` as invalid, but kotlinc accepts a positional argument after a named one in its own position (Kotlin 1.4+). The option is now `f("ok", a = 2)`, which really fails.
+- **Fixed: question did not match its code.** `w5q-param-5` asked for a parameter declaration but showed `val count: ___ = 5`, a variable. It now completes the parameter type of `fun double(n: ___)`.
+- **Fixed: "error" that compiles.** `w5q-named-9` keyed a call that compiles fine (wrong values, not an error). It now uses a label that is not a parameter (`point(x = 2, z = 5)`). `w5q-return-9` keyed the `println` line, but kotlinc reports the missing return at the closing brace; it now uses `return println(a + b)`, a real Int/Unit mismatch on the keyed line.
+- **Fixed: "hard" questions that were easy.** `param-8`, `return-8`, `expr-8`, `vararg-8`, `local-8` now need a trap or a longer trace (an argument is not changed by the function, chained returned values, a single-expression `if`, zero/one/many vararg values, a local function changing an outer variable). `named-8` also repeated the `order(...)` scenario of `default-6` and `named-6`; it now has its own function.
+- **Fixed: wording and display.** Prompts showed broken code chips (``Int = n` * `2``, ``uses = before``, ``day = identify``); signatures are now wrapped in explicit backticks. `local-10` said "this code" with no code (multi-select has no code field). `return-1` read "necessarily returned".
+- **Open (content):** 32 questions open with "What prints?". `set-found-1` and `set-found-2` test a single lesson rather than a combination. Only 1 single-choice question per lesson; predict-the-output is 42% overall (up to 50% in some lessons).
+- **Open (display):** no phone-width screenshot review has been done.

@@ -6,7 +6,7 @@ Every tested concept must already appear in that lesson's Learn, Explore, Predic
 
 ## Quiz structure
 
-Use three sets of two lessons each. Every lesson gets 10 questions (2 easy, 5 medium, 3 hard), exactly matching the target ratio. Each set gets six cross-lesson questions (1 easy, 3 medium, 2 hard). With whole-question counts, a 26-question set lands at 5 easy / 13 medium / 8 hard (about 19/50/31). The Boss remains separate, with 12 questions (2 easy, 6 medium, 4 hard; about 17/50/33).
+Use three sets of two lessons each. Every lesson gets 10 questions (2 easy, 5 medium, 3 hard), exactly matching the target ratio. Each set gets six cross-lesson questions (1 easy, 3 medium, 2 hard). With whole-question counts, a 26-question set lands at 5 easy / 13 medium / 8 hard (about 19/50/31). The Boss remains separate, with 12 questions (1 easy, 5 medium, 6 hard; 10/40/50, see `QUIZ_QUALITY_STANDARD.md` section 10).
 
 | Set | Lessons | Lesson questions | Set questions | Quiz size |
 | --- | --- | ---: | ---: | ---: |
@@ -224,22 +224,28 @@ Each set gets six questions: one easy, three medium, and two hard. The set quest
 
 ## Boss quiz: Smart Calculator (`world-2-boss`)
 
-Plan 12 questions: **2 easy / 6 medium / 4 hard**. Questions may combine all six lessons because all concepts have been taught by the Boss.
+Plan 12 questions: **1 easy / 5 medium / 6 hard** (10/40/50), ordered easy to hard. Every question combines two or more lessons; no `true_false`. Types: predict_output 4, find_error 2, multi_select 2, single_choice 2, code_comparison 1, fill_blank 1.
 
-| Level | Type | Concepts | Question idea |
-| --- | --- | --- | --- |
-| easy | single_choice | arithmetic | Identify the result of a basic operator used in the capstone. |
-| easy | true_false | assignment/increment | A compound assignment or increment changes a mutable variable. |
-| medium | predict_output | arithmetic+comparison | Compute a total, then compare it with a budget. |
-| medium | predict_output | assignment | Trace a short `+=` / `-=` balance update. |
-| medium | predict_output | increment+comparison | Update an attempt/lives counter, then compare its final value. |
-| medium | single_choice | logical | Choose AND versus OR for a stated access rule. |
-| medium | predict_output | precedence | Trace a calculation where multiplication happens before addition. |
-| medium | find_error | assignment+comparison | Correct an immutable or incorrect eligibility update in a calculator scenario. |
-| hard | predict_output | arithmetic+comparison+logical | Compute a total, compare thresholds, and combine the Boolean results. |
-| hard | predict_output | assignment+increment+precedence | Trace several state updates before evaluating a compound expression. |
-| hard | multi_select | all | Select all snippets that produce a specified calculator decision and output. |
-| hard | code_comparison | all | Compare two short implementations of a checkout or access rule with different grouping/update order. |
+### Boss coverage (authored)
+
+All 12 questions use one story: the Smart Calculator. Real kotlinc confirmed every predicted output, both compile errors (and their lines), the fill_blank chips (only `%` gives true), both code_comparison programs (11 and 15), each option of the Q8 multi_select, and the Q11 final values (a is 4, b is 9).
+
+| # | Diff | Type | Lessons combined |
+| ---: | --- | --- | --- |
+| 1 | easy | fill_blank | Arithmetic (`%`), comparison (`==`) |
+| 2 | medium | single_choice | Comparison (inclusive limits), logical (`&&`) |
+| 3 | medium | predict_output | Assignment (`+=`, `/=`, `%=`), arithmetic, precedence |
+| 4 | medium | find_error | Assignment (`*=`), arithmetic (Int times Double) |
+| 5 | medium | single_choice | Arithmetic (division), precedence (grouping) |
+| 6 | medium | predict_output | Decrement (prefix and postfix), arithmetic (`%`), comparison, logical (`||`) |
+| 7 | hard | code_comparison | Increment, assignment (`*=` with a sum), precedence |
+| 8 | hard | multi_select | Arithmetic (truncation, `%`), precedence, comparison, logical (`!`, `&&`) |
+| 9 | hard | predict_output | Assignment, increment, precedence, string template |
+| 10 | hard | find_error | Comparison (chained `<`), logical (`&&`) |
+| 11 | hard | multi_select | Increment/decrement (postfix values), assignment (`+=`) |
+| 12 | hard | predict_output | Assignment, increment, arithmetic (truncation), precedence, comparison, logical (edge case: truncated share) |
+
+Every lesson is used at least once: Arithmetic 1, 3, 4, 5, 6, 8, 12; Comparison 1, 2, 6, 8, 10, 12; Logical 2, 6, 8, 10, 12; Assignment 3, 4, 7, 9, 11, 12; Increment & Decrement 6, 7, 9, 11, 12; Precedence 3, 5, 7, 8, 9, 12.
 
 ## Authoring and verification rules
 
