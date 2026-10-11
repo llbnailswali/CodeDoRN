@@ -63,7 +63,8 @@ export function insertLineMarkers(code: string): { code: string; lineMap: number
     while (k >= 0) {
       const t = tokens[k];
       if (t.kind === 'symbol' && CLOSE.has(t.text) && pairs.has(k)) { k = pairs.get(k)!; currentLine = line[k]; k--; continue; }
-      if (line[k] !== currentLine) break;
+      // a header continued from the line above (`class Repo<T> :` / `    Reader<T>, Writer<T> {`)
+      if (line[k] !== currentLine) { if (t.kind === 'symbol' && (t.text === ':' || t.text === ',')) { currentLine = line[k]; continue; } break; }
       if (t.kind === 'symbol' && (t.text === '{' || t.text === '}' || t.text === ';' || t.text === '=')) break;
       if (t.kind === 'symbol' && t.text === '>' && text(k - 1) === '-') break; // `->`
       if (t.kind === 'word' && DECLARATION_WORDS.has(t.text)) return false;

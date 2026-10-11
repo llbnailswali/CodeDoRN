@@ -120,7 +120,9 @@ export function formatQuizCodeQuestion(question: QuizQuestion, indentSpaces = 2)
         if (expanded.length > 0 && expanded[expanded.length - 1] !== '') expanded.push('');
         continue;
       }
-      for (const char of lines[lineIndex] as string) {
+      const lineText = lines[lineIndex] as string;
+      for (let charIndex = 0; charIndex < lineText.length; charIndex++) {
+        const char = lineText[charIndex];
         if (quoted) {
           buffer += char;
           if (escaped) escaped = false;
@@ -129,10 +131,16 @@ export function formatQuizCodeQuestion(question: QuizQuestion, indentSpaces = 2)
           continue;
         }
         if (char === '"') { quoted = true; buffer += char; continue; }
-        if (char === '{') { buffer = `${buffer.trimEnd()} {`; flush(); depth++; continue; }
+        if (char === '{') {
+          // A lambda header such as `{ n ->` at the end of a line stays on that line.
+          const rest = lineText.slice(charIndex + 1);
+          if (/^\s*[A-Za-z_][\w, :<>?]*->\s*$/.test(rest)) { buffer = `${buffer.trimEnd()} {${rest.trimEnd()}`; flush(); depth++; break; }
+          buffer = `${buffer.trimEnd()} {`; flush(); depth++; continue;
+        }
         if (char === '}') {
+          // The closer sits at its opener's depth; text after it on the same line (`else {`, `)`) stays with it.
           flush(); depth = Math.max(0, depth - 1);
-          expanded.push(`${'    '.repeat(depth)}}`);
+          buffer = '}';
           continue;
         }
         if (char === ';') { flush(); continue; }
@@ -176,6 +184,8 @@ export function emphasizeQuizPrompt(worldId: string, prompt: string): string {
 
     // Keep expressions and literal output values together as one readable code chip.
     protect(/"(?:\\.|[^"\\])*"/g);
+    // A generic type such as List<Animal> is one code chip; otherwise `<` is mistaken for a comparison.
+    protect(/\b[A-Z]\w*<[^<>`]+>/g);
     protect(/\b\d+\s*(?:\.\.|until|downTo)\s*\d+(?:\s+step\s+-?\d+)?\b/g);
     protect(/\b[A-Za-z_]\w*\s*(?:\+=|-=|\*=|\/=|%=|\+\+|--|==|!=|>=|<=|&&|\|\||=|>|<)\s*(?:[A-Za-z_]\w*|\d+(?:\.\d+)?|true|false)\b/g);
 

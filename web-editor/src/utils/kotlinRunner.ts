@@ -1,6 +1,8 @@
 import { checkClassMemberRules } from './kotlinClassChecks';
 import { prepareKotlinSource, scanKotlin, KotlinSourceError, NESTED_QUOTE } from './kotlinSource';
-import { KotlinList, KotlinPair, KotlinSequence, outOfBounds } from './kotlinCollections';
+import { hoistNestedDeclarations } from './kotlinNestedClasses';
+import { KotlinIndexedValue, KotlinList, KotlinMapEntry, KotlinPair, KotlinRange, KotlinSequence, makeRange, outOfBounds } from './kotlinCollections';
+import { installKotlinMath, installKotlinStdlib, javaDoubleToString } from './kotlinStdlib';
 import { lowerKotlinFunctions, KotlinFunctionError } from './kotlinFunctions';
 import { maskStringsAndComments } from './errorSpan';
 import { checkStructureRules } from './kotlinStructureChecks';
@@ -13,6 +15,10 @@ import {
   kotlinEnsureActive,
   kotlinYield,
   kotlinWithContext,
+  KotlinMutex,
+  KotlinAtomicNumber,
+  kotlinJoinAll,
+  kotlinAwaitAll,
   kotlinCoroutineContext,
   kotlinCoroutineName,
   kotlinCoroutineExceptionHandler,
@@ -29,13 +35,15 @@ import {
 import {
   Throwable, Exception, RuntimeException, IllegalStateException, IllegalArgumentException,
   NumberFormatException, IndexOutOfBoundsException, ArithmeticException, NoSuchElementException,
-  UnsupportedOperationException, ClassCastException, KotlinResult, kotlinRunCatching,
+  UnsupportedOperationException, ClassCastException, CancellationException, KotlinResult, kotlinRunCatching,
+  NullPointerException, ArrayIndexOutOfBoundsException, StringIndexOutOfBoundsException, NotImplementedError, AssertionError,
 } from './kotlinExceptions';
 
 const BUILTIN_EXCEPTION_NAMES = [
   'Throwable', 'Exception', 'RuntimeException', 'IllegalStateException', 'IllegalArgumentException',
   'NumberFormatException', 'IndexOutOfBoundsException', 'ArithmeticException', 'NoSuchElementException',
-  'UnsupportedOperationException', 'ClassCastException',
+  'UnsupportedOperationException', 'ClassCastException', 'CancellationException',
+  'NullPointerException', 'ArrayIndexOutOfBoundsException', 'StringIndexOutOfBoundsException', 'NotImplementedError', 'AssertionError',
 ];
 
 /**
@@ -338,11 +346,17 @@ function staticValidateKotlin(code: string): KotlinDiagnostic | null {
     'true', 'false', 'null', 'args', 'this', 'it'
   ]);
 
+  // Open `(` count before each line (strings removed): a line inside an argument list (`amount = amount,` in a call written
+  // over several lines) is a named argument, never an assignment.
+  let parenDepth = 0;
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
     const commentIdx = rawLine.indexOf('//');
     const lineWithoutComment = commentIdx !== -1 ? rawLine.slice(0, commentIdx) : rawLine;
     const trimmed = lineWithoutComment.trim();
+    const insideArguments = parenDepth > 0;
+    const bare = lineWithoutComment.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '');
+    parenDepth = Math.max(0, parenDepth + (bare.match(/\(/g) ?? []).length - (bare.match(/\)/g) ?? []).length);
     if (!trimmed) continue;
 
     // Detect function parameters e.g., fun foo(player: String, coins: Int)
@@ -423,7 +437,7 @@ function staticValidateKotlin(code: string): KotlinDiagnostic | null {
     // comparison stays on the SAME line as `with(...) {`, but throws this
     // false positive the moment it's reformatted onto its own line, which is
     // exactly what happens for a multi-statement/multi-line block body.
-    const assignMatch = trimmed.match(/^([a-zA-Z0-9_]+)\s*(\+=|-=|\*=|(?:\/=)|=(?!=)|\+\+|--)/);
+    const assignMatch = insideArguments ? null : trimmed.match(/^([a-zA-Z0-9_]+)\s*(\+=|-=|\*=|(?:\/=)|=(?!=)|\+\+|--)/);
     if (assignMatch) {
       const varName = assignMatch[1];
       const op = assignMatch[2];
@@ -649,6 +663,9 @@ function transformForLoops(line: string): string {
       const expr = rangeExprRaw.trim();
       let m: RegExpMatchArray | null;
 
+      // A Char range (`'a'..'e'`) cannot be counted with `++` on a JS string: iterate the range value instead.
+      if (/'(?:\\.|[^'\\])'/.test(expr) && /\.\.|\buntil\b|\bdownTo\b/.test(expr)) return `for (const ${varName} of ${transformRangeValues(expr)}) {`;
+
       if ((m = expr.match(/^(.+?)\s+downTo\s+(.+?)\s+step\s+(.+)$/))) {
         const [, start, end, step] = m;
         return `for (let ${varName} = ${start.trim()}, __kt_step = __kt_checkStep(${step.trim()}); ${varName} >= ${end.trim()}; ${varName} -= __kt_step) {`;
@@ -684,14 +701,86 @@ function transformForLoops(line: string): string {
       // is the correct translation both for a vararg array today and
       // for a real Kotlin collection once that becomes supported later.
       if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(expr)) {
-        return `for (const ${varName} of ${expr}) {`;
+        return `for (const ${varName} of __kt_iterable(${expr})) {`;
       }
       // Any other subject that is not a range (`list.indices`, `map.keys`, `list.withIndex()`,
       // `listOf(1, 2)`, `set.toList()`) is a collection expression. Left untouched it is still valid JS
       // for...in, which walks the wrong things (or nothing at all) without any error, so iterate its values.
-      return `for (const ${varName} of ${expr}) {`;
+      return `for (const ${varName} of __kt_iterable(${expr})) {`;
     }
   );
+}
+
+/**
+ * A braceless statement-level `if` with its `else` on the same line (`if (x < 0) println("neg") else println("pos")`) is not valid
+ * JavaScript: unlike a newline, nothing inserts the `;` that has to end the then-branch. A `;` goes before every top-level `else`
+ * that does not follow a `}`. Only lines that START with `if` / `else if` are touched (never `val x = if (...) a else b`).
+ */
+function separateSameLineElse(line: string): string {
+  if (!/^\s*(?:\}\s*)?(?:else\s+)?if\s*\(/.test(line) || !/\belse\b/.test(line)) return line;
+  let out = '';
+  let depth = 0;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"' || ch === '\'' || ch === '`') {
+      let j = i + 1;
+      while (j < line.length && line[j] !== ch) j += line[j] === '\\' ? 2 : 1;
+      out += line.slice(i, j + 1);
+      i = j;
+      continue;
+    }
+    if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) depth--;
+    if (depth === 0 && ch === 'e' && line.startsWith('else', i) && !/[\w$]/.test(line[i - 1] ?? ' ') && !/[\w$]/.test(line[i + 4] ?? ' ')) {
+      const before = out.trimEnd();
+      if (before && !before.endsWith('}') && !before.endsWith(';') && !/^\s*(?:\}\s*)?$/.test(before)) out = `${before}; `;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+/**
+ * Infix bit/logic functions: `a shl 2`, `x and y`, `flag xor other`. They bind looser than `+`/`-` and tighter than comparisons, so
+ * each becomes a method call on its whole left operand (`(1 + 2).shl(3)`); the methods live on Number and Boolean (kotlinStdlib.ts).
+ */
+function transformInfixOperators(line: string): string {
+  if (!/\b(?:shl|shr|ushr|and|or|xor|union|intersect|subtract)\b/.test(line)) return line;
+  const strings: string[] = [];
+  let out = line.replace(/"(?:[^"\\]|\\.)*"/g, (m) => { strings.push(m); return `__KT_S${strings.length - 1}__`; });
+  const group = String.raw`\((?:[^()]|\([^()]*\))*\)`;
+  const base = String.raw`(?:-?\d[\d_]*(?:\.\d+)?|0[xXbB][0-9a-fA-F_]+|'(?:\\.|[^'\\])'|[A-Za-z_]\w*(?:${group})?|${group})`;
+  const term = String.raw`${base}(?:\.[A-Za-z_]\w*(?:${group})?)*`;
+  const expr = String.raw`${term}(?:\s*[-+*/%]\s*${term})*`;
+  const re = new RegExp(String.raw`(?<![\w.])(${expr})\s+(shl|shr|ushr|and|or|xor|union|intersect|subtract)\s+(${expr})`);
+  for (let guard = 0; guard < 20 && re.test(out); guard++) {
+    out = out.replace(re, (whole: string, left: string, op: string, right: string) => (/^(?:val|var|fun|if|while|return|in|is)\b/.test(left) ? whole : `(${left}).${op}(${right})`));
+    if (!re.test(out)) break;
+  }
+  return out.replace(/__KT_S(\d+)__/g, (_m, i: string) => strings[Number(i)]);
+}
+
+/**
+ * Range VALUES (not loop headers, not the simple `x in 1..5` check): `1..5`, `a until b`, `a downTo b`, `1..<n`, each optionally
+ * followed by `step n`, becomes `__kt_rangeOf(a, b, kind, step)`, a list that prints like a Kotlin range. Endpoints may be
+ * arithmetic (`0 until n - 1`: `..`/`until`/`downTo` bind looser than `+`/`-` and tighter than `step`). `x in <range>` with
+ * such endpoints becomes `.contains(x)` (JavaScript's own `in` would test property names).
+ */
+function transformRangeValues(line: string): string {
+  if (!/\.\.|\buntil\b|\bdownTo\b/.test(line)) return line;
+  const strings: string[] = [];
+  const masked = line.replace(/"(?:[^"\\]|\\.)*"/g, (m) => { strings.push(m); return `__KT_S${strings.length - 1}__`; });
+  const group = String.raw`\((?:[^()]|\([^()]*\))*\)`; // one level of nesting: (a.b(c))
+  const base = String.raw`(?:-?\d[\d_]*(?:\.\d+)?|'(?:\\.|[^'\\])'|[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:${group})?|${group})`;
+  const term = String.raw`${base}(?:\.[A-Za-z_]\w*(?:${group})?)*`;
+  const expr = String.raw`${term}(?:\s*[-+*/%]\s*${term})*`;
+  const re = new RegExp(String.raw`(?<![\w.])(?:(${expr})\s+(!in|in)\s+)?(${expr})\s*(\.\.<|\.\.|\buntil\b|\bdownTo\b)\s*(${expr})(?:\s+step\s+(${expr}))?`, 'g');
+  const out = masked.replace(re, (_whole, subject: string | undefined, membership: string | undefined, from: string, op: string, to: string, step: string | undefined) => {
+    const kind = op === '..' ? '..' : op === 'downTo' ? 'downTo' : 'until';
+    const range = `__kt_rangeOf(${from}, ${to}, '${kind}'${step ? `, ${step}` : ''})`;
+    return subject ? `${membership === '!in' ? '!' : ''}${range}.contains(${subject})` : range;
+  });
+  return out.replace(/__KT_S(\d+)__/g, (_m, i: string) => strings[Number(i)]);
 }
 
 /**
@@ -704,14 +793,17 @@ function transformForLoops(line: string): string {
 function transformRanges(line: string): string {
   // Endpoints: an integer, a single-quoted char, or a (member) identifier such as
   // `low` / `limits.max` -- `n in low..high` is as ordinary as `n in 1..10`.
-  const endpoint = String.raw`(-?\d[\d_]*|'.'|[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)`;
+  const endpoint = String.raw`(-?\d[\d_]*(?:\.\d+)?|'.'|[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)`;
   // A number or char literal is a valid subject too: `println(10 in 5..10)`.
   const subject = String.raw`(-?\d[\d_]*(?:\.\d+)?|'.'|[a-zA-Z_][a-zA-Z0-9_.]*|\([^()]*\))`;
-  const inclusive = new RegExp(`${subject}\\s+(!in|in)\\s+${endpoint}\\.\\.${endpoint}(?![\\w.])`, 'g');
-  const exclusive = new RegExp(`${subject}\\s+(!in|in)\\s+${endpoint}\\s+until\\s+${endpoint}(?![\\w.])`, 'g');
+  // (?<![\w.]) keeps the subject from being the tail of a larger expression (`(1..5).random() in 1..5`: not `()`).
+  const inclusive = new RegExp(`(?<![\\w.])${subject}\\s+(!in|in)\\s+${endpoint}\\.\\.${endpoint}(?![\\w.])`, 'g');
+  const exclusive = new RegExp(`(?<![\\w.])${subject}\\s+(!in|in)\\s+${endpoint}\\s+until\\s+${endpoint}(?![\\w.])`, 'g');
   // `x in collection` / `x !in collection` (a name that is not a range): membership via .contains().
   const anySubject = String.raw`(-?\d[\d_]*(?:\.\d+)?|'[^'\\]'|"(?:[^"\\]|\\.)*"|[a-zA-Z_][a-zA-Z0-9_.]*(?:\([^()]*\))?|\([^()]*\))`;
-  const membership = new RegExp(`${anySubject}\\s+(!in|in)\\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?![\\w.(\\[])(?!\\s*(?:\\.\\.|until\\b|downTo\\b))`, 'g');
+  const callArgs = String.raw`\((?:[^()]|\([^()]*\))*\)`; // one level of nested parentheses: mapOf(Pair("a", 1))
+  const collectionExpr = String.raw`"(?:[^"\\]|\\.)*"|[a-zA-Z_][a-zA-Z0-9_]*(?:${callArgs})?(?:\.[a-zA-Z_][a-zA-Z0-9_]*(?:${callArgs})?)*`;
+  const membership = new RegExp(`(?<![\\w.])${anySubject}\\s+(!in|in)\\s+(${collectionExpr})(?![\\w.(\\[])(?!\\s*(?:\\.\\.|until\\b|downTo\\b))`, 'g');
   return line
     .replace(inclusive, (_m, expr, kw, lo, hi) => {
       const check = `((${expr}) >= ${lo} && (${expr}) <= ${hi})`;
@@ -783,7 +875,8 @@ function transformTypeChecks(line: string, interfaceNames: Set<string> = new Set
     // dotted receiver (`r.exceptionOrNull() is NumberFormatException`) --
     // the optional `(?:\([^()]*\))?` tail covers that shape without
     // needing full nested-call parsing, matching every lesson usage.
-    /([a-zA-Z_][a-zA-Z0-9_.]*(?:\([^()]*\))?|\([^()]*\))\s+(is|!is)\s+([A-Z][a-zA-Z0-9_]*)(?:<[^<>]*>)?(?![A-Za-z0-9_])/g,
+    // (`new ` is part of the operand: `P(1) is P` already reads `new P(1) is P` here)
+    /((?:new\s+)?[a-zA-Z_][a-zA-Z0-9_.]*(?:\([^()]*\))?|\([^()]*\))\s+(is|!is)\s+([A-Z][a-zA-Z0-9_]*)(?:<[^<>]*>)?(?![A-Za-z0-9_])/g,
     (_m, expr, kw, type) => {
       const jsType = typeofMap[type];
       const check = jsType
@@ -898,11 +991,14 @@ function transformInlineIfExpressions(text: string, startIsExpression = false): 
  * into JS ternaries.
  */
 function transformIfExpression(line: string): string {
-  const match = line.match(/(=\s*|\breturn\s+)(if\s*\(.+?\)\s+.+?\s+else\s+.+)$/);
+  // A `;` the lambda lowering put after the statement ends the statement, not the else branch.
+  const semicolon = /;\s*$/.exec(line);
+  const body = semicolon ? line.slice(0, semicolon.index) : line;
+  const match = body.match(/(=\s*|\breturn\s+)(if\s*\(.+?\)\s+.+?\s+else\s+.+)$/);
   if (!match || match.index === undefined) return line;
   const prefix = match[1];
   const ifExpr = match[2];
-  return line.slice(0, match.index) + prefix + convertIfExpr(ifExpr);
+  return body.slice(0, match.index) + prefix + convertIfExpr(ifExpr) + (semicolon ? ';' : '');
 }
 
 /**
@@ -939,6 +1035,16 @@ function transpileMultilineIfExpressions(code: string): string {
 
     const remaining = code.slice(i);
     const elseMatch = remaining.match(/^\s*else\s*\{/);
+    // `val y = if (c) { stmt; value } else 0`: a bare (brace-free, non-`if`) else branch runs to the end of the line.
+    const bareElse = elseMatch ? null : remaining.match(/^[ \t]*else[ \t]+(?!if\b|\{)([^\n]+)/);
+    if (bareElse) {
+      const body = (text: string) => { const parts = splitKotlinPieces(text); const last = parts.pop() ?? ''; const stmt = /^(?:return|throw|val|var|for|while|do)\b/.test(last); return `${parts.join('\n')}\n${stmt ? last : `return (${last})`};`; };
+      const rewrittenBare = `${prefix}(() => { if (${condition}) { ${body(thenBody)} } else { ${body(bareElse[1].trim())} } })()`;
+      result += code.slice(cursor, ifStart) + rewrittenBare;
+      cursor = i + bareElse[0].length;
+      ifRe.lastIndex = cursor;
+      continue;
+    }
     if (!elseMatch) {
       ifRe.lastIndex = i;
       continue;
@@ -957,8 +1063,10 @@ function transpileMultilineIfExpressions(code: string): string {
     const elseBody = code.slice(elseBraceStart + 1, j - 1).trim();
     const blockEnd = j;
 
-    const thenReturn = thenBody.startsWith('return ') ? thenBody : `return (${thenBody})`;
-    const elseReturn = elseBody.startsWith('return ') ? elseBody : `return (${elseBody})`;
+    // several statements: only the LAST is the value
+    const asValue = (text: string) => { const parts = splitKotlinPieces(text); const last = parts.pop() ?? ''; const stmt = /^(?:return|throw|val|var|for|while|do)\b/.test(last); return `${parts.join('\n')}\n${stmt ? last : `return (${last})`}`; };
+    const thenReturn = asValue(thenBody);
+    const elseReturn = asValue(elseBody);
 
     const rewritten = `${prefix}(() => { if (${condition}) { ${thenReturn}; } else { ${elseReturn}; } })()`;
     result += code.slice(cursor, ifStart) + rewritten;
@@ -974,7 +1082,7 @@ function transpileMultilineIfExpressions(code: string): string {
  * e.g. mutableListOf<Int>() -> mutableListOf()
  */
 function stripCollectionGenerics(code: string): string {
-  return code.replace(/\b(emptyList|listOf|mutableListOf|arrayOf|setOf|mutableSetOf|mapOf|mutableMapOf)<[a-zA-Z0-9_?,<>\s]+>\s*\(/g, '$1(');
+  return code.replace(/\b(emptyList|listOf|mutableListOf|arrayOf|setOf|mutableSetOf|mapOf|mutableMapOf|emptySet|emptyMap|emptyArray|arrayOfNulls|hashSetOf|linkedSetOf|sortedSetOf|hashMapOf|linkedMapOf|arrayListOf|compareBy|compareByDescending|buildList|buildMap|buildSet|buildString)<[a-zA-Z0-9_?,<>*\s]+>\s*(?=[({])/g, '$1');
 }
 
 /**
@@ -1010,7 +1118,8 @@ function transpileReifiedFunctions(code: string): string {
       const esc = typeParam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const rewrittenBody = body
         .replace(new RegExp(`([A-Za-z_][A-Za-z0-9_.]*|\\([^()]*\\))\\s+!is\\s+${esc}\\b`, 'g'), (_m: string, expr: string) => `!__kt_isReifiedType(${expr}, ${typeParam})`)
-        .replace(new RegExp(`([A-Za-z_][A-Za-z0-9_.]*|\\([^()]*\\))\\s+is\\s+${esc}\\b`, 'g'), (_m: string, expr: string) => `__kt_isReifiedType(${expr}, ${typeParam})`);
+        .replace(new RegExp(`([A-Za-z_][A-Za-z0-9_.]*|\\([^()]*\\))\\s+is\\s+${esc}\\b`, 'g'), (_m: string, expr: string) => `__kt_isReifiedType(${expr}, ${typeParam})`)
+        .replace(new RegExp(`__kt_simpleName\\(${esc}\\)`, 'g'), `__kt_simpleName(${typeParam}, true)`);
       const trimmedParams = params.trim();
       const newParams = trimmedParams ? `${trimmedParams}, ${typeParam}: String` : `${typeParam}: String`;
       return `fun ${name}(${newParams})${returnType ?? ''} = ${rewrittenBody}`;
@@ -1019,9 +1128,13 @@ function transpileReifiedFunctions(code: string): string {
   if (reifiedFunctions.size === 0) return code;
   for (const [name, typeParam] of reifiedFunctions) {
     const escName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    code = code.replace(new RegExp(`\\b${escName}\\s*<\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*>\\s*\\(([^()]*)\\)`, 'g'), (_m: string, typeArg: string, args: string) => {
+    code = code.replace(new RegExp(`\\b${escName}\\s*<\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*>\\s*\\(([^()]*)\\)`, 'g'), (_m: string, typeArg: string, args: string, offset: number) => {
       const trimmedArgs = args.trim();
-      return `${name}(${trimmedArgs ? trimmedArgs + ', ' : ''}"${typeArg}")`;
+      // Inside a `"...${typeName<X>()}..."` placeholder the quotes must be the encoded nested quote (prepareKotlinSource), or
+      // they would end the string: an odd number of real quotes before the call on its line means it sits in a string.
+      const lineStart = code.lastIndexOf('\n', offset) + 1;
+      const quote = ((code.slice(lineStart, offset).match(/(?<!\\)"/g) ?? []).length % 2 === 1) ? NESTED_QUOTE : '"';
+      return `${name}(${trimmedArgs ? trimmedArgs + ', ' : ''}${quote}${typeArg}${quote})`;
     });
   }
   return code;
@@ -1043,28 +1156,104 @@ function transpileMapDeclarations(code: string): string {
 }
 
 /**
- * Parses the branches inside a `when (subject) { ... }` body. Each branch
- * must be a single line of the form `<match> -> <result>`, where `<match>`
+ * Splits Kotlin source into top-level pieces (brackets, strings and comments
+ * respected). Used for a `when` body and for a `{ ... }` branch block.
+ *
+ * A piece ends at a top-level `;` or newline once it is complete: not empty,
+ * not ending in an operator/`,`/`->`, and the next line does not continue it
+ * (`.x`, `?.`, `?:`, `&&`, `||`, `else`). So `is A ->` followed by the result
+ * on the next line, and `-> if (c) a` with `else b` below it, stay one piece.
+ * A `{ ... }` block right after `->` ends the piece. Comments are dropped.
+ */
+function splitKotlinPieces(text: string): string[] {
+  const pieces: string[] = [];
+  let current = '';
+  let depth = 0;
+  let i = 0;
+  const incomplete = (s: string) => {
+    const t = s.trim();
+    return !t || /(?:->|[-+*/%=,.(&|!<>:]|\?:|\belse|\bin|\bis)$/.test(t) && !/(?:\+\+|--|!!)$/.test(t);
+  };
+  const continues = (from: number) => /^\s*(?:\.(?!\.)|\?\.|\?:|&&|\|\||else\b(?!\s*->))/.test(text.slice(from));
+  const flush = () => { if (current.trim()) pieces.push(current.trim()); current = ''; };
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '/' && text[i + 1] === '/') { while (i < text.length && text[i] !== '\n') i++; continue; }
+    if (ch === '/' && text[i + 1] === '*') { const end = text.indexOf('*/', i + 2); i = end < 0 ? text.length : end + 2; continue; }
+    if (ch === '"' || ch === '\'') {
+      const triple = ch === '"' && text.startsWith('"""', i);
+      const close = triple ? '"""' : ch;
+      let j = i + close.length;
+      while (j < text.length && !text.startsWith(close, j)) j += !triple && text[j] === '\\' ? 2 : 1;
+      current += text.slice(i, j + close.length);
+      i = j + close.length;
+      continue;
+    }
+    if ('([{'.includes(ch)) {
+      const isBranchBlock = ch === '{' && depth === 0 && /->\s*$/.test(current);
+      depth++;
+      current += ch;
+      i++;
+      if (isBranchBlock) {
+        while (i < text.length && depth > 0) {
+          if (text[i] === '"' || text[i] === '\'') {
+            const q = text[i];
+            let j = i + 1;
+            while (j < text.length && text[j] !== q) j += text[j] === '\\' ? 2 : 1;
+            current += text.slice(i, j + 1);
+            i = j + 1;
+            continue;
+          }
+          if (text[i] === '{') depth++;
+          else if (text[i] === '}') depth--;
+          current += text[i++];
+        }
+        if (!continues(i)) flush();
+      }
+      continue;
+    }
+    if (')]}'.includes(ch)) { depth--; current += ch; i++; continue; }
+    if (depth === 0 && (ch === ';' || ch === '\n')) {
+      if (!incomplete(current) && !continues(i + 1)) flush();
+      else current += ch === ';' ? ';' : '\n';
+      i++;
+      continue;
+    }
+    current += ch;
+    i++;
+  }
+  flush();
+  return pieces;
+}
+
+/** Index of the first top-level `->` in a `when` branch (not one inside brackets or a string), or -1. */
+function topLevelArrow(piece: string): number {
+  let depth = 0;
+  for (let i = 0; i < piece.length; i++) {
+    const ch = piece[i];
+    if (ch === '"' || ch === '\'') { let j = i + 1; while (j < piece.length && piece[j] !== ch) j += piece[j] === '\\' ? 2 : 1; i = j; continue; }
+    if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) depth--;
+    else if (depth === 0 && ch === '-' && piece[i + 1] === '>') return i;
+  }
+  return -1;
+}
+
+/**
+ * Parses the branches inside a `when (subject) { ... }` body: `<match> -> <result>`, where `<match>`
  * is one of: `else`, a comma-separated list of values (equality, OR'd
- * together), or `in a..b` / `!in a..b` (a numeric/char range). `<result>`
- * must be a single-line expression or statement -- multi-line
- * (`{ ... }`-bodied) branches are not supported, matching
- * `transformIfExpression`'s single-line-only scope above.
+ * together), `in a..b` / `!in a..b` (a range) or `is Type`. `<result>` is an
+ * expression (which may continue on the following lines, or start on the
+ * line after `->`) or a `{ ... }` block. Branches may also be separated by
+ * `;` on one line (`when(s){A->0;is B->s.n}`).
  */
 function parseWhenBranches(body: string, subject: string | null): Array<{ condition: string | null; result: string }> {
   const branches: Array<{ condition: string | null; result: string }> = [];
-  // A `;` separates multiple branches on one physical line (Kotlin allows
-  // this the same as any other statement separator), matching the
-  // single-line `when(s){A->0;is B->s.n}` shape some lesson content uses
-  // for compactness -- naive on a literal `;` inside a branch's own
-  // string/expression, but no lesson content puts one there.
-  for (const rawLine of body.split('\n').flatMap((line) => line.split(';'))) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const arrowIdx = line.indexOf('->');
+  for (const piece of splitKotlinPieces(body)) {
+    const arrowIdx = topLevelArrow(piece);
     if (arrowIdx === -1) continue;
-    const rawCond = line.slice(0, arrowIdx).trim();
-    const result = line.slice(arrowIdx + 2).trim().replace(/,\s*$/, '');
+    const rawCond = piece.slice(0, arrowIdx).replace(/\s+/g, ' ').trim();
+    const result = piece.slice(arrowIdx + 2).trim().replace(/,\s*$/, '');
 
     if (rawCond === 'else') {
       branches.push({ condition: null, result });
@@ -1156,7 +1345,7 @@ function annotateWhenExpressionTypes(code: string): string {
   return result + code.slice(cursor);
 }
 
-function transpileWhenBlocks(code: string): string {
+function transpileWhenBlocks(code: string, expressionContext = false): string {
   const whenRe = /\bwhen(?:\s*\(([^)]*)\))?\s*\{/g;
   let result = '';
   let cursor = 0;
@@ -1181,21 +1370,31 @@ function transpileWhenBlocks(code: string): string {
     const body = code.slice(openBraceIdx + 1, i - 1);
 
     const linePrefix = (code.slice(0, blockStart).split('\n').pop() || '').trimEnd();
-    const isExpression = /(?:=|return)$/.test(linePrefix);
+    // A value position: after `=`/`return`, as a call argument, as another branch's result, or after an Elvis.
+    const isExpression = /(?:=|\breturn|\(|,|->|\?\?|\?:)$/.test(linePrefix) || (linePrefix === '' && expressionContext);
 
     const branches = parseWhenBranches(body, subject);
-    let rewritten: string;
-    if (isExpression) {
-      const arms = branches
-        .map(({ condition, result: res }) => (condition ? `if (${condition}) { return (${res}); }` : `{ return (${res}); }`))
-        .join(' else ');
-      rewritten = `(() => { ${arms} })()`;
-    } else {
-      const arms = branches
-        .map(({ condition, result: res }) => (condition ? `if (${condition}) { ${res}; }` : `{ ${res}; }`))
-        .join(' else ');
-      rewritten = arms;
-    }
+    // Inner `when`s (inside a branch result or block) are rewritten first, in the branch's own context.
+    const arm = (res: string, valued: boolean): string => {
+      if (res.startsWith('{') && res.endsWith('}')) {
+        const inner = res.slice(1, -1);
+        if (!valued) return `{${transpileWhenBlocks(inner)}\n}`;
+        const statements = splitKotlinPieces(inner);
+        const last = statements.pop() ?? '';
+        const lead = statements.map((s) => transpileWhenBlocks(s)).join('\n');
+        const lastJs = transpileWhenBlocks(last, true);
+        const plain = /^(?:val|var|for|while|do|throw|return)\b/.test(last);
+        return `{\n${lead}\n${plain ? lastJs : `return (${lastJs})`};\n}`;
+      }
+      // A braceless result split over lines (`-> if (c) a` + `else b`) is joined, so the line-based if/ternary pass sees all of it.
+      const js = transpileWhenBlocks(/\{|"""/.test(res) ? res : res.replace(/\s*\n\s*/g, ' '), valued);
+      if (!valued || /^throw\b/.test(res)) return `{ ${js}; }`;
+      return `{ return (${js}); }`;
+    };
+    const arms = branches
+      .map(({ condition, result: res }) => (condition ? `if (${condition}) ${arm(res, isExpression)}` : arm(res, isExpression)))
+      .join(' else ');
+    const rewritten = isExpression ? `(() => { ${arms} })()` : arms;
 
     let before = code.slice(cursor, blockStart);
     result += before + rewritten;
@@ -1247,7 +1446,9 @@ function cleanKotlinParams(params: string): string {
 function inferMapVars(code: string): Set<string> {
   const mapVars = new Set<string>();
   for (const line of code.split('\n')) {
-    const match = line.match(/\b(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)[^=]*=\s*(?:__kt_)?(?:mapOf|mutableMapOf)\s*\(/);
+    // `mutableMapOf<Int, T>()` (type arguments first), `hashMapOf(...)`, or a declared `Map<...>`/`MutableMap<...>` type.
+    const match = line.match(/\b(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)[^=]*=\s*(?:__kt_)?(?:mapOf|mutableMapOf|hashMapOf|linkedMapOf|emptyMap|HashMap|LinkedHashMap|newHashMap)\s*(?:<[^()=]*>)?\s*\(/)
+      ?? line.match(/\b(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(?:Mutable)?Map\s*</);
     if (match) mapVars.add(match[1]);
     const derived = line.match(/\b(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)[^=]*=\s*.*\.(?:groupBy|associate|associateBy|associateWith)\s*(?:\(|\{)/);
     if (derived) mapVars.add(derived[1]);
@@ -1336,6 +1537,35 @@ function matchingBracket(text: string, open: number): number {
  *   name[i]++ / --     -> __kt_setAt(name, i, __kt_at(name, i) + 1)      (as a statement)
  * Member access (`obj.name[i]`) and text inside string literals are left alone.
  */
+/** `listOf(1, 2, 3)[5]` / `arrayOf(...)[i]`: indexing a list literal directly is bounds-checked like any other list access. */
+function rewriteLiteralIndexing(line: string): string {
+  const re = /\b(listOf|mutableListOf|arrayOf)\s*\(/g;
+  let out = '';
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  const closing = (text: string, open: number, pair: string): number => {
+    let depth = 0;
+    for (let i = open; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '"' || ch === "'") { for (i++; i < text.length && text[i] !== ch; i++) if (text[i] === '\\') i++; continue; }
+      if (ch === pair[0]) depth++;
+      else if (ch === pair[1] && --depth === 0) return i;
+    }
+    return -1;
+  };
+  while ((m = re.exec(line)) !== null) {
+    const open = m.index + m[0].length - 1;
+    const close = closing(line, open, '()');
+    if (close < 0 || line[close + 1] !== '[') continue;
+    const end = closing(line, close + 1, '[]');
+    if (end < 0) continue;
+    out += line.slice(cursor, m.index) + `__kt_at(${line.slice(m.index, close + 1)}, ${line.slice(close + 2, end)})`;
+    cursor = end + 1;
+    re.lastIndex = end + 1;
+  }
+  return out + line.slice(cursor);
+}
+
 function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'map' = 'list'): string {
   for (const name of names) {
     // `this.items[i]` too: inside a class, a property is reached through `this.` after the OOP pass.
@@ -1349,7 +1579,8 @@ function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'ma
       const open = match.index + match[0].length - 1;
       const close = matchingBracket(line, open);
       if (close < 0) break;
-      const index = line.slice(open + 1, close).trim();
+      // the index and an assigned value may themselves index a collection (`m[k] = (m[k] ?: 0) + 1`, `menu[names[i]]`)
+      const index = rewriteIndexAccess(line.slice(open + 1, close).trim(), names, mode);
       const rest = line.slice(close + 1);
       const assign = rest.match(/^\s*(=|\+=|-=|\*=|%=)(?!=)\s*/);
       const step = rest.match(/^\s*(\+\+|--)/);
@@ -1364,7 +1595,7 @@ function rewriteIndexAccess(line: string, names: Set<string>, mode: 'list' | 'ma
           else if (')]}'.includes(ch)) { if (depth === 0) break; depth--; }
           else if (ch === ';' && depth === 0) break;
         }
-        const value = line.slice(valueStart, valueEnd).trim();
+        const value = rewriteIndexAccess(line.slice(valueStart, valueEnd).trim(), names, mode);
         replacement = mode === 'map'
           ? (assign[1] === '=' ? `${target}.set(${index}, ${value})` : `${target}.set(${index}, ${target}.get(${index}) ${assign[1][0]} (${value}))`)
           : (assign[1] === '=' ? `__kt_setAt(${target}, ${index}, ${value})` : `__kt_setAt(${target}, ${index}, __kt_at(${target}, ${index}) ${assign[1][0]} (${value}))`);
@@ -1428,7 +1659,7 @@ function checkReadOnlyCollectionMutation(code: string): KotlinDiagnostic | null 
 function inferMutableListVars(code: string): Set<string> {
   const names = new Set<string>();
   for (const line of code.split('\n')) {
-    const initMatch = line.match(/\b(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)[^=]*=\s*(?:__kt_)?mutableListOf\s*(?:<[^>]*>)?\s*\(/);
+    const initMatch = line.match(/\b(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)[^=]*=\s*(?:__kt_)?(?:mutableListOf|newArrayList|arrayListOf)\s*(?:<[^>]*>)?\s*\(/);
     if (initMatch) names.add(initMatch[1]);
     const typeMatch = line.matchAll(/(?:\b(?:val|var)\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*MutableList</g);
     for (const m of typeMatch) names.add(m[1]);
@@ -1493,15 +1724,15 @@ function splitClassMembers(bodyLines: string[]): string[][] {
  * names, and any default value. Reuses the same shape `cleanKotlinParams`
  * targets but keeps the property/name/default split explicit, since class
  * construction needs to know which params also become `this.x` fields. */
-function parseConstructorParams(paramsRaw: string): { name: string; isProperty: boolean; default?: string }[] {
+function parseConstructorParams(paramsRaw: string): { name: string; isProperty: boolean; default?: string; type?: string }[] {
   return paramsRaw
     .split(',')
     .map((p) => p.trim())
     .filter(Boolean)
     .map((p) => {
-      const m = p.match(/^(?:(val|var)\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*(?::\s*[a-zA-Z0-9_<>?,\s]+)?(?:\s*=\s*(.+))?$/);
+      const m = p.match(/^(?:(val|var)\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*(?::\s*([a-zA-Z0-9_<>?,\s]+?))?(?:\s*=\s*(.+))?$/);
       if (!m) return { name: p, isProperty: false };
-      return { name: m[2], isProperty: !!m[1], default: m[3]?.trim() };
+      return { name: m[2], isProperty: !!m[1], type: m[3]?.trim(), default: m[4]?.trim() };
     });
 }
 
@@ -1564,8 +1795,69 @@ function wrapLazyBlockBody(rawBody: string): string {
   return [...statements.map((s) => `${s};`), `return (${last});`].join('\n');
 }
 
+/**
+ * The members a class or object body declares at its own level (brace depth 0), never a method's locals: each `val`/`var` by
+ * name, and each method as `name()` (rewritten only where it is called, see rewriteClassPropertyAccess).
+ */
+function topLevelMemberProperties(bodyLines: string[]): string[] {
+  const names: string[] = [];
+  let depth = 0;
+  for (const line of bodyLines) {
+    const pm = line.trim().match(/^(?:(?:private|protected|internal|public|open|override|lateinit|const)\s+)*(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+    if (pm && depth === 0) names.push(pm[1]);
+    const fm = line.trim().match(/^(?:(?:private|protected|internal|public|open|override|abstract|final|suspend|inline|operator|infix)\s+)*fun\s+(?:<[^>]*>\s*)?([a-zA-Z_][a-zA-Z0-9_]*)\s*[(<]/);
+    if (fm && depth === 0) names.push(`${fm[1]}()`);
+    const bare = line.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '');
+    depth += (bare.match(/\{/g) ?? []).length - (bare.match(/\}/g) ?? []).length;
+  }
+  return names;
+}
+
+/** Replaces each `${...}` placeholder (not `\${`) with `render(expression)`, matching nested braces (`${xs.map { it.name }}`). */
+function replaceTemplatePlaceholders(text: string, render: (expression: string) => string): string {
+  let out = '';
+  let i = 0;
+  for (let start = text.indexOf('${'); start >= 0; start = text.indexOf('${', i)) {
+    if (start > 0 && text[start - 1] === '\\') {
+      out += text.slice(i, start + 2);
+      i = start + 2;
+      continue;
+    }
+    let depth = 1, end = start + 2;
+    for (; end < text.length && depth > 0; end++) {
+      if (text[end] === '{') depth++;
+      else if (text[end] === '}') depth--;
+    }
+    if (depth !== 0) break;
+    out += text.slice(i, start) + render(text.slice(start + 2, end - 1));
+    i = end;
+  }
+  return out + text.slice(i);
+}
+
 function rewriteClassPropertyAccess(lines: string[], classProps: Set<string>, paramNames: Set<string>, prefix = 'this.'): string[] {
   const localVars = new Set<string>();
+  const rewriteCode = (text: string): string => {
+    for (const member of classProps) {
+      const isMethod = member.endsWith('()');
+      const prop = isMethod ? member.slice(0, -2) : member;
+      if (paramNames.has(prop) || localVars.has(prop)) continue;
+      // a method only where it is called (`total()`, `wrap { }`), so a same-named loop variable or parameter is left alone
+      text = text.replace(new RegExp(`(?<![.\\w:])(${prop})${isMethod ? '(?=\\s*[({])' : '(?![\\w])'}`, 'g'), (m, name, offset, str) => {
+        const before = str.slice(0, offset).trimEnd();
+        // Skip a property-declaration target (`val`/`var name`, already
+        // handled) AND a function being DECLARED with this same name
+        // (`fun name(...)`) -- a class body can legitimately have a
+        // method whose name matches an in-scope property name (an inner
+        // class's own method named the same as an outer property it
+        // reads, for instance); rewriting the declaration itself would
+        // corrupt it into `fun this.propName(...)`, not a call site.
+        if (before.endsWith('.') || /(?:val|var|fun)$/.test(before)) return m;
+        return `${prefix}${name}`;
+      });
+    }
+    return text;
+  };
   return lines.map((line) => {
     const declMatch = line.match(/\b(?:val|var)\s+([a-zA-Z0-9_]+)/);
     if (declMatch) {
@@ -1574,27 +1866,15 @@ function rewriteClassPropertyAccess(lines: string[], classProps: Set<string>, pa
     const chunks = splitCodeAndStrings(line);
     for (const chunk of chunks) {
       if (chunk.isString) {
+        // `${acct.bump(1)}` is code: rewrite the property names inside it like any other code.
+        chunk.text = replaceTemplatePlaceholders(chunk.text, (expr) => `\${${rewriteCode(expr)}}`);
         for (const prop of classProps) {
-          if (paramNames.has(prop)) continue;
+          if (prop.endsWith('()') || paramNames.has(prop) || localVars.has(prop)) continue;
           chunk.text = chunk.text.replace(new RegExp(`\\$${prop}(?![\\w])`, 'g'), `\${${prefix}${prop}}`);
         }
         continue;
       }
-      for (const prop of classProps) {
-        if (paramNames.has(prop) || localVars.has(prop)) continue;
-        chunk.text = chunk.text.replace(new RegExp(`(?<![.\\w])(${prop})(?![\\w])`, 'g'), (m, name, offset, str) => {
-          const before = str.slice(0, offset).trimEnd();
-          // Skip a property-declaration target (`val`/`var name`, already
-          // handled) AND a function being DECLARED with this same name
-          // (`fun name(...)`) -- a class body can legitimately have a
-          // method whose name matches an in-scope property name (an inner
-          // class's own method named the same as an outer property it
-          // reads, for instance); rewriting the declaration itself would
-          // corrupt it into `fun this.propName(...)`, not a call site.
-          if (before.endsWith('.') || /(?:val|var|fun)$/.test(before)) return m;
-          return `${prefix}${name}`;
-        });
-      }
+      chunk.text = rewriteCode(chunk.text);
     }
     return chunks.map((c) => c.text).join('');
   });
@@ -1934,10 +2214,7 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
     }
     const classProps = new Set(ctorParams.filter((p) => p.isProperty).map((p) => p.name));
     if (delegateVar) classProps.add(delegateVar);
-    for (const line of bodyLines) {
-      const pm = line.trim().match(/^(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
-      if (pm) classProps.add(pm[1]);
-    }
+    for (const name of topLevelMemberProperties(bodyLines)) classProps.add(name);
     if (superName && superArgsRaw !== undefined) {
       for (const inherited of getClassOwnPropertyNames(code, superName)) classProps.add(inherited);
     }
@@ -1988,7 +2265,8 @@ function transpileClassDeclarations(code: string, classNamesOut: Set<string>, in
       ? [
           `  copy(overrides = {}) { return new ${className}(${ctorParams.map((p) => `Object.prototype.hasOwnProperty.call(overrides, '${p.name}') ? overrides.${p.name} : this.${p.name}`).join(', ')}); }`,
           `  equals(other) { return other instanceof ${className} && ${ctorParams.map((p) => `__kt_equals(this.${p.name}, other.${p.name})`).join(' && ')}; }`,
-          `  toString() { return '${className}' + '(' + ${ctorParams.map((p) => `'${p.name}=' + this.${p.name}`).join(" + ', ' + ")} + ')'; }`,
+          // A property declared Double/Float prints a whole value as `12000.0`, as Kotlin does (JS keeps no such distinction).
+          `  toString() { return '${className}' + '(' + ${ctorParams.map((p) => `'${p.name}=' + ${/^(?:Double|Float)\??$/.test(p.type ?? '') ? `__kt_decimalText(this.${p.name}${/^Float/.test(p.type ?? '') ? ', true' : ''})` : `this.${p.name}`}`).join(" + ', ' + ")} + ')'; }`,
           // \`val (a, b) = point\` and \`for ((a, b) in points)\` read component1(), component2()... in order.
           `  *[Symbol.iterator]() { ${ctorParams.filter((p) => p.isProperty).map((p) => `yield this.${p.name};`).join(' ')} }`,
         ]
@@ -2059,7 +2337,30 @@ function transpileDataClassCopyCalls(code: string): string {
   // completely untouched (no bare identifier immediately precedes it) and
   // let it fall through to be misinterpreted as an ordinary call with a
   // plain assignment argument -- silently ignoring the override entirely.
-  return code.replace(/\b([A-Za-z_][A-Za-z0-9_]*(?:\([^()]*\))?)\.copy\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([^()]+?)\s*\)/g, '$1.copy({ $2: $3 })');
+  // The argument list is read with balanced parentheses (a value may itself be a call or a wrapped expression) and may hold
+  // several named arguments: copy(price = a.price - discount, name = "x") -> copy({ price: ..., name: "x" }).
+  const marker = /\b([A-Za-z_][A-Za-z0-9_]*(?:\([^()]*\))?)\.copy\(/g;
+  let out = '';
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  while ((m = marker.exec(code)) !== null) {
+    const open = m.index + m[0].length - 1;
+    let depth = 1, i = open + 1;
+    for (; i < code.length && depth > 0; i++) {
+      const ch = code[i];
+      if (ch === '"' || ch === '\'') { const q = ch; for (i++; i < code.length && code[i] !== q; i++) if (code[i] === '\\') i++; continue; }
+      if ('([{'.includes(ch)) depth++;
+      else if (')]}'.includes(ch)) depth--;
+    }
+    if (depth !== 0) break;
+    const parts = splitTopLevelCommas(code.slice(open + 1, i - 1));
+    const named = parts.map((part) => /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)\s*([\s\S]+?)\s*$/.exec(part));
+    if (!parts.length || named.some((n) => !n)) { marker.lastIndex = open + 1; continue; }
+    out += code.slice(cursor, m.index) + `${m[1]}.copy({ ${named.map((n) => `${n![1]}: ${n![2]}`).join(', ')} })`;
+    cursor = i;
+    marker.lastIndex = i;
+  }
+  return out + code.slice(cursor);
 }
 
 function eraseGenericConstructorArguments(code: string): string {
@@ -2082,7 +2383,7 @@ function eraseGenericConstructorArguments(code: string): string {
  * Kotlin's own single-shared-instance semantics. Scoped to a plain object
  * declaration -- `object Name : Interface { ... }` is not supported.
  */
-function transpileObjectDeclarations(code: string, objectInterfaces: Map<string, string[]> = new Map()): string {
+function transpileObjectDeclarations(code: string, objectInterfaces: Map<string, string[]> = new Map(), objectSupers: Map<string, { name: string; args: string }> = new Map()): string {
   const re = /\bobject\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/g;
   let result = '';
   let cursor = 0;
@@ -2106,10 +2407,7 @@ function transpileObjectDeclarations(code: string, objectInterfaces: Map<string,
     const bodyLines = code.slice(openBraceIdx + 1, i - 1).split('\n');
 
     const classProps = new Set<string>();
-    for (const line of bodyLines) {
-      const pm = line.trim().match(/^(?:val|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
-      if (pm) classProps.add(pm[1]);
-    }
+    for (const name of topLevelMemberProperties(bodyLines)) classProps.add(name);
 
     const members = splitClassMembers(bodyLines);
     const ctorExtraLines: string[] = [];
@@ -2120,11 +2418,15 @@ function transpileObjectDeclarations(code: string, objectInterfaces: Map<string,
       methodLines.push(...mLines);
     }
 
+    const superClass = objectSupers.get(name);
     const rewritten = [
-      `const ${name} = new (class {`,
+      `const ${name} = new (class ${name}${superClass ? ` extends ${superClass.name}` : ''} {`,
       `  constructor() {`,
+      ...(superClass ? [`    super(${superClass.args});`] : []),
       ...ctorExtraLines,
       '  }',
+      // `x is Idle` becomes `x instanceof Idle`; an object is an instance, so it answers for itself.
+      '  [Symbol.hasInstance](value) { return value === this; }',
       ...methodLines,
       '})();',
     ].join('\n');
@@ -2398,6 +2700,13 @@ function transpileOOPDeclarations(code: string): string {
   // "not a function", since the object literal this lowers to has no
   // other way to inherit it.
   const objectInterfaces = new Map<string, string[]>();
+  // `object Idle : State()` (the usual sealed-class member) extends a CLASS: recorded here, built with `extends` below.
+  const objectSupers = new Map<string, { name: string; args: string }>();
+  code = code.replace(/\bobject\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Za-z_][A-Za-z0-9_]*)(?:<[^>{}]*>)?\s*\(([^()]*)\)(?:[ \t]*,[ \t]*)?/g, (_whole, name, superName, args) => {
+    objectSupers.set(name, { name: superName, args: args.trim() });
+    return `object ${name} : `;
+  });
+  code = code.replace(/\bobject\s+([A-Za-z_][A-Za-z0-9_]*) : (?=[ \t]*(?:\{|\n|$))/g, 'object $1');
   // As with a class's supertype clause, an object's interface can itself
   // carry a generic type argument (`object UserFormatter : Formatter<User>`)
   // -- the optional `(?:<[^>{}]+>)?` after each name accounts for it, and
@@ -2425,7 +2734,7 @@ function transpileOOPDeclarations(code: string): string {
   code = transpileInterfaceDeclarations(code);
   const classNames = new Set<string>(['StringBuilder', ...BUILTIN_EXCEPTION_NAMES]);
   code = transpileClassDeclarations(code, classNames, interfaceMembers);
-  code = transpileObjectDeclarations(code, objectInterfaces);
+  code = transpileObjectDeclarations(code, objectInterfaces, objectSupers);
   code = insertNewForInstantiation(code, classNames);
   // Runs last: any `by lazy { ... }` still in the source at this point is
   // NOT a class member (transpileClassDeclarations, above, has already
@@ -2640,7 +2949,11 @@ function transpileTopLevelLazyProperties(code: string): string {
  *    sites strategy as `transpileTopLevelLazyProperties`.
  */
 function transpileTopLevelCustomDelegatedProperties(code: string, mapVars: Set<string>): string {
-  code = code.replace(/^\s*import\s+[A-Za-z0-9_.]+\s*$/gm, '');
+  // Every import (`import kotlin.math.*`, `import java.util.Scanner`, a trailing `;`) is compile-time-only here: the names it brings in are
+  // provided by the runtime (kotlinStdlib.ts) or are not supported. `import x as y` aliases are kept so they fail visibly.
+  code = code.replace(/^[ \t]*import[ \t]+[A-Za-z0-9_.]+(?:\.\*)?[ \t]*;?[ \t]*$/gm, '');
+  // `kotlin.math.abs(-3)`: a fully qualified standard-library name is the bare name
+  code = code.replace(/\bkotlin\.(?:math|random|text|collections)\.(?=[A-Za-z_])/g, '');
   const accessorNames: string[] = [];
   const declarations: string[] = [];
   code = code.replace(
@@ -2734,6 +3047,8 @@ function getClassOwnPropertyNames(code: string, typeName: string): Set<string> {
     for (const line of code.slice(openIdx + 1, i - 1).split('\n')) {
       const match = line.trim().match(propLine);
       if (match) names.add(match[1]);
+      const method = line.trim().match(/^(?:(?:private|protected|internal|public|open|override|abstract|suspend)\s+)*fun\s+(?:<[^>]*>\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*[(<]/);
+      if (method) names.add(`${method[1]}()`);
     }
     return names;
   }
@@ -2816,6 +3131,16 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // is modifier metadata for this deliberately synchronous teaching subset.
   // The helper's lexical scan preserves matching text in strings/comments.
   kotlinCode = prepareCoroutineSource(kotlinCode);
+  // Java-style factories and constructors map onto the Kotlin collection factories (`ArrayList<Int>()`, `HashMap(other)`, `hashSetOf(...)`).
+  kotlinCode = kotlinCode
+    .replace(/\b(?:hashSetOf|linkedSetOf)\s*\(/g, 'mutableSetOf(').replace(/\b(?:hashMapOf|linkedMapOf)\s*\(/g, 'mutableMapOf(')
+    .replace(/\bemptySet\s*(?:<[^()]*?>)?\s*\(\s*\)/g, 'setOf()').replace(/\bemptyMap\s*(?:<[^()]*?>)?\s*\(\s*\)/g, 'mapOf()').replace(/\bsortedSetOf\s*\(/g, '__kt_sortedSetOf(')
+    .replace(/(?<![.\w$])(?:ArrayList|LinkedList)\s*(?:<[^()]*?>)?\s*\(/g, '__kt_newArrayList(')
+    .replace(/(?<![.\w$])(?:HashSet|LinkedHashSet|TreeSet)\s*(?:<[^()]*?>)?\s*\(/g, '__kt_newHashSet(')
+    .replace(/(?<![.\w$])(?:HashMap|LinkedHashMap|TreeMap)\s*(?:<[^()]*?>)?\s*\(/g, '__kt_newHashMap(')
+    .replace(/(?<![.\w$])Array\s*(?:<[^()]*?>)?\s*\(/g, '__kt_newArray(');
+  // `tailrec` only asks the compiler to turn self-recursion into a loop; the recursion itself computes the same result.
+  kotlinCode = kotlinCode.replace(/\btailrec\s+(?=(?:(?:private|public|internal|protected|inline)\s+)*fun\b)/g, '');
   // A custom property-delegate's `getValue`/`setValue` signature takes a
   // `KProperty<*>` parameter (real reflection metadata this simulator does
   // not model) -- the star-projected generic `<*>` breaks
@@ -2846,7 +3171,9 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // class's own `.name` already IS the right string with no extra mapping.
   // Scoped to a bare identifier receiver (`e`, `it`) -- the only shape any
   // lesson content actually uses.
-  kotlinCode = kotlinCode.replace(/\b([A-Za-z_][A-Za-z0-9_]*)::class\.simpleName\b/g, '$1.constructor.name');
+  // `Customer::class.simpleName` (a class, not an instance) and a reified `T::class.simpleName` (T is the type name as a String,
+  // see transpileReifiedFunctions) go through `__kt_simpleName` too; `.constructor.name` of a class is "Function".
+  kotlinCode = kotlinCode.replace(/\b([A-Za-z_][A-Za-z0-9_]*)::class\.simpleName\b/g, '__kt_simpleName($1)');
   // A whole-line `@Annotation(...)` (World 15's Checked vs Unchecked
   // Exception Model lesson uses `@Throws(...)` purely to illustrate a
   // Java-interop concept Kotlin itself does not enforce -- see PITFALLS.md)
@@ -2876,7 +3203,8 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // in World 11) -- generalized here so new content doesn't have to. The
   // lookahead requires a letter/underscore right after the dot, so a real
   // decimal literal (`3.14`, digit after the dot) is never touched.
-  kotlinCode = kotlinCode.replace(/\b(\d+)\.(?=[A-Za-z_])/g, '($1).');
+  // Not the fraction of a decimal (`5.0.isFinite()` is already valid JS) and never inside a string.
+  kotlinCode = kotlinCode.split('\n').map((line) => splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/(?<![\d.\w])(\d+)\.(?=[A-Za-z_])/g, '($1).'))).join('')).join('\n');
   // A standalone Kotlin range VALUE used as an expression (World 14, e.g.
   // `(1..100).asSequence()`, `(1..1_000_000).filter { ... }`) is not
   // valid JS at all -- `1..100` isn't a JS token sequence -- unlike a
@@ -2938,7 +3266,10 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     kotlinCode = kotlinCode.replace(`__KT_BLOCKGETTER_${index}__`, block);
   });
   protectedGetters.blocks.forEach((block, index) => {
-    kotlinCode = kotlinCode.replace(`__KT_GETTERPROP_${index}__`, block);
+    // A getter with a lambda (`get() = items.sumOf { it.quantity }`) needs the lambda lowered: it is put back as a block getter.
+    const lambdaGetter = /^([ \t]*(?:val|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*:[^\n]*?)\s+get\(\)\s*=\s*([^\n]*\{[^\n]*)$/.exec(block);
+    if (lambdaGetter) block = `${lambdaGetter[1]}\n  get() {\nreturn ${lowerKotlinFunctions(lambdaGetter[2])};\n  }`;
+    kotlinCode = kotlinCode.replace(`__KT_GETTERPROP_${index}__`, () => block);
   });
   protectedCompanions.blocks.forEach((block, index) => {
     kotlinCode = kotlinCode.replace(`__KT_COMPANION_${index}__`, block);
@@ -2974,7 +3305,8 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     // run, even when the Kotlin code itself is perfectly correct. The
     // underscore separator needs no further handling; only the trailing
     // type-suffix letter must go.
-    line = line.replace(/\b(\d[\d_]*(?:\.[\d_]+)?)[fFdDL]\b/g, '$1');
+    // Code only: inside a string `"%.2f"` or `"Room 5d"` is text, not a literal.
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/\b(\d[\d_]*(?:\.[\d_]+)?)[fFdDL]\b/g, '$1'))).join('');
 
     // Range-based for loops (`for (i in 1..10) { ... }`) -- must run
     // before the is/in transforms below, see `transformForLoops` above.
@@ -2994,6 +3326,8 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     // `transformTypeChecks`/`transformRanges` above.
     line = transformTypeChecks(line, sourceInterfaceNames);
     line = transformRanges(line);
+    line = transformInfixOperators(line);
+    line = transformRangeValues(line);
 
     // Null-safety expressions are lowered with token boundaries in kotlinFunctions.ts.
 
@@ -3038,6 +3372,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     // JS ternary -- see `transformIfExpression` above.
     line = transformIfExpression(line);
     line = transformInlineIfExpressions(line);
+    line = separateSameLineElse(line);
 
     // Kotlin equality calls an object's generated/declared equals method;
     // JavaScript's `==` only compares object identity. This narrow lowering
@@ -3064,13 +3399,15 @@ export function transpileKotlinToJS(kotlinCode: string): string {
 
     // Handle Kotlin fun declarations
     // fun foo(a: Int, b: String): String { -> function foo(a, b) {
-    line = line.replace(/\bfun\s+([a-zA-Z0-9_]+)\s*\((.*?)\)(?:\s*:\s*[a-zA-Z0-9_<>?]+)?\s*\{/g, (_, name, params) => {
-      return `function ${name}(${cleanKotlinParams(params)}) {`;
+    // The return type may be generic with several arguments (`Pair<Int,Int>`), qualified, or a function type (`(Int) -> Int`).
+    const varargPrologue = (params: string) => splitTopLevelCommas(params).map((p) => /^\s*vararg\s+([a-zA-Z0-9_]+)/.exec(p)?.[1]).filter(Boolean).map((n) => ` ${n} = __kt_varargs(${n});`).join('');
+    line = line.replace(/\bfun\s+([a-zA-Z0-9_]+)\s*\((.*?)\)(?:\s*:\s*[\w<>?,.*\s()-]+?)?\s*\{/g, (_, name, params) => {
+      return `function ${name}(${cleanKotlinParams(params)}) {${varargPrologue(params)}`;
     });
 
     // Handle single-expression functions: fun sum(a: Int, b: Int) = a + b
-    line = line.replace(/\bfun\s+([a-zA-Z0-9_]+)\s*\((.*?)\)(?:\s*:\s*[a-zA-Z0-9_<>?]+)?\s*=\s*(.+)$/g, (_, name, params, expr) => {
-      return `function ${name}(${cleanKotlinParams(params)}) { return ${expr}; }`;
+    line = line.replace(/\bfun\s+([a-zA-Z0-9_]+)\s*\((.*?)\)(?:\s*:\s*[\w<>?,.*\s()-]+?)?\s*=\s*(.+)$/g, (_, name, params, expr) => {
+      return `function ${name}(${cleanKotlinParams(params)}) {${varargPrologue(params)} return ${expr}; }`;
     });
 
     // Transform Kotlin string templates within double quotes:
@@ -3091,7 +3428,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
         // prepareKotlinSource encodes every `/` inside a string literal as `\u002f`
         // (so line-level regexes never see it); an expression placeholder is CODE,
         // where that escape is a syntax error, so decode it before lowering.
-        transformed = transformed.replace(/(?<!\\)\$\{([^{}]+)\}/g, (_whole: string, expression: string) => '${__kt_format(' + transformInlineIfExpressions(lowerKotlinFunctions(expression.replace(/\\u002f/g, '/').split(NESTED_QUOTE).join('"')), true) + ')}');
+        transformed = replaceTemplatePlaceholders(transformed, (expression) => '${__kt_format(' + transformInlineIfExpressions(lowerKotlinFunctions(expression.replace(/\\u002f/g, '/').split(NESTED_QUOTE).join('"')), true) + ')}');
         return `\`${transformed}\``;
       }
       return match;
@@ -3116,6 +3453,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     }
     // Bounds-checked list / array element access (maps were handled above and are excluded).
     line = rewriteIndexAccess(line, new Set([...indexedVars].filter((name) => !mapVars.has(name))));
+    line = rewriteLiteralIndexing(line);
     // Compound assignment on collections: `xs -= x`, `set += x`, `set -= x`, `map -= key`, `map += k to v`,
     // and `var readOnlyList += x` (which builds a new list).
     for (const name of new Set([...mutableListVars, ...mutableSetVars, ...mapVars])) {
@@ -3170,6 +3508,19 @@ export function transpileKotlinToJS(kotlinCode: string): string {
     // Kotlin's String.split returns a List, but JS split returns a plain Array with no `.size`/`.first()`, so
     // `"a,b".split(",").size` printed null. Route the call through `__kt_split` (see its definition).
     line = line.replace(/\.split\(/g, '.__kt_split(');
+    // `outer@ for (...)` / `break@outer` / `continue@outer` are JavaScript labels (`return@name` is a lambda return: untouched).
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/\b([A-Za-z_]\w*)@\s*(?=(?:for|while|do)\b)/g, '$1: ').replace(/\b(break|continue)@([A-Za-z_]\w*)/g, '$1 $2'))).join('');
+    // `f(*array)`: the spread operator (a `*` that starts an argument can never be multiplication)
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/([(,]\s*)\*(?=\s*[A-Za-z_])/g, '$1...'))).join('');
+    // `String(charArray)` joins the chars (JavaScript's String([...]) would put commas between them).
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/(?<![.\w$])String\s*\(/g, '__kt_String('))).join('');
+    // Kotlin's String.replace / startsWith / endsWith differ from JavaScript's (all occurrences, ignoreCase); see kotlinStdlib.ts.
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/\.(replace|startsWith|endsWith|trim|trimStart|trimEnd|substring)\(/g, '.__kt_$1('))).join('');
+    // A Map reached through a call or a property (`m.filterValues { ... }.keys`, `this.data.values`) has no variable name for the
+    // rewrite above; `__kt_keys` etc. give Kotlin's list on a Map and the plain property on anything else.
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/(?<=[\w)\]])\.(keys|values|entries)\b(?!\s*\()/g, '.__kt_$1'))).join('');
+    // A Map's forEach hands Kotlin a Map.Entry (or key, value), not JS's (value, key); see `__kt_forEach`.
+    line = splitCodeAndStrings(line).map((c) => (c.isString ? c.text : c.text.replace(/\.forEach\s*\(/g, '.__kt_forEach('))).join('');
     line = line.replace(/\b(?:intArrayOf|doubleArrayOf|longArrayOf|booleanArrayOf|charArrayOf|arrayListOf)\(/g, (whole) => (whole.startsWith('arrayListOf') ? '__kt_mutableListOf(' : '__kt_arrayOf('));
     line = line.replace(/\b(?:IntArray|DoubleArray|LongArray)\(([^()]*)\)/g, '__kt_intArray($1)');
     line = line.replace(/\barrayOf\(/g, '__kt_arrayOf(');
@@ -3220,6 +3571,8 @@ export async function compileAndRunKotlin(
   // where a file actually imports kotlinx.coroutines); this flat-scope
   // simulator reproduces that by only injecting the coroutine prelude
   // when the ORIGINAL source actually references coroutines.
+  // Library classes the program uses (by import or by name) and does not declare itself: a same-named user class must win.
+  const libraryClasses = ['Mutex', 'AtomicInteger', 'AtomicLong'].filter((name) => new RegExp(`\\b${name}\\s*\\(`).test(code) && !new RegExp(`\\b(?:class|object|interface)\\s+${name}\\b`).test(code));
   const usesCoroutines = /\bkotlinx\.coroutines\b|\brunBlocking\b|\blaunch\s*\(|\basync\s*\(|\bcoroutineScope\s*\{|\bsupervisorScope\s*\{|\bwithContext\s*\(|\bcoroutineContext\b|\bCoroutineStart\b|\bCoroutineName\s*\(|\bDispatchers\./.test(code);
 
   // 1. Static Validation (Lexical, Syntax, Immutability, Type Constraints). The real Kotlin grammar (kotlinSyntaxCheck.ts) checks the
@@ -3227,12 +3580,32 @@ export async function compileAndRunKotlin(
   await ensureKotlinSyntax();
   const syntax = checkKotlinSyntax(originalCode);
   const syntaxError: KotlinDiagnostic | null = syntax ? { message: `Syntax error: ${syntax.message}`, line: syntax.line, column: syntax.column, token: syntax.token, type: 'syntax_error' } : null;
-  const classRule = () => { const e = checkClassMemberRules(code); return e ? { message: `Compilation error: ${e.message}`, line: e.line, type: e.type } as KotlinDiagnostic : null; };
-  const ruleError = staticValidateKotlin(code) ?? checkReadOnlyCollectionMutation(code) ?? checkFinalClassInheritance(code) ?? checkStructureRules(code) ?? classRule();
+  // The rules judge classes at top level, so they see nested declarations moved out (see kotlinNestedClasses.ts); lines map back.
+  const hoisted = hoistNestedDeclarations(code, code.split('\n').map((_, i) => i + 1));
+  const ruleCode = hoisted.code;
+  const classRule = () => { const e = checkClassMemberRules(ruleCode); return e ? { message: `Compilation error: ${e.message}`, line: e.line, type: e.type } as KotlinDiagnostic : null; };
+  const rawRuleError = staticValidateKotlin(ruleCode) ?? checkReadOnlyCollectionMutation(ruleCode) ?? checkFinalClassInheritance(ruleCode) ?? checkStructureRules(ruleCode) ?? classRule();
+  const mappedRuleError = rawRuleError && !rawRuleError.unlocated ? { ...rawRuleError, line: hoisted.lineMap[rawRuleError.line - 1] ?? rawRuleError.line } : rawRuleError;
+  const nestedError: KotlinDiagnostic | null = hoisted.problem ? { message: hoisted.problem.message, line: hoisted.problem.line, token: hoisted.problem.token, occurrence: 0, type: 'unresolved_reference' } : null;
+  const ruleError = nestedError && (!mappedRuleError || mappedRuleError.unlocated || nestedError.line <= mappedRuleError.line) ? nestedError : mappedRuleError;
   const firstError = syntaxError && (!ruleError || ruleError.unlocated || ruleError.line > syntaxError.line) ? syntaxError : ruleError;
   if (firstError) {
     return { success: false, output: '', logs: [], error: firstError, executionTimeMs: Math.round(performance.now() - startTime), exitCode: 1 };
   }
+  // Libraries the editor does not simulate: once the program has passed the compile checks above, say so plainly instead of failing on a
+  // name from them ("Unresolved reference: flowOf" would suggest the learner made a mistake).
+  {
+    const unsupported: Array<[RegExp, string]> = [
+      [/^[ \t]*import[ \t]+kotlinx\.coroutines\.flow\b/m, 'Flow (kotlinx.coroutines.flow)'],
+      [/^[ \t]*import[ \t]+java\.(?:io|nio|net|time|sql)\b/m, 'Java I/O, networking and date/time APIs'],
+      [/^[ \t]*import[ \t]+kotlinx\.serialization\b/m, 'kotlinx.serialization'],
+    ];
+    for (const [pattern, name] of unsupported) {
+      const found = pattern.exec(originalCode);
+      if (found) return { success: false, output: '', logs: [], error: { message: `${name} is not supported in the CodeDo editor yet, so this program cannot run here.`, line: originalCode.slice(0, found.index).split('\n').length, type: 'runtime_error' }, executionTimeMs: 0, exitCode: 1 };
+    }
+  }
+
   // Note: the "printed a literal instead of computing it" static check
   // (`detectHardcodedOutput`) deliberately does NOT run here unconditionally
   // -- some lessons' entire correct answer genuinely IS `println("literal")`
@@ -3244,7 +3617,8 @@ export async function compileAndRunKotlin(
   // is unambiguously wrong. See `runKotlinCode` below.
 
   // 2. Transpilation to Safe JS
-  const marked = insertLineMarkers(braceSingleStatementLoops(code));
+  const lineMarked = insertLineMarkers(braceSingleStatementLoops(code));
+  const marked = hoistNestedDeclarations(lineMarked.code, lineMarked.lineMap);
   let transpiledJS = '';
   try {
     // Line markers (`__kt_line = N`) let a runtime error report the Kotlin line that was running; see kotlinLineMarkers.ts.
@@ -3302,11 +3676,17 @@ export async function compileAndRunKotlin(
     // "function(){return Number(Math.fround(...))}") as if it were valid
     // program output -- a confusing, implementation-leaking result instead
     // of a clear signal of what actually went wrong.
+    if (typeof value === 'function' && value.__kt_value !== undefined) return formatKotlinValue(value.__kt_value);
     if (typeof value === 'function') {
       throw new Error(
         'Expected a value, but got a function reference instead -- did you forget the parentheses () when calling a method (e.g. write toFloat() instead of toFloat)?'
       );
     }
+    if (value instanceof KotlinRange) return value.toString();
+    if (value instanceof KotlinIndexedValue) return `IndexedValue(index=${formatKotlinValue(value.first)}, value=${formatKotlinValue(value.second)})`;
+    if (value instanceof KotlinMapEntry) return `${formatKotlinValue(value.first)}=${formatKotlinValue(value.second)}`;
+    // A fractional number can only be a Double/Float: print it as Java does (`1.23456789E7`, `1.0E-5`). A whole number may be an Int.
+    if (typeof value === 'number' && !Number.isInteger(value) && Number.isFinite(value)) return javaDoubleToString(value);
     if (value instanceof KotlinPair) return `(${formatKotlinValue(value.first)}, ${formatKotlinValue(value.second)})`;
     if (Array.isArray(value)) return `[${value.map(formatKotlinValue).join(', ')}]`;
     if (value instanceof Set) return `[${[...value].map(formatKotlinValue).join(', ')}]`;
@@ -3314,11 +3694,15 @@ export async function compileAndRunKotlin(
     return String(value);
   };
 
+  (globalThis as any).__kt_formatValue = formatKotlinValue;
   if (!(Number.prototype as any).toLong) {
     Object.defineProperties(Number.prototype, {
       toLong: { value: function () { const value = Math.trunc(Number(this)); if (!Number.isSafeInteger(value)) throw new Error('Long conversion outside the editor safe-integer range'); return value; } },
       toInt: { value: function () { return Math.trunc(Number(this)); } },
       toDouble: { value: function () { return Number(this); } },
+      isFinite: { value: function () { return Number.isFinite(Number(this)); } },
+      isNaN: { value: function () { return Number.isNaN(Number(this)); } },
+      isInfinite: { value: function () { const n = Number(this); return n === Infinity || n === -Infinity; } },
       // Math.fround alone gives the nearest true 32-bit float value, but
       // printing that raw double (e.g. 19.989999771118164 for 19.99f)
       // exposes float32-rounding noise that real Kotlin's Float.toString
@@ -3393,7 +3777,20 @@ export async function compileAndRunKotlin(
       __kt_text: string;
       constructor(initial: string = '') { this.__kt_text = initial; }
       append(value: any) { this.__kt_text += String(value); return this; }
+      appendLine(value: any = '') { this.__kt_text += String(value) + '\n'; return this; }
       get length() { return this.__kt_text.length; }
+      isEmpty() { return this.__kt_text.length === 0; }
+      isNotEmpty() { return this.__kt_text.length > 0; }
+      reverse() { this.__kt_text = Array.from(this.__kt_text).reverse().join(''); return this; }
+      insert(index: number, value: any) { if (index < 0 || index > this.__kt_text.length) throw new (globalThis as any).StringIndexOutOfBoundsException(`offset ${index}, length ${this.__kt_text.length}`); this.__kt_text = this.__kt_text.slice(0, index) + String(value) + this.__kt_text.slice(index); return this; }
+      deleteCharAt(index: number) { if (index < 0 || index >= this.__kt_text.length) throw new (globalThis as any).StringIndexOutOfBoundsException(`index ${index},length ${this.__kt_text.length}`); this.__kt_text = this.__kt_text.slice(0, index) + this.__kt_text.slice(index + 1); return this; }
+      delete(start: number, end: number) { this.__kt_text = this.__kt_text.slice(0, start) + this.__kt_text.slice(Math.min(end, this.__kt_text.length)); return this; }
+      setLength(length: number) { this.__kt_text = length <= this.__kt_text.length ? this.__kt_text.slice(0, length) : this.__kt_text + '\0'.repeat(length - this.__kt_text.length); }
+      clear() { this.__kt_text = ''; return this; }
+      indexOf(part: string) { return this.__kt_text.indexOf(part); }
+      lastIndexOf(part: string) { return this.__kt_text.lastIndexOf(part); }
+      substring(start: number, end?: number) { return this.__kt_text.substring(start, end); }
+      get(index: number) { if (index < 0 || index >= this.__kt_text.length) throw new (globalThis as any).StringIndexOutOfBoundsException(`index ${index},length ${this.__kt_text.length}`); return this.__kt_text[index]; }
       toString() { return this.__kt_text; }
     };
   }
@@ -3407,6 +3804,8 @@ export async function compileAndRunKotlin(
   // and cannot appear inside a ternary or `??`, so every expression-
   // position `throw` is rewritten to call this instead (see
   // `transformIfExpression`/`kotlinFunctions.ts`'s elvis handling).
+  if (!(globalThis as any).CancellationException) (globalThis as any).CancellationException = CancellationException;
+  if (!(globalThis as any).NullPointerException) Object.assign(globalThis as any, { NullPointerException, ArrayIndexOutOfBoundsException, StringIndexOutOfBoundsException, NotImplementedError, AssertionError });
   if (!(globalThis as any).Exception) {
     (globalThis as any).Throwable = Throwable;
     (globalThis as any).Exception = Exception;
@@ -3468,11 +3867,7 @@ export async function compileAndRunKotlin(
         while (value != null) { yield value; value = nextFn(); }
       }, true);
     };
-    (globalThis as any).__kt_range = (a: number, b: number) => {
-      const out = new KotlinList();
-      for (let i = a; i <= b; i++) out.push(i);
-      return out;
-    };
+    (globalThis as any).__kt_range = (a: number, b: number) => makeRange(a, b);
   }
   // World 16 Lesson 11: `GlobalScope.launch { ... }` is the anti-pattern
   // the lesson teaches learners to avoid -- see `kotlinGlobalScopeLaunch`'s
@@ -3486,10 +3881,26 @@ export async function compileAndRunKotlin(
   // String.split -> a real Kotlin List; several delimiters (`split(",", " ")`) are alternatives, not a JS limit.
   if (!(String.prototype as any).__kt_split) {
     Object.defineProperty(String.prototype, '__kt_split', { value: function (...args: any[]) {
+      // split(delimiter..., ignoreCase = false, limit = 0): strings are delimiters, a Boolean is ignoreCase, a number is the limit.
+      const text = String(this);
       const delimiters = args.filter((a) => typeof a === 'string');
-      const parts = delimiters.length > 1
-        ? String(this).split(new RegExp(delimiters.map((d) => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')))
-        : String(this).split(delimiters.length ? delimiters[0] : (args[0] as any));
+      const ignoreCase = args.some((a) => a === true);
+      const limit = args.find((a) => typeof a === 'number') ?? 0;
+      if (!delimiters.length) return new KotlinList(text.split(args[0] as any));
+      if (limit < 0) throw new (globalThis as any).IllegalArgumentException(`Limit must be non-negative, but was ${limit}`);
+      const hay = ignoreCase ? text.toLowerCase() : text;
+      const needles = delimiters.map((d) => (ignoreCase ? d.toLowerCase() : d));
+      const parts: string[] = [];
+      let from = 0, search = 0;
+      while (limit === 0 || parts.length < limit - 1) {
+        let at = -1, len = 0;
+        for (let k = 0; k < needles.length; k++) { const i = hay.indexOf(needles[k], search); if (i >= 0 && (at < 0 || i < at)) { at = i; len = needles[k].length; } }
+        if (at < 0) break;
+        if (len === 0) { search = at + 1; if (search > text.length) break; continue; }
+        parts.push(text.slice(from, at));
+        from = search = at + len;
+      }
+      parts.push(text.slice(from));
       return new KotlinList(parts);
     } });
     // A user class that declares its own `split` method keeps working: the renamed call falls through to it.
@@ -3534,6 +3945,75 @@ export async function compileAndRunKotlin(
       }, configurable: true });
     }
   }
+  // `"%.2f".format(x)` / `String.format("%5d", n)`: Java's Formatter for the common conversions (d, f, s, x, X, c, b, e, %, n) with
+  // the flags `-`, `0`, `+`, `,` and space. `%f` rounds HALF_UP on the shortest decimal text of the number, as Java does
+  // (`"%.2f".format(1.005)` is 1.01; JS toFixed gives 1.00).
+  if (!(String.prototype as any).__kt_format) {
+    const roundHalfUp = (value: number, digits: number): string => {
+      const negative = value < 0 || Object.is(value, -0);
+      // the shortest round-trip text (String(x)); a number that prints in exponent form is written out in full first
+      const shortest = String(Math.abs(value));
+      const [int, frac = ''] = (/e/i.test(shortest) ? Math.abs(value).toFixed(Math.min(100, digits + 20)) : shortest).split('.');
+      const digitsText = int + frac.padEnd(digits + 1, '0');
+      const keep = int.length + digits;
+      let kept = digitsText.slice(0, keep).split('').map(Number);
+      if (Number(digitsText[keep] ?? '0') >= 5) {
+        let k = kept.length - 1;
+        while (k >= 0) { if (kept[k] === 9) { kept[k] = 0; k--; } else { kept[k]++; break; } }
+        if (k < 0) kept = [1, ...kept];
+      }
+      const all = kept.join('');
+      const intPart = all.slice(0, all.length - digits) || '0';
+      const text = digits > 0 ? `${intPart}.${all.slice(all.length - digits)}` : intPart;
+      return (negative && /[1-9]/.test(text) ? '-' : '') + text;
+    };
+    const javaFormat = (pattern: string, args: any[]): string => {
+      let next = 0;
+      return pattern.replace(/%(\d+\$)?([-0+, (#]*)(\d+)?(?:\.(\d+))?([dfsxXcbeEn%])/g, (whole, index, flags: string, width, precision, conv: string) => {
+        if (conv === '%') return '%';
+        if (conv === 'n') return '\n';
+        const arg = index ? args[parseInt(index, 10) - 1] : args[next++];
+        let body: string;
+        const sign = (n: number) => (n < 0 ? '-' : flags.includes('+') ? '+' : flags.includes(' ') ? ' ' : '');
+        const group = (digits: string) => (flags.includes(',') ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : digits);
+        switch (conv) {
+          case 'd': {
+            if (typeof arg !== 'number' || !Number.isInteger(arg)) throw new Error(`IllegalFormatConversionException: d != ${typeof arg === 'number' ? 'java.lang.Double' : 'java.lang.String'}`);
+            body = sign(arg) + group(String(Math.abs(arg)));
+            break;
+          }
+          case 'f': case 'e': case 'E': {
+            if (typeof arg !== 'number') throw new Error(`IllegalFormatConversionException: ${conv} != java.lang.String`);
+            const digits = precision === undefined ? 6 : parseInt(precision, 10);
+            if (conv === 'f') {
+              const text = roundHalfUp(Math.abs(arg), digits);
+              const [i, f] = text.split('.');
+              body = sign(arg) + group(i) + (f !== undefined ? '.' + f : '');
+            } else {
+              const t = Math.abs(arg).toExponential(digits).replace(/e([+-])(\d)$/, 'e$10$2');
+              body = sign(arg) + (conv === 'E' ? t.toUpperCase() : t);
+            }
+            break;
+          }
+          case 'x': case 'X': body = (arg >>> 0).toString(16); if (conv === 'X') body = body.toUpperCase(); break;
+          case 'c': body = String(arg); break;
+          case 'b': body = String(arg != null && arg !== false); break;
+          default: body = arg === undefined ? 'null' : typeof arg === 'string' ? arg : formatKotlinValue(arg); if (precision !== undefined) body = body.slice(0, parseInt(precision, 10));
+        }
+        const w = width ? parseInt(width, 10) : 0;
+        if (body.length >= w) return body;
+        if (flags.includes('-')) return body.padEnd(w);
+        if (flags.includes('0') && /[dfeE]/.test(conv)) {
+          const m = /^([-+ ]?)(.*)$/.exec(body)!;
+          return m[1] + m[2].padStart(w - m[1].length, '0');
+        }
+        return body.padStart(w);
+      });
+    };
+    Object.defineProperty(String.prototype, 'format', { value: function (...args: any[]) { return javaFormat(String(this), args); }, configurable: true, writable: true });
+    Object.defineProperty(String, 'format', { value: (pattern: string, ...args: any[]) => javaFormat(pattern, args), configurable: true, writable: true });
+    Object.defineProperty(String.prototype, '__kt_format', { value: true });
+  }
   // World 15: real Kotlin's `String.toInt()` validates the WHOLE string
   // (optional leading sign, then digits only -- no surrounding whitespace,
   // no trailing garbage) and throws `NumberFormatException` otherwise, with
@@ -3545,12 +4025,15 @@ export async function compileAndRunKotlin(
   // pitfalls file warns about repeatedly, invisible until a lesson actually
   // needed the throwing behavior (World 1-14 content never did).
   if (typeof (String.prototype as any).toInt !== 'function' || !(String.prototype as any).__kt_toIntThrows) {
-    (String.prototype as any).toInt = function () {
+    (String.prototype as any).toInt = function (radix = 10) {
       const s = String(this);
-      if (!/^[+-]?\d+$/.test(s) || !Number.isSafeInteger(parseInt(s, 10))) {
-        throw new NumberFormatException(`For input string: "${s}"`);
+      const body = s.replace(/^[+-]/, '');
+      const valid = body.length > 0 && Array.from(body).every((ch) => !Number.isNaN(parseInt(ch, radix)));
+      const value = parseInt(s, radix);
+      if (!valid || !Number.isSafeInteger(value)) {
+        throw new NumberFormatException(`For input string: "${s}"${radix === 10 ? '' : ` under radix ${radix}`}`);
       }
-      return parseInt(s, 10);
+      return value;
     };
     (String.prototype as any).__kt_toIntThrows = true;
   }
@@ -3633,14 +4116,25 @@ export async function compileAndRunKotlin(
       return this.length === 0;
     };
   }
+  (globalThis as any).__kt_rangeOf = makeRange;
+  installKotlinStdlib();
+  // kotlin.math's top-level functions exist only for a program that imports (or qualifies) them, as in Kotlin.
+  if (/\bkotlin\.math\b/.test(originalCode)) installKotlinMath();
   if (typeof (String.prototype as any).isNotEmpty !== 'function') {
     (String.prototype as any).isNotEmpty = function () {
       return this.length > 0;
     };
   }
   if (typeof (Array.prototype as any).joinToString !== 'function') {
-    (Array.prototype as any).joinToString = function (separator = ', ') {
-      return this.map(formatKotlinValue).join(separator);
+    // joinToString(separator, prefix, postfix, limit, truncated, transform): `limit` keeps the first n elements then `truncated`.
+    (Array.prototype as any).joinToString = function (...args: any[]) {
+      // a function argument is `transform` (a trailing lambda arrives last, in whatever position its siblings left free)
+      const transform = args.find((a) => typeof a === 'function') as ((v: unknown) => unknown) | undefined;
+      const [separator = ', ', prefix = '', postfix = '', limit = -1, truncated = '...'] = args.filter((a) => typeof a !== 'function');
+      const shown = limit >= 0 ? Array.from(this as any[]).slice(0, limit) : Array.from(this as any[]);
+      const parts = shown.map((v: unknown) => (transform ? String(formatKotlinValue(transform(v))) : formatKotlinValue(v)));
+      if (limit >= 0 && (this as any[]).length > limit) parts.push(truncated);
+      return prefix + parts.join(separator) + postfix;
     };
   }
   if (typeof (Array.prototype as any).reversed !== 'function') {
@@ -3652,19 +4146,24 @@ export async function compileAndRunKotlin(
     const text = args.map(formatKotlinValue).join(' ');
     appendOutput(text);
     lineOpen = false;
+    return __kt_Unit; // println returns Unit (a non-null value): `x?.let { println(it) } ?: other` must not run `other`
   };
   const customPrint = (...args: any[]) => {
     const text = args.map(formatKotlinValue).join(' ');
     appendOutput(text);
     lineOpen = true;
+    return __kt_Unit;
   };
 
   // Arrays are fixed-size lists whose ELEMENTS can be replaced, so they share KotlinList's full method set
   // (size, sum, sorted, indices, contentToString, ...) but get no add/remove.
-  const __kt_arrayOf = (...items: any[]) => new KotlinList(items);
+  // An array (not a list) throws ArrayIndexOutOfBoundsException, a subclass of IndexOutOfBoundsException (see __kt_at).
+  const markArray = <T extends object>(list: T): T => { Object.defineProperty(list, '__kt_isArray', { value: true }); return list; };
+  (globalThis as any).__kt_markArray = markArray;
+  const __kt_arrayOf = (...items: any[]) => markArray(new KotlinList(items));
   const __kt_intArray = (size: number, init?: (index: number) => any) => {
     if (!Number.isInteger(size) || size < 0) throw new (globalThis as any).IllegalArgumentException('Array size must not be negative, was: ' + size + '.');
-    return new KotlinList(Array.from({ length: size }, (_, i) => (init ? init(i) : 0)));
+    return markArray(new KotlinList(Array.from({ length: size }, (_, i) => (init ? init(i) : 0))));
   };
   const __kt_listOf = (...items: any[]) => new KotlinList(items);
   const __kt_mutableListOf = (...items: any[]) => {
@@ -3690,7 +4189,28 @@ export async function compileAndRunKotlin(
       if (!Number.isInteger(index) || index < 0 || index >= list.length) throw outOfBounds(index, list.length);
       return list.splice(index, 1)[0];
     };
-    (list as any).addAll = (items: Iterable<any>) => { const before = list.length; for (const item of Array.from(items)) list.push(item); return list.length > before; };
+    // addAll(items) appends; addAll(index, items) inserts at index
+    (list as any).addAll = (first: any, second?: Iterable<any>) => {
+      const before = list.length;
+      if (second !== undefined) {
+        if (!Number.isInteger(first) || first < 0 || first > list.length) throw outOfBounds(first, list.length);
+        list.splice(first, 0, ...Array.from(second));
+      } else for (const item of Array.from(first as Iterable<any>)) list.push(item);
+      return list.length > before;
+    };
+    const sameItem = (a: any, b: any) => (typeof a?.equals === 'function' ? a.equals(b) : a === b);
+    const removeWhere = (pred: (v: any) => boolean) => { const keep = Array.from(list).filter((v) => !pred(v)); const changed = keep.length !== list.length; list.length = 0; for (const v of keep) list.push(v); return changed; };
+    (list as any).removeIf = (pred: (v: any) => boolean) => removeWhere(pred);
+    (list as any).removeAll = (arg: any) => (typeof arg === 'function' ? removeWhere(arg) : removeWhere((v) => Array.from(arg as Iterable<any>).some((x) => sameItem(v, x))));
+    (list as any).retainAll = (arg: Iterable<any>) => removeWhere((v) => !Array.from(arg).some((x) => sameItem(v, x)));
+    (list as any).removeFirst = () => { if (!list.length) throw new (globalThis as any).NoSuchElementException('List is empty.'); return list.shift(); };
+    (list as any).removeLast = () => { if (!list.length) throw new (globalThis as any).NoSuchElementException('List is empty.'); return list.pop(); };
+    const resort = (sorted: any[]) => { list.splice(0, list.length, ...sorted); };
+    (list as any).sortBy = (selector: (v: any) => any) => resort(Array.from(new KotlinList(list).sortedBy(selector)));
+    (list as any).sortByDescending = (selector: (v: any) => any) => resort(Array.from(new KotlinList(list).sortedByDescending(selector)));
+    (list as any).sortWith = (comparator: (a: any, b: any) => number) => resort(Array.from(list).sort(comparator));
+    (list as any).shuffle = () => resort(Array.from(new KotlinList(list).shuffled()));
+    (list as any).replaceAll = (fn: (v: any) => any) => { for (let i = 0; i < list.length; i++) list[i] = fn(list[i]); };
     (list as any).clear = () => { list.length = 0; };
     (list as any).toList = () => new KotlinList([...list]);
     (list as any).toMutableList = () => __kt_mutableListOf(...list);
@@ -3708,6 +4228,43 @@ export async function compileAndRunKotlin(
     };
     return map;
   };
+  // Kotlin's Map operations, under names a JS Map does not have (non-enumerable, installed once). A callback receives a
+  // Map.Entry (`it.key`, `it.value`, or destructured `{ (k, v) -> }`). `forEach` is the one clash: generated code calls
+  // `__kt_forEach` (see transpileKotlinToJS) so the native Map.forEach the rest of the app relies on stays untouched.
+  if (!(Map.prototype as any).mapValues) {
+    const entries = (map: Map<any, any>) => [...map.entries()].map(([k, v]) => new KotlinMapEntry(k, v));
+    const kotlinMap = (pairs: Array<[any, any]>) => withMapChecks(new Map(pairs));
+    const methods: Record<string, (this: Map<any, any>, ...args: any[]) => any> = {
+      mapValues(fn) { return kotlinMap(entries(this).map((e) => [e.key, fn(e)])); },
+      mapKeys(fn) { return kotlinMap(entries(this).map((e) => [fn(e), e.value])); },
+      filter(fn) { return kotlinMap(entries(this).filter((e) => fn(e)).map((e) => [e.key, e.value])); },
+      filterNot(fn) { return kotlinMap(entries(this).filter((e) => !fn(e)).map((e) => [e.key, e.value])); },
+      filterKeys(fn) { return kotlinMap([...this.entries()].filter(([k]) => fn(k))); },
+      filterValues(fn) { return kotlinMap([...this.entries()].filter(([, v]) => fn(v))); },
+      map(fn) { return new KotlinList(entries(this).map((e) => fn(e))); },
+      mapNotNull(fn) { return new KotlinList(entries(this).map((e) => fn(e)).filter((v) => v != null)); },
+      flatMap(fn) { return new KotlinList(entries(this).flatMap((e) => Array.from(fn(e)))); },
+      any(fn) { return fn ? entries(this).some((e) => fn(e)) : this.size > 0; },
+      all(fn) { return entries(this).every((e) => fn(e)); },
+      none(fn) { return fn ? !entries(this).some((e) => fn(e)) : this.size === 0; },
+      count(fn) { return fn ? entries(this).filter((e) => fn(e)).length : this.size; },
+      maxByOrNull(fn) { return entries(this).reduce((best: any, e) => (best === null || fn(e) > fn(best) ? e : best), null); },
+      minByOrNull(fn) { return entries(this).reduce((best: any, e) => (best === null || fn(e) < fn(best) ? e : best), null); },
+      toList() { return new KotlinList(entries(this).map((e) => new KotlinPair(e.key, e.value))); },
+      toMap() { return kotlinMap([...this.entries()]); },
+      toMutableMap() { return __kt_mutableMapOf(...this.entries()); },
+      getOrElse(key, fallback) { return this.has(key) ? this.get(key) : fallback(); },
+      getOrPut(key, make) { if (!this.has(key)) this.set(key, make()); return this.get(key); },
+      __kt_forEach(fn) { for (const e of entries(this)) { if (fn.length >= 2) fn(e.key, e.value); else fn(e); } },
+    };
+    for (const [name, fn] of Object.entries(methods)) Object.defineProperty(Map.prototype, name, { value: fn, configurable: true, writable: true });
+    for (const kind of ['keys', 'values', 'entries'] as const) {
+      Object.defineProperty(Map.prototype, `__kt_${kind}`, { get(this: Map<any, any>) { return __kt_mapView(this, kind); }, configurable: true });
+      // a user property named `keys`/`values`/`entries` is read and assigned through the same name
+      Object.defineProperty(Object.prototype, `__kt_${kind}`, { get(this: any) { return this[kind]; }, set(this: any, value: any) { this[kind] = value; }, configurable: true });
+    }
+    Object.defineProperty(Object.prototype, '__kt_forEach', { value: function (this: any, fn: any) { return this.forEach(fn); }, configurable: true, writable: true });
+  }
   const __kt_mapOf = (...pairs: [any, any][]) => withMapChecks(new Map(pairs.map(pair => Array.from(pair) as [any, any])));
   const __kt_mutableMapOf = (...pairs: [any, any][]) => {
     const map = withMapChecks(new Map(pairs.map(pair => Array.from(pair) as [any, any]))) as Map<any, any> & { remove?: (key: any) => any };
@@ -3736,7 +4293,7 @@ export async function compileAndRunKotlin(
     if (!(map instanceof Map)) return (map as any)[kind];
     if (kind === 'keys') return new KotlinList([...map.keys()]);
     if (kind === 'values') return new KotlinList([...map.values()]);
-    return new KotlinList([...map.entries()].map(([k, v]) => new KotlinPair(k, v)));
+    return new KotlinList([...map.entries()].map(([k, v]) => new KotlinMapEntry(k, v)));
   };
   const withSetContains = (set: Set<any>) => {
     (set as any).contains = (item: any) => set.has(item);
@@ -3753,6 +4310,7 @@ export async function compileAndRunKotlin(
     return set;
   };
   const __kt_setOf = (...items: any[]) => withSetContains(new Set(items));
+  (globalThis as any).__kt_setOf = __kt_setOf;
   const __kt_mutableSetOf = (...items: any[]) => {
     const set = withSetContains(new Set(items)) as Set<any> & { remove?: (item: any) => boolean };
     // Kotlin's MutableSet.add returns true when the element was NEW and false when it was already present
@@ -3764,18 +4322,29 @@ export async function compileAndRunKotlin(
     return set;
   };
   // List.toSet() / distinct collections: attach set behaviour to a KotlinList created elsewhere.
+  // `toList()` on a list made by an operation (map/filter, a map's values), not only one from listOf.
+  (KotlinList.prototype as any).toList = function () { return new KotlinList(Array.from(this as any)); };
   (KotlinList.prototype as any).toSet = function () { return __kt_setOf(...Array.from(this as any)); };
   (KotlinList.prototype as any).toMutableSet = function () { return __kt_mutableSetOf(...Array.from(this as any)); };
+  (KotlinList.prototype as any).joinAll = function () { kotlinJoinAll(this as any); };
+  (KotlinList.prototype as any).awaitAll = function () { return new KotlinList(kotlinAwaitAll(this as any)); };
   (KotlinList.prototype as any).toMutableList = function () { return __kt_mutableListOf(...Array.from(this as any)); };
   const __kt_size = (value: any) => value instanceof Map || value instanceof Set ? value.size : value.length;
+  // The factories are also needed by kotlinStdlib.ts (buildList, Set/Map operators, ArrayList(...) ...), which cannot see this scope.
+  Object.assign(globalThis as any, { __kt_listOf, __kt_mutableListOf, __kt_mapOf, __kt_mutableMapOf, __kt_mutableSetOf, __kt_MapEntry: KotlinMapEntry });
   const __kt_notNull = (value: any) => {
     if (value === null || value === undefined) {
-      throw new Error('NullPointerException: non-null assertion (!!) failed because the expression was null');
+      throw new NullPointerException('non-null assertion (!!) failed because the expression was null');
     }
     return value;
   };
   const __kt_equals = (left: any, right: any) => {
+    if (typeof left === 'function' && left.__kt_value !== undefined) left = left.__kt_value;
+    if (typeof right === 'function' && right.__kt_value !== undefined) right = right.__kt_value;
     if (left === null || left === undefined || right === null || right === undefined) return left === right;
+    // Sets and Maps are equal by content, whatever the order
+    if (left instanceof Set && right instanceof Set) return left.size === right.size && [...left].every((x) => right.has(x));
+    if (left instanceof Map && right instanceof Map) return left.size === right.size && [...left].every(([k, v]) => right.has(k) && __kt_equals(v, right.get(k)));
     return typeof left.equals === 'function' ? left.equals(right) : left === right;
   };
   // Backs `value is T` inside an `inline fun <reified T>` body once T has
@@ -3796,6 +4365,26 @@ export async function compileAndRunKotlin(
       default: throw new Error(`Reified type check for "${typeName}" is not supported`);
     }
   };
+
+  // `X::class.simpleName`: a class gives its own name, a reified type parameter arrives as its name (a String), an instance gives its
+  // class's name. JS primitives map to Kotlin's names (a whole number is reported as Int).
+  const __kt_simpleName = (value: any, reified = false): string | null => {
+    if (typeof value === 'function') return value.name.replace(/^Kotlin(?=[A-Z])/, '');
+    if (typeof value === 'number') return Number.isInteger(value) ? 'Int' : 'Double';
+    if (typeof value === 'boolean') return 'Boolean';
+    if (typeof value === 'string') return reified ? value : 'String';
+    if (value == null) return null;
+    return (value.constructor?.name ?? 'Any').replace(/^Kotlin(?=[A-Z])/, '');
+  };
+
+  // Kotlin's `Unit` written as a value (`return Unit`, a lambda ending in `Unit`) prints as kotlin.Unit. A function that merely returns
+  // nothing still yields JS undefined, printed as null (see PITFALLS.md: the simulator can't print `Unit` it never sees).
+  // Unit has no members: reading one gives undefined, exactly what a value-less `println(...)` used to give, so misuse such as
+  // `println(1).name.uppercase()` is reported on the member that does not exist.
+  const __kt_Unit: any = new Proxy(Object.freeze({ toString: () => 'kotlin.Unit', equals: (other: unknown) => other === __kt_Unit }), {
+    get(target: any, prop: string | symbol) { return typeof prop === 'symbol' || prop in target ? target[prop] : undefined; },
+  });
+  (globalThis as any).__kt_UnitValue = __kt_Unit;
 
   let returnValue: any = undefined;
   let runnerScript = '';
@@ -3824,7 +4413,7 @@ export async function compileAndRunKotlin(
         }
       };
 
-      const __kt_decimalText = (value) => {
+      const __kt_decimalText = (value, isFloat) => {
         if (value == null) return 'null';
         // Same guard as formatKotlinValue above, and for the same reason:
         // a Double/Float-typed variable whose initializer omitted a method
@@ -3836,7 +4425,7 @@ export async function compileAndRunKotlin(
         if (typeof value === 'function') {
           throw new Error('Expected a Double/Float value, but got a function reference instead -- did you forget the parentheses () when calling a method (e.g. write toFloat() instead of toFloat)?');
         }
-        return Number.isInteger(value) ? String(value) + '.0' : String(value);
+        return isFloat ? __kt_javaFloat(value) : __kt_javaDouble(value);
       };
       // Kotlin's step must be positive: '1..10 step 0' and '10 downTo 1 step -2' throw when the
       // progression is created, before any iteration runs (not an infinite loop).
@@ -3849,13 +4438,13 @@ export async function compileAndRunKotlin(
       // or, for an assignment, grow the array.
       const __kt_at = (collection, index) => {
         if (typeof index === 'number' && collection != null && typeof collection.length === 'number' && (index < 0 || index >= collection.length || !Number.isInteger(index))) {
-          throw new IndexOutOfBoundsException('Index ' + index + ' out of bounds for length ' + collection.length);
+          throw new (collection.__kt_isArray ? ArrayIndexOutOfBoundsException : IndexOutOfBoundsException)('Index ' + index + ' out of bounds for length ' + collection.length);
         }
         return collection[index];
       };
       const __kt_setAt = (collection, index, value) => {
         if (typeof index === 'number' && collection != null && typeof collection.length === 'number' && (index < 0 || index >= collection.length || !Number.isInteger(index))) {
-          throw new IndexOutOfBoundsException('Index ' + index + ' out of bounds for length ' + collection.length);
+          throw new (collection.__kt_isArray ? ArrayIndexOutOfBoundsException : IndexOutOfBoundsException)('Index ' + index + ' out of bounds for length ' + collection.length);
         }
         collection[index] = value;
         return value;
@@ -3933,7 +4522,10 @@ export async function compileAndRunKotlin(
       const CoroutineName = Object.assign((name) => kotlinCoroutineName(name), { toString: () => kotlinCoroutineNameKey });
       const CoroutineExceptionHandler = __kt_CoroutineExceptionHandler;
       const Dispatchers = kotlinDispatchers;
+      const joinAll = (...jobs) => kotlinJoinAll(jobs);
+      const awaitAll = (...deferreds) => new KotlinList(kotlinAwaitAll(deferreds));
       ` : ''}
+      ${libraryClasses.map((name) => `const ${name} = ${name === 'Mutex' ? '() => new KotlinMutex()' : '(value = 0) => new KotlinAtomicNumber(value)'};`).join('\n')}
 
       let __kt_line = 0;
       // Tag an error with the Kotlin line that was running, once (the innermost function that sees it first wins).
@@ -3982,6 +4574,8 @@ export async function compileAndRunKotlin(
       '__kt_notNull',
       '__kt_equals',
       '__kt_isReifiedType',
+      '__kt_simpleName',
+      'Unit',
       'kotlinRunBlocking',
       'kotlinCoroutineScope',
       'kotlinSupervisorScope',
@@ -3992,6 +4586,10 @@ export async function compileAndRunKotlin(
       'kotlinEnsureActive',
       'kotlinYield',
       'kotlinWithContext',
+      'KotlinMutex',
+      'KotlinAtomicNumber',
+      'kotlinJoinAll',
+      'kotlinAwaitAll',
       'kotlinCoroutineContext',
       'kotlinCoroutineName',
       'kotlinCoroutineExceptionHandler',
@@ -4022,6 +4620,8 @@ export async function compileAndRunKotlin(
           __kt_notNull,
           __kt_equals,
           __kt_isReifiedType,
+          __kt_simpleName,
+          __kt_Unit,
           kotlinRunBlocking,
           kotlinCoroutineScope,
           kotlinSupervisorScope,
@@ -4032,6 +4632,10 @@ export async function compileAndRunKotlin(
           kotlinEnsureActive,
           kotlinYield,
           kotlinWithContext,
+          KotlinMutex,
+          KotlinAtomicNumber,
+          kotlinJoinAll,
+          kotlinAwaitAll,
           kotlinCoroutineContext,
           kotlinCoroutineName,
           kotlinCoroutineExceptionHandler,

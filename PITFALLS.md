@@ -2951,3 +2951,190 @@ compound assignment counts as a fallback (only there: in `total + score ?: 0` th
 right side of any compound assignment containing a top-level `?:` is lowered as one expression. In the same rule, `!== null` / `=== null`
 now count as null checks like `!=` / `==` (the one false rejection the kotlinc comparison had). The guard stays flow-insensitive: `x == null`
 or `x === null` anywhere earlier counts, so a use inside the null branch is a missed error, never a false rejection.
+
+## A Worlds 1-16 program: ordinary code that crashed or printed the wrong thing
+
+A 560-line banking program covering Worlds 1 to 16 (written by ChatGPT, compiled and run by real kotlinc) stopped before printing
+anything. Working through it uncovered about twenty separate gaps. Several were silent wrong answers in plain beginner code, not only in
+advanced features. All are pinned in `npm run test:program-gaps` (`scripts/test-program-gaps.ts`); `-- --kotlinc` re-checks every
+expected value against real kotlinc. The program itself now runs to the end and matches kotlinc except item 1 under "Still not covered".
+
+Silent wrong answers (ran, printed something plausible):
+- **A `when` branch whose result is on the line after `->` did nothing.** `parseWhenBranches` read one line per branch. It now splits the
+  body with `splitKotlinPieces` (brackets, strings, comments respected; a piece continues while it ends in an operator or the next line
+  starts with `.`/`?:`/`&&`/`else`), so `{ ... }` block branches (statement and value form), multi-line results, nested `when` and
+  `when` as an argument work too. Block branches had never worked at all.
+- **Inside a class method, `$r` for a local `val r` became `this.r` (printed null)**, because every `val` line in the class body, method
+  locals included, was collected as a property. Only depth-0 members count now (`topLevelMemberProperties`), and `${prop.call()}` inside a
+  string is rewritten like code.
+- **Inside `x.run { "$greeting" }` an OUTER local became a receiver member (printed null).** Locals win in Kotlin; the receiver template
+  rewrite now skips names in scope, top-level functions and classes, and also handles `${owner.name}` / `${label()}`.
+- **`data[id] = item` on `private val data = mutableMapOf<Int, T>()` set a JS property**, so `find` worked but `values`/`all()` were empty.
+  `inferMapVars` now accepts type arguments before `(` and a declared `Map<...>` type.
+- **`Customer::class.simpleName` printed `Function`** (it was `.constructor.name` of a class). `__kt_simpleName` handles a class, an
+  instance and a reified type name.
+- **A `Double` property in a data class printed `12000` instead of `12000.0`.** The generated `toString` now uses the declared type.
+- **The numeric-suffix strip ran inside strings** (`"%.2f"` became `"%.2"`, `"Room 5d"` printed `Room 5`), and the `4.also {}` paren pass
+  hit `5.0.isFinite()` and strings. Both are code-only now.
+
+Valid code that was rejected or crashed:
+- A method calling a sibling or inherited method without `this.` (`fun c() = b() * 10`): "Unresolved reference". Methods are collected as
+  `name()` and rewritten only where called, so a loop variable with a method's name is untouched.
+- Named arguments one per line (`amount = amount,`) were read as `val` reassignment: the check now skips lines inside an open `(`.
+- Two classes with a method of one name and different parameters (`deposit(amount)` / `deposit(id, amount)`): calls were checked against
+  whichever was declared last. Such names are now unchecked (`ambiguousFunctions`); extensions are still told apart by receiver.
+- Nested declarations (`sealed class R { data class Success(...) : R() }`, `object Config { object Db }`, a class's `enum`): moved to top
+  level by `kotlinNestedClasses.ts` before the rule checks and before translation, keeping `lineMap` and runtime line numbers. `object X :
+  Base()` (the usual sealed member) is supported, and `is X` on an object works through `Symbol.hasInstance`. `inner class` is not moved.
+  Moving a class must not hide a mistake the nesting made: reaching it through an instance (`c.Entry(8)`) and reading the outer's
+  members from it (`"$token"`) are reported as kotlinc does (found by `npm run improve`, which regressed on two World 11 Debug tasks).
+- `tailrec`; a reified function with no value parameter called inside `${...}`; `Unit` as a value (prints `kotlin.Unit`).
+- In a lambda body a statement ending in `&&`, `||`, `==`, `>=`, `%`, `?:` ... was cut at the newline (JS syntax error).
+- `CancellationException` did not exist; it is now an `IllegalStateException` (as in kotlinx.coroutines), so `catch (e: Exception)`
+  catches it unless an earlier `catch (e: CancellationException)` rethrows.
+- `new` was left in front of the whole check in `P(1) is P`.
+
+Library added: Java-style `String.format` / `"%.2f".format(x)` (HALF_UP on the shortest decimal, as Java), `isFinite`/`isNaN`/
+`isInfinite`, `Sequence.onEach`/`sorted*`, `List.sumOf`/`maxByOrNull`/`minByOrNull`/`maxBy`/`minBy`/`maxOf`/`minOf`/`toList`, destructured
+lambda parameters `{ (k, v) -> }` (with `_`), Kotlin Map operations (`mapValues`, `mapKeys`, `filter*`, `map`, `any`/`all`/`count`,
+`maxByOrNull`, `getOrPut`, ...) passing a `KotlinMapEntry` that prints `k=v`, `Mutex`/`withLock`, `AtomicInteger`/`AtomicLong`,
+`joinAll`/`awaitAll`.
+
+**Two rules for runtime additions, both learned here.** (1) The sandbox shares the app's JS realm, so never replace a native method that
+the rest of the app may call (`Map.prototype.forEach`): generated code calls `__kt_forEach` instead, and only Kotlin-only names are added to
+`Map.prototype`. (2) A library class name (`Mutex`, `AtomicInteger`) is defined only when the program uses it and does not declare its
+own class of that name (the `Job` collision above).
+
+**Still not covered:**
+1. A whole `Double` inside a generic container prints without `.0`: `Success(value=46000)` for `Success<T>(46000.0)`, map values from
+   `sumOf`, Pair members. JS keeps no Int/Double distinction at runtime; only places with a static type (declared data class properties,
+   `println(d)`, templates, `sumOf`/`maxOf` with a typed lambda) are fixed.
+2. A Unit returned by a function without `return Unit` still prints `null`.
+3. A `Mutex` locked again inside its own `withLock` is reported as a deadlock; real Kotlin hangs.
+
+## Quiz code formatter indented closing braces at 4 spaces per level and split `} else {` and `{ n ->`
+
+`formatQuizCodeQuestion` (`web-editor/src/utils/quizQuestions.ts`, copied to the app by `generate:native-data`) re-flows every quiz `code`/`a`/`b`
+array. It indented body lines with 2 spaces per level but closing braces with 4 (`'    '.repeat(depth)`), so any block nested two or more levels
+deep showed its `}` too far right; it also put `else {` on its own line after `}` and split a lambda header such as `forEach { n ->` into `{` and
+`n ->`. Found while authoring the World 7 and 9 Boss find_error questions (formatted code looked wrong, and the keyed error line moved).
+Fixed: a closer sits at its opener's depth with `indentSpaces`, text after `}` on the same line stays with it, and a `{ params ->` header at the end of
+a line stays together. `errorLine` is still mapped through `originalLineStarts`. **Rule:** after changing this formatter, print a few nested blocks and
+check the real kotlinc error line equals `errorLine + 4` (the harness wraps code with 4 extra lines).
+
+## Topic-level capability audit (Worlds 1-4): "it ran" is not "it is right", and imports, Double text, Char arithmetic and more were wrong
+
+Two ChatGPT "all worlds" programs showed that fixing one program at a time was the wrong unit. `npm run audit:topic-coverage`
+(`scripts/audit-topic-coverage.ts`, cases in `scripts/topic-coverage/cases.ts`, grouped by topic and world) now runs every everyday
+operation through REAL kotlinc and the simulator and compares the OUTPUT. The first probe only checked that snippets ran, and it hid
+silent wrong answers (`"a-b-c".replace("-", "+")` printed `a+b-c`). `npm run test:topic-coverage` (in `check:all`) replays the stored
+kotlinc outputs (`expected.json`) for the finished topics, so no kotlinc is needed. `KNOWN_LIMITS` lists, with reasons, the few cases
+that differ on purpose. Worlds 1-4 topics (strings, chars, numbers, ranges, decisions) are 324/324 against kotlinc.
+Refresh after adding cases: `npm run audit:topic-coverage -- --topic <t> --write-expected`.
+
+Silent wrong answers fixed (all printed a plausible value):
+- `String.replace` replaced only the FIRST match (JS semantics); `'a'.code` printed null; `'a' + 1` printed `a1` (Kotlin: `b`) and
+  `'d' - 'a'` printed NaN; `for (c in 'a'..'e')` ran once.
+- Doubles: `Math.sqrt(16.0)`, `Math.pow`, `1e3`, `x.pow(2)` printed `4`/`1000`/`1024` (Kotlin `4.0`...), and no Double used Java's
+  scientific notation (`1.0E10`, `1.23456789E8`, `1.0E-5`). `javaDoubleToString` implements Java's rule (>= 1e7 or < 1e-3), used for
+  typed Doubles (`__kt_decimalText`) and for any fractional number. A hex literal `0x1F` was typed Float (it ends in F) and printed `31.0`.
+- Float arithmetic ran in double precision (`0.1f + 0.2f` printed 0.30000000000000004, `1 / 3.0f` 0.3333333333333333): Float literals are
+  `Math.fround`, Float results are rounded to 32 bits, and a Float prints as the shortest FLOAT decimal (`javaFloatToString`).
+- Int arithmetic never wrapped: `Int.MAX_VALUE + 1` printed 2147483648. Statically typed Int `+ - *` now wrap to 32 bits (`| 0`,
+  `Math.imul`). Long stays a JS number (exact to 2^53): `Long.MAX_VALUE` is reported as unsupported rather than printed wrong.
+- The "starts with a digit, so it is a number literal" typing rule applied to WHOLE expressions: `5 in 1..10` and `1.5.isNaN()` were
+  typed Double and printed `true.0`. It is now limited to a single literal token; `in`/`!in` are Boolean operators.
+- Valid code that did not parse: a same-line `if (c) a else b` STATEMENT (JS needs a `;` before `else` on one line), loop labels
+  (`outer@ for`, `break@outer`, `continue@outer`), `val y = if (c) { stmt; v } else 0` (a block with several statements, bare else), and
+  `import kotlin.math.*` (only imports without a wildcard were stripped, so every wildcard import failed with "Cannot use import
+  statement outside a module").
+
+Design rules learned:
+1. **Never redefine a native JS method on a shared prototype.** The transpiler runs in the same realm: a redefined
+   `String.prototype.replace` recursed forever inside its own implementation. Kotlin's `replace`/`startsWith`/`endsWith` are reached
+   through `__kt_replace`/`__kt_startsWith`/`__kt_endsWith` (generated code only; falls back to the receiver's own method).
+2. A Char and a one-letter String are the same JS string, so Char arithmetic needs STATIC types: char literals, `s[i]`, `for (c in s)`,
+   `s.map { it }`, `first()`/`last()` of a String and `x.code`/`uppercaseChar()` are typed Char, and the chain renderer emits
+   `__kt_charPlus` / `__kt_charDiff`. A Char behind an unknown type still concatenates. `Char.compareTo` and `Char.plus` stay known limits.
+3. Range values are real lists that print like Kotlin ranges (`KotlinRange`: `1..3`, `5 downTo 1 step 1`); `first`/`last`/`step` work as
+   properties AND as calls (`boundValue`). `a..b`, `until`, `downTo`, `..<` and `step` are rewritten by one precedence-aware pass.
+4. A "not supported" answer must come AFTER the compile checks: returning early for Flow/java.io programs hid the real syntax errors the
+   kotlinc comparison injects and dropped agreement from 93.7% to 92.3%.
+
+New engine pieces: `src/utils/kotlinStdlib.ts` (String/Char/Number/Boolean members, `maxOf`/`minOf`, `Int.MAX_VALUE`..., `kotlin.math`
+installed only when the program mentions it), `KotlinRange`/`KotlinIndexedValue` in `kotlinCollections.ts`, `joinToString` with
+prefix/postfix/limit/transform, `split` with limit/ignoreCase, named arguments for library members (`contains(x, ignoreCase = true)`),
+`toInt(radix)`, `copy(a = 1, b = 2)` with several/nested named arguments.
+
+## Simulator gaps found while rewriting the Boss quizzes (real kotlinc is the authority)
+
+Found by checking every Boss question with real kotlinc. None changes a key; the questions were written around them. Fix the engine before
+authoring content that depends on any of these.
+- `mutableMapOf(...).delete(key)` runs (JS `Map.prototype.delete` leaks through); real Kotlin has no `delete`, only `remove`. A wrong
+  chip built on `delete` behaves like the right answer.
+- A named argument before a `vararg` parameter (`pack(label = "x")` where the next parameter is `vararg`) prints `x:1` in the simulator and
+  `x:0` in real Kotlin.
+- `val x: Int = 5_000_000_000` (an Int literal above the Int range) is not rejected; kotlinc reports an Int/Long type mismatch.
+- A String accepts `.size` and `.count()` in the simulator (real Kotlin: unresolved reference for `size`).
+- `if (a != null || other) { a.length }` is accepted: the null-guard test is flow-insensitive, so an `||` guard counts as a null check.
+- `forEach { ... return@each }` with a wrong label reports a different message than kotlinc (`'return' is prohibited here`); both are errors.
+- In a quiz `fill_blank`, the simulator accepted `value ?. String` and produced the same fallback output as `value as? String`. Real Kotlin rejects `?.` before a type name; do not use that as a distinct distractor without checking the chip with kotlinc.
+- Kotlin permits an `inline` function with no function parameters; it compiles with a warning rather than failing. Do not use that declaration as a `find_error` example. World 9 question `w9q-9-8` was corrected to a real return-type mismatch.
+
+## Topic audit round 2 (Worlds 6, 7, 10, 13, 15 topics): the word-count line, collection operators, `Unit`, and statement-level `?:`/`!!`
+
+Same method as the Worlds 1-4 round (`npm run audit:topic-coverage`, output compared with real kotlinc). Arrays, lists, sets, maps, typed
+collections, null safety, exceptions and builders are now 738/738 against kotlinc (known limits listed in `KNOWN_LIMITS`).
+
+Silent wrong answers fixed:
+- **`counts[w] = (counts[w] ?: 0) + 1` always stored 1** (the word-count idiom). `rewriteIndexAccess` rewrote the assignment TARGET to
+  `.set(...)` but copied the VALUE (and the index) verbatim, so the inner `counts[w]` read a JS property (undefined). It now recurses
+  into both.
+- `list + x`, `list + list`, `set - x`, `map + pair`, `map - key` became JS string concatenation (`[object Set]3`, `NaN`). Typed
+  `+`/`-` on a List/Set/Map/Array now emit `__kt_plus`/`__kt_minus`; collection kinds are inferred for factory calls, `filter`/`map`/
+  `toList`/`toSet`/... results and `a + x` itself.
+- `x in setOf(...)`/`x in mapOf(...)` (a call as the collection) used JS `in` (always false); a `Set`/`Map` `==` compared identity;
+  iterating a Map with `for (e in m)` gave arrays (`e.key` null).
+- Doubles inside collections: `[0.5, 1, 1.5]`, `{a=1}`, `listOf(1.5, 2.5).sum()` printed `4`. Element types are tracked statically
+  through `listOf`/`mapOf` literals, `map { }`, `filter`/`sorted`/`take`/..., `sum`/`max`/`first`, and `m[key]`; a typed
+  `List<Double>`/`Map<K, Double>` prints through `__kt_decimalAll`/`__kt_decimalMap`. Still untracked: lists inside other
+  containers, data class properties of collection type, values from functions with no declared type.
+- `val y = x ?: return` followed by more statements: after a bare `return` the NEXT LINE was taken as the return value, so the rest of
+  the function ended up inside the null guard and never ran. A `return` at the end of a line is bare.
+- `println(...)` returned `undefined`, so `s?.let { println(it) } ?: other` also ran `other`, and `println(x.let { println(it) })`
+  printed `null`. `println`/`print`/`assert` now return the real `Unit` (`kotlin.Unit`).
+- A for-loop variable inside a receiver lambda (`buildString { for (i in 1..3) append(i) }`) became `receiver.i`; every loop variable is
+  now declared local, and Kotlin keywords are never receiver members.
+
+Valid code that failed: a statement-level `a ?: b`, `x!! + 1` or cast (only declarations and arguments were lowered); `s?.let { } ?: ...`
+(a trailing lambda is part of its operand); `m["a"] = m["a"]!! + 1` (the early expression block split at `+` across the assignment: an
+assignment statement is now split at `=` first, only at STATEMENT start, so `return pin = null || ...` is still rejected);
+`emptySet<T>()`, `HashMap<K, V>()`, `ArrayList<T>()`, `hashSetOf`, `Array(n) { }`, `IntArray(n) { }`, `arrayOfNulls`, `emptyArray<T>()`
+(Java-style factories map onto the Kotlin ones in the first lines of `transpileKotlinToJS`); `trim`/`trimEnd(',')` with Char arguments and
+`substring` bounds (reached through `__kt_trim*`/`__kt_substring`, same rule as `replace`: never redefine a native method).
+
+Library added: ~60 List operations (`forEachIndexed`, `mapIndexed`, `runningFold`, `takeLast`, `single`, `zipWithNext`, `groupingBy`...),
+Set operations (delegating to List), Map operations (`merge`, `compute`, `putIfAbsent`, `toSortedMap`...), mutable-list operations
+(`removeIf`, `removeAll`, `sortBy`, `addAll(index, items)`...), `Iterator` (`hasNext`/`next`), comparators (`compareBy`, `thenBy`,
+`reversed`), `buildString`/`buildList`/`buildMap`/`buildSet`, StringBuilder members, `NullPointerException`,
+`ArrayIndexOutOfBoundsException` (arrays are flagged, lists are not), `NotImplementedError`, `AssertionError`, `TODO()`, and JDK exceptions
+that print with their package (`java.lang.IllegalStateException: s`).
+
+Accepted trade-off: because `println` now returns `Unit`, the World 13 Boss reports `uppercase` instead of `name` on the same line (token
+only; kotlinc agrees on the line and still rejects the program).
+
+## Topic audit: World 5 functions (57/57): return types with commas, `vararg` arrays, spread, overloads
+
+- A `fun` whose return type was `Pair<Int,Int>` (a comma) or a function type stayed RAW Kotlin in the output: the declaration regexes in
+  `transpileKotlinToJS` only allowed `[a-zA-Z0-9_<>?]` return types, so `val (n, sq) = pair(4)` failed with "Unexpected identifier".
+- A `vararg` parameter was a plain JS rest array without the Kotlin array API (`prices.sum()` unresolved). The function prologue now wraps
+  it with `__kt_varargs`, and it is typed `Array<T>` inside the body (a `vararg Double` sum prints `4.0`). `f(*array)` is the spread
+  operator (a `*` that starts an argument is never multiplication).
+- Overloads (`square(Int)` / `square(Double)`, `show(Int)` / `show(String)`): `functions` is keyed by name, so the last declaration judged
+  every call and a valid program was REJECTED as a type mismatch; JavaScript also keeps only the last definition. Top-level functions of one
+  name with different parameter types now get their own JS names (`square__ov0`, `square__ov1`) and each call chooses the declaration whose
+  parameters accept the argument types (exact type match first; Kotlin does not widen Int to Double). Members overriding each other still
+  ignore types (`override fun log(v: Any)` for `log(v: T)`). Not covered: overloads that differ only by a default/vararg shape, overloaded
+  function references (`::square`), and overloads inside classes.
+- `(Int) -> Int = { it + n }` was rejected: a lambda with no declared parameter takes the implicit `it` when one parameter is expected.
+- `c in "aeiou"` used JavaScript `in`; a string literal is a collection of chars for `in`/`!in`.

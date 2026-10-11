@@ -7,6 +7,14 @@ export class KotlinPair {
   component1() { return this.first; }
   component2() { return this.second; }
 }
+/** `withIndex()` element: prints `IndexedValue(index=0, value=H)`, destructures as `(i, v)`. */
+export class KotlinIndexedValue extends KotlinPair {
+  get index() { return this.first; }
+  toString() { return `IndexedValue(index=${this.first}, value=${this.second})`; }
+}
+
+/** A Map.Entry: a pair that prints as `key=value`. Iterable, so `{ (k, v) -> }` destructures it. */
+export class KotlinMapEntry extends KotlinPair {}
 const compare = (a: any, b: any): number => a === b ? 0 : a == null ? -1 : b == null ? 1 : a < b ? -1 : 1;
 const equal = (a: any, b: any): boolean => a === b || (Number.isNaN(a) && Number.isNaN(b)) ||
   (a instanceof KotlinList && b instanceof KotlinList && a.length === b.length && a.every((v: any, i: number) => equal(v, b[i]))) ||
@@ -20,6 +28,8 @@ export const outOfBounds = (index: any, length: number) => {
   const Cls = (globalThis as any).IndexOutOfBoundsException;
   return Cls ? new Cls(message) : new Error(message);
 };
+const kotlinError = (cls: string, message: string) => { const C = (globalThis as any)[cls]; return C ? new C(message) : new Error(message); };
+const noSuchElement = (message = 'Collection is empty.') => kotlinError('NoSuchElementException', message);
 const positive = (value: number) => { if (!Number.isInteger(value) || value <= 0) throw new Error('size and step must be positive integers'); };
 // A dynamic base accommodates Kotlin overloads that differ from JS Array signatures.
 const ArrayBase: any = Array;
@@ -54,8 +64,63 @@ export class KotlinList extends ArrayBase {
   }
   distinct() { const result = new KotlinList(); for (const v of this) if (!result.some((x: any) => equal(x, v))) result.push(v); return result; }
   distinctBy(fn: any) { const keys: any[] = []; return this.filter((v: any) => { const k = fn(v); if (keys.some(x => equal(x, k))) return false; keys.push(k); return true; }); }
+  forEachIndexed(fn: any) { let i = 0; for (const v of this) fn(i++, v); }
+  mapIndexed(fn: any) { return new KotlinList(Array.from(this).map((v: any, i: number) => fn(i, v))); }
+  mapIndexedNotNull(fn: any) { return this.mapIndexed(fn).filter((v: any) => v != null); }
+  filterIndexed(fn: any) { return new KotlinList(Array.from(this).filter((v: any, i: number) => fn(i, v))); }
+  runningFold(initial: any, fn: any) { const out = [initial]; let acc = initial; for (const v of this) { acc = fn(acc, v); out.push(acc); } return new KotlinList(out); }
+  scan(initial: any, fn: any) { return this.runningFold(initial, fn); }
+  runningReduce(fn: any) { if (!this.length) return new KotlinList(); let acc = this[0]; const out = [acc]; for (let i = 1; i < this.length; i++) { acc = fn(acc, this[i]); out.push(acc); } return new KotlinList(out); }
+  reduceOrNull(fn: any) { return this.length ? this.reduce(fn) : null; }
+  takeLast(n: number) { if (n < 0) throw kotlinError('IllegalArgumentException', `Requested element count ${n} is less than zero.`); return new KotlinList(n === 0 ? [] : Array.prototype.slice.call(this, Math.max(0, this.length - n))); }
+  dropLast(n: number) { if (n < 0) throw kotlinError('IllegalArgumentException', `Requested element count ${n} is less than zero.`); return new KotlinList(Array.prototype.slice.call(this, 0, Math.max(0, this.length - n))); }
+  takeLastWhile(fn: any) { let i = this.length; while (i > 0 && fn(this[i - 1])) i--; return new KotlinList(Array.prototype.slice.call(this, i)); }
+  dropLastWhile(fn: any) { let i = this.length; while (i > 0 && fn(this[i - 1])) i--; return new KotlinList(Array.prototype.slice.call(this, 0, i)); }
+  single(fn?: any) {
+    const matches = fn ? Array.from(this).filter((v: any) => fn(v)) : Array.from(this);
+    if (matches.length === 0) throw noSuchElement(fn ? 'Collection contains no element matching the predicate.' : 'List is empty.');
+    if (matches.length > 1) throw kotlinError('IllegalArgumentException', fn ? 'Collection contains more than one matching element.' : 'List has more than one element.');
+    return matches[0];
+  }
+  singleOrNull(fn?: any) { const matches = fn ? Array.from(this).filter((v: any) => fn(v)) : Array.from(this); return matches.length === 1 ? matches[0] : null; }
+  elementAt(index: number) { if (!Number.isInteger(index) || index < 0 || index >= this.length) throw outOfBounds(index, this.length); return this[index]; }
+  elementAtOrNull(index: number) { return Number.isInteger(index) && index >= 0 && index < this.length ? this[index] : null; }
+  zipWithNext(fn: any = (a: any, b: any) => new KotlinPair(a, b)) { const out = new KotlinList(); for (let i = 0; i + 1 < this.length; i++) out.push(fn(this[i], this[i + 1])); return out; }
+  asReversed() { return this.reversed(); }
+  shuffled() { const out = Array.from(this); for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; } return new KotlinList(out); }
+  indexOfFirst(fn: any) { return Array.from(this).findIndex((v: any) => fn(v)); }
+  indexOfLast(fn: any) { const all = Array.from(this); for (let i = all.length - 1; i >= 0; i--) if (fn(all[i])) return i; return -1; }
+  getOrElse(index: number, fn: any) { return Number.isInteger(index) && index >= 0 && index < this.length ? this[index] : fn(index); }
+  // slice(range | indices) picks elements by index (Kotlin); numeric arguments keep the native Array behaviour.
+  slice(...args: any[]): any {
+    const [first] = args;
+    if (first != null && typeof first === 'object' && typeof first[Symbol.iterator] === 'function') return new KotlinList(Array.from(first as Iterable<number>).map((i) => { if (i < 0 || i >= this.length) throw outOfBounds(i, this.length); return this[i]; }));
+    return Array.prototype.slice.apply(this, args as [number?, number?]);
+  }
+  sortedWith(cmp: any) { return new KotlinList(Array.from(this).sort(cmp)); }
+  toTypedArray() { return new KotlinList(Array.from(this)); }
+  toIntArray() { return this.toTypedArray(); }
+  toLongArray() { return this.toTypedArray(); }
+  toDoubleArray() { return this.toTypedArray(); }
+  toBooleanArray() { return this.toTypedArray(); }
+  toCharArray() { return this.toTypedArray(); }
+  unzip() { const a = new KotlinList(), b = new KotlinList(); for (const p of this) { a.push(p.first); b.push(p.second); } return new KotlinPair(a, b); }
+  toMap() { const out = new Map(); for (const p of this) out.set(p.first, p.second); return out; }
+  groupingBy(key: any) { return new KotlinGrouping(Array.from(this), key); }
+  sumBy(fn: any) { return this.sumOf(fn); }
+  firstNotNullOf(fn: any) { for (const v of this) { const r = fn(v); if (r != null) return r; } throw noSuchElement('No element of the collection was transformed to a non-null value.'); }
+  firstNotNullOfOrNull(fn: any) { for (const v of this) { const r = fn(v); if (r != null) return r; } return null; }
   sorted() { return new KotlinList(Array.from(this).sort(compare)); }
   sortedDescending() { return this.sorted().reversed(); }
+  onEach(fn: any) { for (const v of this) fn(v); return this; }
+  sumOf(fn: any) { let total = 0; for (const v of this) total += fn(v); return total; }
+  // the first element with the largest/smallest key wins a tie, as in Kotlin
+  maxByOrNull(fn: any) { let best: any = null, key: any; for (const v of this) { const k = fn(v); if (best === null || compare(k, key) > 0) { best = v; key = k; } } return best; }
+  minByOrNull(fn: any) { let best: any = null, key: any; for (const v of this) { const k = fn(v); if (best === null || compare(k, key) < 0) { best = v; key = k; } } return best; }
+  maxBy(fn: any) { if (!this.length) throw noSuchElement(); return this.maxByOrNull(fn); }
+  minBy(fn: any) { if (!this.length) throw noSuchElement(); return this.minByOrNull(fn); }
+  maxOf(fn: any) { if (!this.length) throw noSuchElement(); return Array.from(this, fn).reduce((a: any, b: any) => (compare(b, a) > 0 ? b : a)); }
+  minOf(fn: any) { if (!this.length) throw noSuchElement(); return Array.from(this, fn).reduce((a: any, b: any) => (compare(b, a) < 0 ? b : a)); }
   sortedBy(fn: any) { return new KotlinList(Array.from(this).sort((a, b) => compare(fn(a), fn(b)))); }
   sortedByDescending(fn: any) { return new KotlinList(Array.from(this).sort((a, b) => compare(fn(b), fn(a)))); }
   reversed() { return new KotlinList(Array.from(this).reverse()); }
@@ -88,12 +153,18 @@ export class KotlinList extends ArrayBase {
   get(index: number) { if (!Number.isInteger(index) || index < 0 || index >= this.length) throw outOfBounds(index, this.length); return this[index]; }
   getOrNull(index: number) { return Number.isInteger(index) && index >= 0 && index < this.length ? this[index] : null; }
   set(index: number, value: any) { if (!Number.isInteger(index) || index < 0 || index >= this.length) throw outOfBounds(index, this.length); const old = this[index]; this[index] = value; return old; }
-  get indices() { return new KotlinList(Array.from({ length: this.length }, (_, i) => i)); }
+  get indices() { return makeRange(0, this.length - 1); }
   get lastIndex() { return this.length - 1; }
-  withIndex() { return new KotlinList(Array.from(this).map((v: any, i: number) => new KotlinPair(i, v))); }
+  withIndex() { return new KotlinList(Array.from(this).map((v: any, i: number) => new KotlinIndexedValue(i, v))); }
+  random() { if (!this.length) { const E = (globalThis as any).NoSuchElementException; throw E ? new E('Collection is empty.') : new Error('Collection is empty.'); } return this[Math.floor(Math.random() * this.length)]; }
   subList(from: number, to: number) { if (from < 0 || to > this.length || from > to) throw outOfBounds(from < 0 ? from : to, this.length); return new KotlinList(Array.prototype.slice.call(this, from, to)); }
   plus(other: any) { return new KotlinList([...Array.from(this), ...(other != null && typeof other !== 'string' && typeof other[Symbol.iterator] === 'function' ? Array.from(other) : [other])]); }
-  minus(other: any) { const out = Array.from(this); const i = out.findIndex((v: any) => equal(v, other)); if (i >= 0) out.splice(i, 1); return new KotlinList(out); }
+  // list - element removes the first occurrence; list - collection removes every element of that collection
+  minus(other: any) {
+    const out = Array.from(this);
+    if (other != null && typeof other !== 'string' && typeof other[Symbol.iterator] === 'function') { const drop = Array.from(other as Iterable<any>); return new KotlinList(out.filter((v: any) => !drop.some((d) => equal(v, d)))); }
+    const i = out.findIndex((v: any) => equal(v, other)); if (i >= 0) out.splice(i, 1); return new KotlinList(out);
+  }
   contentToString() { return '[' + Array.from(this).map((v: any) => String(v)).join(', ') + ']'; }
   // Kotlin's sort() orders by value (numbers numerically); JS's default sort compares as text ([10, 9, 2] -> [10, 2, 9]).
   sort(fn?: any) { Array.prototype.sort.call(this, fn ?? compare); }
@@ -120,12 +191,81 @@ export class KotlinList extends ArrayBase {
   takeWhile(fn: any) { const out = new KotlinList(); for (const v of this) { if (!fn(v)) break; out.push(v); } return out; }
   dropWhile(fn: any) { let i = 0; while (i < this.length && fn(this[i])) i++; return new KotlinList(Array.prototype.slice.call(this, i)); }
   asSequence() { const self = this; return new KotlinSequence(() => Array.prototype[Symbol.iterator].call(self), false); }
-  iterator() {
-    const it: any = Array.prototype[Symbol.iterator].call(this);
-    it.asSequence = () => new KotlinSequence(() => it, true);
-    return it;
-  }
+  iterator() { return new KotlinIterator(this as unknown as any[]); }
 }
+
+/** `list.groupingBy { key }`: only the terminal operations lessons use (`eachCount`, `fold`, `reduce`, `aggregate`-free). */
+export class KotlinGrouping {
+  constructor(private readonly items: any[], private readonly key: (v: any) => any) {}
+  eachCount() { const out = new Map(); for (const v of this.items) { const k = this.key(v); out.set(k, (out.get(k) ?? 0) + 1); } return out; }
+  fold(initial: any, op: (acc: any, v: any) => any) { const out = new Map(); for (const v of this.items) { const k = this.key(v); out.set(k, op(out.has(k) ? out.get(k) : initial, v)); } return out; }
+  reduce(op: (acc: any, v: any) => any) { const out = new Map(); for (const v of this.items) { const k = this.key(v); out.set(k, out.has(k) ? op(out.get(k), v) : v); } return out; }
+}
+
+/** `list.iterator()`: hasNext() / next() (and remove() for a mutable list). */
+export class KotlinIterator {
+  private index = 0;
+  constructor(private readonly source: any[]) {}
+  hasNext() { return this.index < this.source.length; }
+  next() { if (this.index >= this.source.length) throw noSuchElement(); return this.source[this.index++]; }
+  remove() { this.source.splice(--this.index, 1); }
+  // `Iterator.asSequence()` is single-use: it hands out the REMAINING elements once.
+  asSequence() { const self = this; return new KotlinSequence(function* () { while (self.hasNext()) yield self.next(); }, true); }
+  [Symbol.iterator]() { const self = this; return (function* () { while (self.hasNext()) yield self.next(); })(); }
+}
+
+/**
+ * An IntRange / CharRange / IntProgression value (`1..5`, `5 downTo 1`, `1..10 step 3`, `1 until 4`). It is a real list of its
+ * elements (so every list operation works) that prints the way Kotlin prints a range. `first`, `last` and `step` are the range's
+ * properties; they also work called, as `first()`/`last()` do on any Iterable.
+ */
+export class KotlinRange extends KotlinList {
+  constructor(values: Iterable<any>, public readonly rangeFirst: any, public readonly rangeLast: any, public readonly rangeStep: number, public readonly isChar = false) { super(values); }
+  toString(): string {
+    const q = (v: any) => String(v);
+    if (this.rangeStep > 0) return this.rangeStep === 1 && !this.isProgression ? `${q(this.rangeFirst)}..${q(this.rangeLast)}` : `${q(this.rangeFirst)}..${q(this.rangeLast)} step ${this.rangeStep}`;
+    return `${q(this.rangeFirst)} downTo ${q(this.rangeLast)} step ${-this.rangeStep}`;
+  }
+  /** `(1..10 step 3)` and `(1..5).reversed()` are progressions, which print their step. */
+  isProgression = false;
+}
+/**
+ * A range's `first` / `last` / `step` are properties in Kotlin (`r.first`) and `first()` / `last()` are also functions on any
+ * Iterable. One object serves both: it behaves as the number (arithmetic, comparison, indexing, printing) and is also callable.
+ * `step` called with an argument is the infix `step(n)` progression function.
+ */
+export function boundValue(value: any, call: (...args: any[]) => any = () => value): any {
+  const bound: any = (...args: any[]) => call(...args);
+  bound.__kt_value = value;
+  bound[Symbol.toPrimitive] = (hint: string) => (hint === 'string' ? String(value) : value);
+  bound.valueOf = () => value;
+  bound.toString = () => String(value);
+  return bound;
+}
+/** `a..b`, `a until b`, `a downTo b`, optionally `step n`, for Int and Char operands. */
+export function makeRange(from: any, to: any, kind: '..' | 'until' | 'downTo' = '..', step = 1): KotlinRange {
+  const isChar = typeof from === 'string';
+  const a = isChar ? from.codePointAt(0)! : Number(from), b0 = isChar ? String(to).codePointAt(0)! : Number(to);
+  if (!(step > 0)) { const E = (globalThis as any).IllegalArgumentException; throw E ? new E(`Step must be positive, was: ${step}.`) : new Error(`Step must be positive, was: ${step}.`); }
+  const down = kind === 'downTo';
+  const b = kind === 'until' ? b0 - 1 : b0;
+  const values: any[] = [];
+  for (let v = a; down ? v >= b : v <= b; v += down ? -step : step) { values.push(isChar ? String.fromCodePoint(v) : v); if (values.length > 5_000_000) throw new Error('Execution timed out (possible infinite loop)'); }
+  const last = values.length ? values[values.length - 1] : (isChar ? String(to) : b);
+  const range = new KotlinRange(values, isChar ? String.fromCodePoint(a) : a, last, down ? -step : step, isChar);
+  range.isProgression = down || step !== 1;
+  return range;
+}
+const rangeAccessor = (name: string, value: (r: KotlinRange) => any, call: (r: KotlinRange, ...args: any[]) => any) =>
+  Object.defineProperty(KotlinRange.prototype, name, { get(this: KotlinRange) { return boundValue(value(this), (...args: any[]) => call(this, ...args)); }, configurable: true });
+rangeAccessor('first', (r) => r.rangeFirst, (r, pred) => (pred ? KotlinList.prototype.first.call(r, pred) : r.rangeFirst));
+rangeAccessor('last', (r) => r.rangeLast, (r, pred) => (pred ? KotlinList.prototype.last.call(r, pred) : r.rangeLast));
+rangeAccessor('step', (r) => Math.abs(r.rangeStep), (r, n) => makeRange(r.rangeFirst, r.rangeLast, r.rangeStep < 0 ? 'downTo' : '..', n));
+/** `r.reversed()` of a range is a progression counting down. */
+KotlinRange.prototype.reversed = function (this: KotlinRange) {
+  const out = makeRange(this.rangeLast, this.rangeFirst, 'downTo', Math.abs(this.rangeStep));
+  return out;
+};
 
 // World 14: a lazy, generator-backed Sequence<T>. Every intermediate
 // operation (map/filter/take/takeWhile/drop) wraps the upstream iterable
@@ -192,6 +332,23 @@ export class KotlinSequence {
       for (const v of self) { yield v; if (++i >= n) return; }
     }, self.singleUse);
   }
+  onEach(fn: any): KotlinSequence {
+    const self = this;
+    return new KotlinSequence(function* () { for (const v of self) { fn(v); yield v; } }, self.singleUse);
+  }
+  // Sorting is stateful: the first element is only produced after every upstream element was read (as in Kotlin).
+  private sortedWith(order: (a: any, b: any) => number): KotlinSequence {
+    const self = this;
+    return new KotlinSequence(function* () {
+      const all: any[] = []; let c = 0;
+      for (const v of self) { KotlinSequence.guard(++c); all.push(v); }
+      yield* all.sort(order);
+    }, self.singleUse);
+  }
+  sorted(): KotlinSequence { return this.sortedWith(compare); }
+  sortedDescending(): KotlinSequence { return this.sortedWith((a, b) => compare(b, a)); }
+  sortedBy(fn: any): KotlinSequence { return this.sortedWith((a, b) => compare(fn(a), fn(b))); }
+  sortedByDescending(fn: any): KotlinSequence { return this.sortedWith((a, b) => compare(fn(b), fn(a))); }
   takeWhile(fn: any): KotlinSequence {
     const self = this;
     return new KotlinSequence(function* () { for (const v of self) { if (!fn(v)) return; yield v; } }, self.singleUse);

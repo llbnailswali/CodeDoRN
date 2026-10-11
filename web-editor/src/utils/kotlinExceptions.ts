@@ -30,7 +30,9 @@ export class Throwable {
     this.cause = cause ?? null;
   }
   toString(): string {
-    const name = (this.constructor as any).name;
+    const ctor = this.constructor as any;
+    // JDK/Kotlin library exceptions print with their package (`java.lang.IllegalStateException: s`); a user class prints its own name.
+    const name = QUALIFIED_NAMES.get(ctor) ?? ctor.name;
     return this.message != null ? `${name}: ${this.message}` : name;
   }
 }
@@ -44,6 +46,26 @@ export class ArithmeticException extends RuntimeException {}
 export class NoSuchElementException extends RuntimeException {}
 export class UnsupportedOperationException extends RuntimeException {}
 export class ClassCastException extends RuntimeException {}
+export class NullPointerException extends RuntimeException {}
+export class ArrayIndexOutOfBoundsException extends IndexOutOfBoundsException {}
+export class StringIndexOutOfBoundsException extends IndexOutOfBoundsException {}
+/** kotlin.Error branch: NOT caught by `catch (e: Exception)`. */
+export class NotImplementedError extends Throwable {}
+export class AssertionError extends Throwable {}
+/** kotlinx.coroutines' CancellationException is an IllegalStateException, so `catch (e: Exception)` catches it (hence the usual rethrow). */
+export class CancellationException extends IllegalStateException {}
+
+const QUALIFIED_NAMES = new Map<unknown, string>();
+for (const [cls, pkg] of [
+  [Throwable, 'java.lang'], [Exception, 'java.lang'], [RuntimeException, 'java.lang'], [IllegalStateException, 'java.lang'],
+  [IllegalArgumentException, 'java.lang'], [NumberFormatException, 'java.lang'], [IndexOutOfBoundsException, 'java.lang'],
+  [ArithmeticException, 'java.lang'], [ClassCastException, 'java.lang'], [UnsupportedOperationException, 'java.lang'],
+  [NullPointerException, 'java.lang'], [ArrayIndexOutOfBoundsException, 'java.lang'], [StringIndexOutOfBoundsException, 'java.lang'],
+  [AssertionError, 'java.lang'], [NoSuchElementException, 'java.util'], [NotImplementedError, 'kotlin'],
+] as Array<[{ name: string }, string]>) QUALIFIED_NAMES.set(cls, `${pkg}.${cls.name}`);
+/** Registers a library exception subclass whose printed name needs a package (CancellationException lives in kotlinx). */
+export function registerQualifiedName(cls: { name: string }, qualified: string) { QUALIFIED_NAMES.set(cls, qualified); }
+registerQualifiedName(CancellationException, 'java.util.concurrent.CancellationException');
 
 /**
  * `Result<T>` (World 15's Result/runCatching/Success-failure-handling

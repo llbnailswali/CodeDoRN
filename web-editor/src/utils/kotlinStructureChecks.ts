@@ -697,6 +697,21 @@ function assignedLiteralMismatch(code: string, masked: string, tokens: SourceTok
 /** Standard functions (not properties) that learners call without `()`: `name.uppercase` is "Function invocation 'uppercase()' expected". */
 const ZERO_ARG_FUNCTIONS = new Set(['uppercase', 'lowercase', 'trim', 'reversed', 'sorted', 'sortedDescending', 'toInt', 'toDouble', 'toLong', 'toString', 'isEmpty', 'isNotEmpty', 'isBlank', 'isNotBlank', 'last', 'sum', 'toList', 'toMutableList', 'toSet', 'distinct', 'shuffled', 'average', 'trimStart', 'trimEnd', 'capitalize']);
 
+/** Is the receiver that ends at token `end` a range: `(1..5)`, `(a until b)`, `IntRange(...)`, or a name declared as one? */
+function isRangeReceiver(code: string, masked: string, tokens: SourceToken[], end: number): boolean {
+  const tail = tokens[end];
+  if (!tail) return false;
+  if (tail.text === ')') {
+    let depth = 0, k = end;
+    for (; k >= 0; k--) { if (tokens[k].text === ')') depth++; else if (tokens[k].text === '(') { depth--; if (depth === 0) break; } }
+    if (k < 0) return false;
+    if (/^(?:IntRange|CharRange|LongRange)$/.test(tokens[k - 1]?.text ?? '')) return true;
+    return tokens.slice(k + 1, end).some((t) => t.text === 'until' || t.text === 'downTo' || (t.text === '.' && false)) || /\.\./.test(masked.slice(tokens[k].start, tail.start));
+  }
+  if (tail.kind !== 'word') return false;
+  return new RegExp(`\\b(?:val|var)\\s+${tail.text}\\s*(?::[^=\\n]+)?=[^\\n]*?(?:\\.\\.|\\buntil\\b|\\bdownTo\\b|\\bIntRange\\b)`).test(masked);
+}
+
 function callWithoutParentheses(code: string, masked: string, tokens: SourceToken[]): KotlinDiagnostic | null {
   // A user declaration with the same name (a property `val last`, or an extension property) makes the bare name legitimate.
   const declared = new Set([...masked.matchAll(/\b(?:val|var)\s+(?:[A-Z]\w*(?:<[^>]*>)?\.)?([a-zA-Z_]\w*)/g)].map((m) => m[1]));
@@ -706,6 +721,8 @@ function callWithoutParentheses(code: string, masked: string, tokens: SourceToke
     if (tokens[i - 1].text !== '.' || (i > 1 && tokens[i - 2].text === ':')) continue; // `::uppercase` is a reference
     const next = tokens[i + 1];
     if (next.text === '(' || next.text === '{' || next.text === '<') continue;
+    // `first` / `last` are PROPERTIES of a range: `(1..5).last`, `val r = 1..5` then `r.last`
+    if (t.text === 'last' && isRangeReceiver(code, masked, tokens, i - 2)) continue;
     return diagnostic(code, masked, t, `Function invocation '${t.text}()' expected.`);
   }
   return null;
@@ -726,19 +743,26 @@ function whenBranchWithoutArrow(code: string, masked: string, tokens: SourceToke
     if (close < 0) continue;
     // Walk the body line by line at depth 0; a line that starts a branch must contain `->` (or continue onto the next line).
     let k = open + 1;
+    let previousHadIf = false;
     while (k < close) {
       const line = lineOfOffset(code, tokens[k].start);
       const start = k;
       let hasArrow = false;
+      let hasIf = false;
       let last = k;
       while (k < close && lineOfOffset(code, tokens[k].start) === line) {
         if (OPENERS.has(tokens[k].text) && tokens[k].kind === 'symbol') { const c = closeOf(tokens, k); if (c > k) { last = c; k = c + 1; continue; } }
         if (isArrow(k)) hasArrow = true;
+        if (tokens[k].kind === 'word' && tokens[k].text === 'if') hasIf = true;
         last = k;
         k++;
       }
+      const elseOfIf = previousHadIf && tokens[start].text === 'else';
+      previousHadIf = hasIf;
       // a branch whose result is a block or continues on later lines: skip past it
       if (hasArrow) continue;
+      // `n > 5 -> if (c) "a"` with `else "b"` on the next line: the `else` finishes that if-expression
+      if (elseOfIf) continue;
       const first = tokens[start];
       const endsOpen = [',', '-', '>', '(', '.', '&', '|', '+', '*', '/'].includes(tokens[last].text) || isArrow(last - 1);
       const previous = tokens[start - 1];

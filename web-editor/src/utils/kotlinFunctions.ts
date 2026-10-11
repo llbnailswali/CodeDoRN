@@ -24,6 +24,13 @@ const literalType = (first: string, second?: string): Type | undefined => {
   return undefined;
 };
 const unit: Type = { name: 'Unit' };
+const STATEMENT_KEYWORDS = new Set(['val', 'var', 'fun', 'class', 'return', 'throw', 'if', 'for', 'while', 'when', 'do', 'try', 'object', 'interface', 'enum', 'data', 'sealed', 'abstract', 'open', 'private', 'public', 'protected', 'internal', 'override', 'break', 'continue']);
+const COLLECTION_FACTORIES: Record<string, string> = { listOf: 'List', mutableListOf: 'MutableList', emptyList: 'List', setOf: 'Set', mutableSetOf: 'MutableSet', mapOf: 'Map', mutableMapOf: 'MutableMap', __kt_newArrayList: 'MutableList', __kt_newHashSet: 'MutableSet', __kt_newHashMap: 'MutableMap', arrayOf: 'Array' };
+/** List-valued Iterable operations (a Set/List receiver gives a List). */
+const ELEMENT_PRESERVING = new Set(['filter', 'filterNot', 'sorted', 'sortedBy', 'sortedDescending', 'sortedByDescending', 'sortedWith', 'take', 'drop', 'takeLast', 'dropLast', 'reversed', 'takeWhile', 'dropWhile', 'shuffled', 'asReversed', 'plus', 'minus', 'toList', 'slice', 'subList', 'onEach', 'filterNotNull']);
+const LIST_RESULTS = new Set(['map', 'filter', 'filterNot', 'sorted', 'sortedBy', 'sortedDescending', 'sortedByDescending', 'sortedWith', 'take', 'drop', 'takeLast', 'dropLast', 'reversed', 'distinct', 'flatMap', 'mapNotNull', 'filterNotNull', 'zip', 'chunked', 'windowed', 'slice', 'subList', 'takeWhile', 'dropWhile', 'shuffled', 'asReversed', 'mapIndexed', 'filterIndexed', 'runningFold', 'scan', 'plus', 'minus', 'flatten', 'onEach']);
+/** java.lang.Math / kotlin.math functions that return a Double. */
+const MATH_DOUBLE = new Set(['sqrt', 'pow', 'floor', 'ceil', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sinh', 'cosh', 'tanh', 'exp', 'expm1', 'log', 'ln', 'ln1p', 'log10', 'log2', 'hypot', 'cbrt', 'truncate', 'toRadians', 'toDegrees', 'random', 'rint']);
 /** Collection calls whose trailing lambda takes ONE element (so `it` has the element type). */
 const ELEMENT_CALLBACKS = new Set(['forEach', 'map', 'filter', 'filterNot', 'any', 'all', 'none', 'count', 'first', 'firstOrNull', 'last', 'lastOrNull', 'find', 'takeWhile', 'dropWhile', 'sumOf', 'maxByOrNull', 'minByOrNull', 'sortedBy', 'sortedByDescending', 'onEach', 'mapNotNull', 'partition']);
 const isName = (text: string) => /^[A-Za-z_][A-Za-z_0-9]*$/.test(text);
@@ -65,7 +72,7 @@ function lex(source: string): Token[] {
       // Math.trunc(...), leaving the ".0" dangling right after as invalid
       // syntax. The `(?!\.)` after the decimal point additionally keeps a
       // range like "5..10" from being misread as "5." followed by ".10".
-      const m = source.slice(i).match(/^\d[\d_]*(?:\.(?!\.)[\d_]+)?(?:[eE][+-]?\d+)?[fFdDL]?/)!;
+      const m = source.slice(i).match(/^(?:0[xX][0-9a-fA-F_]+L?|0[bB][01_]+L?|\d[\d_]*(?:\.(?!\.)[\d_]+)?(?:[eE][+-]?\d+)?[fFdDL]?)/)!;
       i += m[0].length;
     } else if (/[A-Za-z_0-9]/.test(source[i])) {
       while (i < source.length && /[A-Za-z_0-9]/.test(source[i])) i++;
@@ -142,6 +149,18 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     return found;
   };
   const isIntegral = (type: Type) => type.name === 'Int' || type.name === 'Long';
+  /** How a value of this type prints its decimals: a Double/Float directly, or each element of a List/Set/Array/Map of them. */
+  const decimalCall = (valueText: string, type: Type): string | undefined => {
+    if (type.nullable && type.name !== 'Double' && type.name !== 'Float') return undefined;
+    if (type.name === 'Double' || type.name === 'Float') return `__kt_decimalText(${valueText}${type.name === 'Float' ? ', true' : ''})`;
+    const list = /^(?:Mutable)?(?:List|Set)<(Double|Float)>$/.exec(type.name);
+    if (list) return `__kt_decimalAll(${valueText}, ${list[1] === 'Float'})`;
+    const map = /^(?:Mutable)?Map<[^,]+,\s*(Double|Float)>$/.exec(type.name);
+    if (map) return `__kt_decimalMap(${valueText}, ${map[1] === 'Float'})`;
+    return undefined;
+  };
+  /** `, true` for a Float, so its text is the shortest FLOAT decimal (1 / 3.0f is 0.33333334, not 0.3333333333333333). */
+  const floatFlag = (type: Type) => (type.name === 'Float' ? ', true' : '');
   const isDecimal = (type: Type) => type.name === 'Float' || type.name === 'Double';
   const numericRanks: Record<string, number> = { Int: 1, Long: 2, Float: 3, Double: 4 };
   const numericRank = new Proxy(numericRanks, { get: (target, key) => (typeof key === 'string' && Object.prototype.hasOwnProperty.call(target, key) ? target[key] : undefined) });
@@ -220,7 +239,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     let i = a;
     for (; i < end; i++) {
       if ([',', ';', '}', ')', ']'].includes(at(i))) break;
-      if (i > a && newline(i - 1, i) && !['.', '?.', '?:', 'else', 'catch', 'finally', '{', '(', '+', '-', '*', '/', '&&', '||'].includes(at(i)) && !['=', '->', '+', '-', '*', '/', '&&', '||', ',', 'return'].includes(at(i - 1))) break;
+      if (i > a && newline(i - 1, i) && !['.', '?.', '?:', 'else', 'catch', 'finally', '{', '(', '+', '-', '*', '/', '&&', '||'].includes(at(i)) && !['=', '->', '+', '-', '*', '/', '&&', '||', ','].includes(at(i - 1))) break; // a `return` at the end of a line is a bare return
       if (pairs.has(i) && pairs.get(i)! > i) i = pairs.get(i)!;
     }
     return i;
@@ -288,6 +307,12 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   // A class that declares its own `fun apply(...)` / `fun run(...)` / `fun let(...)` as a MEMBER wins over the scope function of
   // that name (a member beats an extension), so a member call must not be lowered as the scope function.
   const userMemberNames = new Set<string>();
+  const declaredShapes = new Map<string, string>();
+  const overloadCandidates = new Map<string, { at: number; signature: Signature; key: string }[]>();
+  /** Overloaded functions (same name, different parameter types): each declaration's JS name, and the candidates a call chooses from. */
+  const overloadJsName = new Map<number, string>();
+  const overloadSets = new Map<string, { jsName: string; signature: Signature }[]>();
+  const ambiguousFunctions = new Set<string>();
   const classes = new Set<string>(options.classes);
   const variantTypeNames = new Set<string>();
   const classTypeParams = new Map<string, string[]>();
@@ -505,7 +530,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     if (['class', 'object', 'interface'].includes(at(i))) {
       for (let j = i + 2; j < t.length; j++) {
         if (at(j) === '{') { declarationBodies.add(j); break; }
-        if (newline(j - 1, j) && ![':', '{'].includes(at(j))) break;
+        if (newline(j - 1, j) && ![':', '{'].includes(at(j)) && ![':', ','].includes(at(j - 1))) break;
         if (pairs.has(j) && pairs.get(j)! > j) j = pairs.get(j)!;
       }
     }
@@ -513,7 +538,23 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const h = header(i);
       if (h) {
         headers.set(i, h);
-        if (h.name) functions.set(h.name, h.signature);
+        if (h.name) {
+          // Two declarations of one name with different parameters (`BankAccount.deposit(amount)` and
+          // `Service.deposit(id, amount)`): calls are keyed by name only, so neither signature may judge them.
+          // Extensions are told apart by receiver already (extensionsByReceiver).
+          if (!h.signature.receiver) {
+            // A member overriding another differs only in types (`log(v: Any)` for `log(v: T)`): count/vararg/default shape only.
+            // Top-level (or local) functions of one name with different parameter TYPES are overloads: types count, and they are
+            // collected for call-site resolution (see overloadSets below).
+            const member = [...declarationBodies].some((open) => i > open && i < (pairs.get(open) ?? -1));
+            const typesKey = JSON.stringify(h.signature.params.map((p) => [p.type?.name ?? '?', p.mode, p.defaultCode !== undefined]));
+            const shape = member ? JSON.stringify(h.signature.params.map((p) => [p.mode, p.defaultCode !== undefined])) : typesKey;
+            if (declaredShapes.has(h.name) && declaredShapes.get(h.name) !== shape) ambiguousFunctions.add(h.name);
+            declaredShapes.set(h.name, shape);
+            if (!member) { if (!overloadCandidates.has(h.name)) overloadCandidates.set(h.name, []); overloadCandidates.get(h.name)!.push({ at: i, signature: h.signature, key: typesKey }); }
+          }
+          functions.set(h.name, h.signature);
+        }
         if (h.name && !h.signature.receiver && at(h.name ? i - 1 : i) !== '.') userMemberNames.add(h.name);
         if (h.name && h.signature.receiver) {
           if (!extensionsByReceiver.has(h.name)) extensionsByReceiver.set(h.name, new Map());
@@ -521,6 +562,27 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         }
       }
     }
+  }
+  for (const [name, list] of overloadCandidates) {
+    if (list.length < 2 || new Set(list.map((c) => c.key)).size < 2) continue;
+    const set = list.map((c, index) => ({ jsName: `${name}__ov${index}`, signature: c.signature, at: c.at }));
+    set.forEach((c) => overloadJsName.set(c.at, c.jsName));
+    overloadSets.set(name, set);
+  }
+  for (const name of ambiguousFunctions) functions.delete(name);
+  // Names declared only as class/object members (never top level or local): inside `repo.apply { save(x) }` a bare call to one
+  // of them is the receiver's method, not a function in scope.
+  const memberOnlyFunctions = new Set<string>();
+  {
+    const member = new Set<string>(), other = new Set<string>(), stack: number[] = [];
+    for (let k = 0; k < t.length; k++) {
+      if (at(k) === '{') stack.push(k);
+      else if (at(k) === '}') stack.pop();
+      else if (at(k) === 'fun' && headers.get(k)?.name && !headers.get(k)!.signature.receiver) {
+        (stack.length && declarationBodies.has(stack[stack.length - 1]) ? member : other).add(headers.get(k)!.name);
+      }
+    }
+    for (const name of member) if (!other.has(name)) memberOnlyFunctions.add(name);
   }
   const builtins = new Map<string, Signature>([
     // World 16 Lesson 1 only: synchronous/eager coroutine teaching helpers.
@@ -555,6 +617,11 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     // JS (the same mechanism `run`/`repeat` above already rely on), which
     // is what keeps the literal word `with` -- reserved by JS's own,
     // unrelated `with` statement -- out of the final generated code.
+    // Collection builders: the lambda's receiver is the collection being built (`buildString { append("a") }`).
+    ['buildString', { inline: true, params: [{ name: 'block', type: { name: 'Function', receiver: { name: 'StringBuilder' }, params: [], result: { name: 'Unit' } } }], result: { name: 'String' } }],
+    ['buildList', { inline: true, params: [{ name: 'block', type: { name: 'Function', receiver: { name: 'MutableList' }, params: [], result: { name: 'Unit' } } }], result: { name: 'List' } }],
+    ['buildMap', { inline: true, params: [{ name: 'block', type: { name: 'Function', receiver: { name: 'MutableMap' }, params: [], result: { name: 'Unit' } } }], result: { name: 'Map' } }],
+    ['buildSet', { inline: true, params: [{ name: 'block', type: { name: 'Function', receiver: { name: 'MutableSet' }, params: [], result: { name: 'Unit' } } }], result: { name: 'Set' } }],
     ['with', { inline: true, params: [{ name: 'receiver', type: { name: 'T' } }, { name: 'block', type: { name: 'Function', receiver: { name: 'T' }, params: [], result: { name: 'R' } } }], result: { name: 'R' } }],
     // World 15's `runCatching { block }` takes a ZERO-parameter block, same
     // shape as `run` above -- registering it here (rather than leaving it
@@ -631,7 +698,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   // the Kotlin-level collection-factory names it recognizes before they are
   // renamed to their `__kt_`-prefixed runtime equivalents, and a few bare
   // keywords/literals that can appear in an expression position.
-  const receiverExcludedNames = new Set(['println', 'print', 'listOf', 'mutableListOf', 'arrayOf', 'setOf', 'mutableSetOf', 'mapOf', 'mutableMapOf', 'emptyList', 'Pair', 'TODO', 'true', 'false', 'null', 'it', 'this', 'super', '__kt_line']);
+  const receiverExcludedNames = new Set(['for', 'in', 'while', 'do', 'if', 'else', 'when', 'is', 'as', 'return', 'break', 'continue', 'try', 'catch', 'finally', 'throw', 'val', 'var', 'fun', 'step', 'until', 'downTo', 'println', 'print', 'listOf', 'mutableListOf', 'arrayOf', 'setOf', 'mutableSetOf', 'mapOf', 'mutableMapOf', 'emptyList', 'Pair', 'TODO', 'true', 'false', 'null', 'it', 'this', 'super', '__kt_line']);
   let serial = 0;
   const child = (ctx: Context): Context => ({ ...ctx, vars: new Map(ctx.vars), frames: [...ctx.frames] });
   const frame = (kind: Frame['kind'], result?: Type, label?: string, inline = false): Frame => ({ token: `__kt_target_${++serial}`, label, kind, inline, used: false, result });
@@ -660,6 +727,18 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const baseName = (n: string) => { const i = n.indexOf('<'); return i === -1 ? n : n.slice(0, i); };
       const be = baseName(expected.name), ba = baseName(actual.name);
       if (be === ba && GENERIC_BUILTINS.has(be)) return true;
+      // Same generic class, and every expected argument is the function's own type parameter, `*` or the same text
+      // (`Repository<FoodItem>` passed to `fun <T> findItem(r: Repository<T>)`).
+      if (be === ba && expected.name.includes('<') && actual.name.includes('<')) {
+        const args = (n: string) => { const inner = n.slice(n.indexOf('<') + 1, n.lastIndexOf('>')); const out: string[] = []; let depth = 0, cur = '';
+          for (const ch of inner) { if (ch === '<') depth++; if (ch === '>') depth--; if (ch === ',' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += ch; }
+          return [...out, cur.trim()]; };
+        const ea = args(expected.name), aa = args(actual.name);
+        if (ea.length === aa.length && ea.every((e, i) => e === aa[i] || e === '*' || genericTypeParamNames.has(e.replace(/^(?:in|out)\s+/, '').replace(/\?$/, '')))) return true;
+      }
+      // The two rules above for a generic user class (`Success<Int>` passed as `BankingResult<*>`): different classes stay loosely
+      // compatible; the same class with different arguments (`Box<Int>` vs `Box<String>`) is still a mismatch.
+      if (be !== ba && (classes.has(ba) || objectNames.has(ba)) && (classes.has(be) || !['Int', 'Long', 'Short', 'Byte', 'Double', 'Float', 'String', 'Boolean', 'Char', 'Function'].includes(be))) return true;
       // A mutable collection is also its read-only kind (MutableList<T> is a List<T>), and every list or set is a Collection/Iterable.
       const readOnly: Record<string, string[]> = { List: ['MutableList', 'ArrayList'], Set: ['MutableSet', 'HashSet', 'LinkedHashSet'], Map: ['MutableMap', 'HashMap', 'LinkedHashMap'], Collection: ['List', 'MutableList', 'Set', 'MutableSet'], Iterable: ['List', 'MutableList', 'Set', 'MutableSet'] };
       if (readOnly[be]?.includes(ba)) return true;
@@ -668,6 +747,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     if (expected.name === 'Function') {
       const ep = expected.receiver ? [expected.receiver, ...expected.params!] : expected.params!;
       const ap = actual.receiver ? [actual.receiver, ...actual.params!] : actual.params!;
+      // a lambda with no declared parameter takes the implicit `it` when one is expected: `val f: (Int) -> Int = { it + 1 }`
+      if (ap.length === 0 && ep.length === 1) return compatible(expected.result, actual.result) || actual.result?.name === '?';
       return ep.length === ap.length && ep.every((type, i) => compatible(ap[i], type)) && compatible(expected.result, actual.result);
     }
     return true;
@@ -802,7 +883,12 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         if (types.length) return joinBranches(types);
       }
     }
-    for (const op of ['==', '!=', '<', '>', '<=', '>=', '&&', '||', 'is']) if (top(a, b, op) >= 0) return { name: 'Boolean' };
+    // `Repository<FoodItem>()`: a generic class constructed with explicit type arguments, not two comparisons.
+    if ((classes.has(at(a)) || constructors.has(at(a))) && at(a + 1) === '<' && at(b - 1) === ')' && pairs.has(b - 1)) {
+      const open = pairs.get(b - 1)!;
+      if (at(open - 1) === '>' && open - 1 > a + 1) return readType(a, open);
+    }
+    for (const op of ['==', '!=', '<', '>', '<=', '>=', '&&', '||', 'is', 'in', '!in']) if (top(a, b, op) >= 0) return { name: 'Boolean' };
     // Arithmetic follows Kotlin's precedence and left associativity: split at
     // the LAST additive operator first, then at the last multiplicative one,
     // and promote numeric operand types (Int < Long < Float < Double). The
@@ -811,6 +897,13 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     const additive = lastBinaryOperator(a, b, ['+', '-']);
     if (additive > a) {
       const left = infer(a, additive, ctx), right = infer(additive + 1, b, ctx);
+      // `list + x`, `set - x`, `map + pair` stay the same kind of collection
+      if (/^(?:Mutable)?(?:List|Set|Map)\b|^Array\b/.test(left.name) && !left.nullable) return left;
+      // Char - Char is an Int; Char + Int and Char - Int are Chars
+      if (left.name === 'Char' && !left.nullable) {
+        if (at(additive) === '-' && right.name === 'Char') return { name: 'Int' };
+        if (isIntegral(right)) return { name: 'Char' };
+      }
       const promoted = promoteNumeric(left, right);
       if (promoted) return promoted;
       if (at(additive) === '+') return left.name === 'String' ? left : left.name === right.name ? left : unknown;
@@ -825,9 +918,85 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // toString() is a String for every receiver. The lookup must be an OWN-property check: `conversions['toString']`
       // on a plain object finds JavaScript's inherited Object.prototype.toString function, which used to become the
       // "type" of `x.toString()` and crash the argument check whenever it met a String parameter.
-      const conversions: Record<string, string> = { toLong: 'Long', toInt: 'Int', toFloat: 'Float', toDouble: 'Double', trimIndent: 'String', toString: 'String' };
+      const conversions: Record<string, string> = { toLong: 'Long', toInt: 'Int', toFloat: 'Float', toDouble: 'Double', trimIndent: 'String', toString: 'String', roundToInt: 'Int', roundToLong: 'Long', hashCode: 'Int', toChar: 'Char', inv: 'Int', uppercaseChar: 'Char', lowercaseChar: 'Char', titlecaseChar: 'Char' };
       if (Object.prototype.hasOwnProperty.call(conversions, at(b - 3))) return { name: conversions[at(b - 3)] };
       if (at(b - 3) === 'average') return { name: 'Double' };
+      const nullableConversions: Record<string, string> = { toIntOrNull: 'Int', toLongOrNull: 'Long', toDoubleOrNull: 'Double', toFloatOrNull: 'Float' };
+      if (Object.prototype.hasOwnProperty.call(nullableConversions, at(b - 3))) return { name: nullableConversions[at(b - 3)], nullable: true };
+      if (['isNullOrEmpty', 'isNullOrBlank', 'isEmpty', 'isNotEmpty', 'isBlank', 'isNotBlank', 'toBoolean'].includes(at(b - 3)) && !functions.has(at(b - 3))) return { name: 'Boolean' };
+      if (at(b - 3) === 'orEmpty' && b - 4 > a) return { ...infer(a, b - 4, ctx), nullable: false };
+      // `xs.sum()` / `max()` / `first()` ... of a List<Double>: the element type (so a whole Double prints `4.0`)
+      if (['sum', 'max', 'min', 'maxOrNull', 'minOrNull', 'first', 'last', 'firstOrNull', 'lastOrNull', 'single'].includes(at(b - 3)) && b - 4 > a && !functions.has(at(b - 3))) {
+        const receiver = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(infer(a, b - 4, ctx).name);
+        const element = (receiver?.[1] ?? receiver?.[2])?.trim();
+        if (element && ['Int', 'Long', 'Double', 'Float'].includes(element)) return { name: element, nullable: at(b - 3).endsWith('OrNull') };
+        if (element && ['String', 'Boolean', 'Char'].includes(element) && at(b - 3) !== 'sum') return { name: element, nullable: at(b - 3).endsWith('OrNull') };
+      }
+      // `s.first()` / `s.last()` of a String is a Char
+      if (['first', 'last'].includes(at(b - 3)) && b - 4 > a && infer(a, b - 4, ctx).name === 'String' && !infer(a, b - 4, ctx).nullable) return { name: 'Char' };
+    }
+    // `xs.sumOf { it.price }` / `maxOf` / `minOf`: the lambda's value type (so a whole Double sum prints `23.0`), with `it` the element.
+    if (at(b - 1) === '}' && pairs.has(b - 1)) {
+      const open = pairs.get(b - 1)!;
+      if (open > a + 2 && ['sumOf', 'maxOf', 'minOf'].includes(at(open - 1)) && at(open - 2) === '.' && top(open + 1, b - 1, '->') < 0) {
+        const container = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(infer(a, open - 2, ctx).name);
+        const element = (container?.[1] ?? container?.[2] ?? '').trim();
+        if (element) {
+          const inner = child(ctx);
+          inner.vars.set('it', element.endsWith('?') ? { name: element.slice(0, -1), nullable: true } : { name: element });
+          const value = infer(open + 1, b - 1, inner);
+          if (['Int', 'Long', 'Double', 'Float'].includes(value.name) && !value.nullable) return value;
+        }
+      }
+    }
+    // Numeric member calls with arguments: `x.pow(2)` is a Double, `a.compareTo(b)` an Int, `x.coerceIn(lo, hi)` / `a.mod(b)` / `a.rem(b)` keep the
+    // promoted numeric type of receiver and arguments.
+    if (at(b - 1) === ')' && pairs.has(b - 1)) {
+      const open = pairs.get(b - 1)!;
+      if (open > a + 2 && at(open - 2) === '.' && isName(at(open - 1)) && !functions.has(at(open - 1))) {
+        const member = at(open - 1);
+        if (member === 'pow') return { name: 'Double' };
+        if (member === 'compareTo' || member === 'indexOf' || member === 'lastIndexOf') return { name: 'Int' };
+        if (['coerceIn', 'coerceAtLeast', 'coerceAtMost', 'mod', 'rem'].includes(member)) {
+          const receiverType = infer(a, open - 2, ctx);
+          const types = [receiverType, ...split(open + 1, b - 1).map(([x, y]) => infer(x, y, ctx))];
+          if (types.every((t) => ['Int', 'Long', 'Float', 'Double'].includes(t.name) && !t.nullable)) return types.reduce((acc, t) => promoteNumeric(acc, t) ?? acc);
+        }
+      }
+    }
+    // Collection-valued calls on a collection receiver (`xs.filter { }`, `m.toSortedMap()`, `s.toSet()`): their kind, so `+` and `-` pick the
+    // collection operators. Element types are not tracked here.
+    if ((at(b - 1) === ')' || at(b - 1) === '}') && pairs.has(b - 1)) {
+      const open = pairs.get(b - 1)!;
+      const callOpen = at(b - 1) === '}' && at(open - 1) === ')' && pairs.has(open - 1) ? pairs.get(open - 1)! : open;
+      if (callOpen > a + 2 && at(callOpen - 2) === '.' && isName(at(callOpen - 1)) && !functions.has(at(callOpen - 1))) {
+        const member = at(callOpen - 1);
+        const kindOf = (name: string) => (/^(?:Mutable)?(List|Set|Map)\b/.exec(name)?.[1] ?? (/^Array\b/.test(name) ? 'Array' : undefined));
+        const receiverName = infer(a, callOpen - 2, ctx).name;
+        const receiverKind = kindOf(receiverName);
+        if (receiverKind) {
+          const elementMatch = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(receiverName);
+          const element = (elementMatch?.[1] ?? elementMatch?.[2])?.trim();
+          // operations that keep the element type: List<Double> stays List<Double>
+          if (receiverKind !== 'Map' && element && ELEMENT_PRESERVING.has(member)) return { name: `List<${element}>` };
+          if (receiverKind !== 'Map' && element && ['toMutableList'].includes(member)) return { name: `MutableList<${element}>` };
+          if (receiverKind !== 'Map' && element && ['toSet', 'distinct'].includes(member)) return { name: `Set<${element}>` };
+          // `xs.map { it / 2.0 }`: a List of the lambda's value type
+          if (receiverKind !== 'Map' && element && member === 'map' && at(b - 1) === '}' && top(open + 1, b - 1, '->') < 0) {
+            const inner = child(ctx);
+            inner.vars.set('it', element.endsWith('?') ? { name: element.slice(0, -1), nullable: true } : { name: element });
+            const value = infer(open + 1, b - 1, inner);
+            if (['Int', 'Long', 'Double', 'Float', 'String', 'Boolean', 'Char'].includes(value.name) && !value.nullable) return { name: `List<${value.name}>` };
+          }
+          if (LIST_RESULTS.has(member) && receiverKind !== 'Map') return { name: 'List' };
+          if (['toSet', 'toMutableSet', 'union', 'intersect', 'subtract'].includes(member)) return { name: member === 'toMutableSet' ? 'MutableSet' : 'Set' };
+          if (['toList', 'toMutableList'].includes(member)) return { name: member === 'toList' ? 'List' : 'MutableList' };
+          if (receiverKind === 'Map' && ['mapValues', 'mapKeys', 'filter', 'filterKeys', 'filterValues', 'toMap', 'toSortedMap', 'plus', 'minus'].includes(member)) return { name: 'Map' };
+          if (receiverKind === 'Map' && member === 'toMutableMap') return { name: 'MutableMap' };
+          if (receiverKind === 'Map' && ['map', 'flatMap', 'mapNotNull'].includes(member)) return { name: 'List' };
+        }
+        if (['associate', 'associateBy', 'associateWith', 'groupBy', 'toMap'].includes(member) && kindOf(infer(a, callOpen - 2, ctx).name)) return { name: 'Map' };
+      }
     }
     // `receiver.method(...)`: the user-declared method's result type (`super.pay() / 2`, `account.total() * 3 / 2`). Names are
     // looked up by name only, so a method name shared by classes resolves to whichever result type is known.
@@ -841,6 +1010,15 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const known = methodResults.get(at(open - 1));
         if (known && !functions.get(at(open - 1))?.receiver) return known;
       }
+    }
+    // `c.code` is an Int; `s[i]` of a String is a Char
+    if (b - a >= 3 && at(b - 1) === 'code' && at(b - 2) === '.') return { name: 'Int' };
+    if (at(b - 1) === ']' && pairs.has(b - 1) && pairs.get(b - 1)! > a && infer(a, pairs.get(b - 1)!, ctx).name === 'String' && !infer(a, pairs.get(b - 1)!, ctx).nullable) return { name: 'Char' };
+    // `m[key]` on a Map<K, V> is a V?
+    if (at(b - 1) === ']' && pairs.has(b - 1) && pairs.get(b - 1)! > a) {
+      const mapMatch = /^(?:Mutable)?Map<[^,]+,\s*(.+)>$/.exec(infer(a, pairs.get(b - 1)!, ctx).name);
+      const valueName = mapMatch?.[1]?.trim();
+      if (valueName && ['Int', 'Long', 'Double', 'Float', 'String', 'Boolean', 'Char'].includes(valueName)) return { name: valueName, nullable: true };
     }
     // `xs[i]` / `xs.get(i)` on a List/Array of a known element type is that element type (so `users[i].email` is `String?`).
     {
@@ -886,9 +1064,40 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     // lexer split a decimal literal into three tokens ("10", ".", "0"),
     // making the "." briefly visible as its own top-level token -- see
     // PITFALLS.md for the tokenizer fix this relied on before it was fixed.
-    if (/^-?\d/.test(at(a)) || (at(a) === '-' && /^\d/.test(at(a + 1)))) return { name: /[fF]$/.test(text(a, b)) ? 'Float' : /L$/.test(text(a, b)) ? 'Long' : /\.\d/.test(text(a, b)) ? 'Double' : Number(text(a, b).replace(/[_-]/g, '')) > 2147483647 ? 'Long' : 'Int' };
+    // 'a' is a Char (single-quoted, one character or one escape)
+    if (a + 1 === b && /^'(?:\\.|[^'\\])'$/.test(at(a))) return { name: 'Char' };
+    // a single literal only: `5 in 1..10` or `1.5.isNaN()` merely START with a digit
+    if ((a + 1 === b && /^\d/.test(at(a))) || (a + 2 === b && at(a) === '-' && /^\d/.test(at(a + 1)))) {
+      const literal = text(a, b);
+      // hex / binary are Int (Long with an L); 0x1F is NOT a Float literal although it ends in F
+      if (/^-?0[xXbB]/.test(literal)) return { name: /L$/.test(literal) ? 'Long' : 'Int' };
+      if (/[fF]$/.test(literal)) return { name: 'Float' };
+      if (/L$/.test(literal)) return { name: 'Long' };
+      if (/\.\d|\d[eE][+-]?\d/.test(literal) || /[dD]$/.test(literal)) return { name: 'Double' };
+      return { name: Number(literal.replace(/[_-]/g, '')) > 2147483647 ? 'Long' : 'Int' };
+    }
+    // Math.sqrt(...) / Math.PI / Double.MAX_VALUE / Int.MAX_VALUE: library members with a known type.
+    if (['Math', 'Double', 'Float', 'Int', 'Long'].includes(at(a)) && at(a + 1) === '.' && isName(at(a + 2)) && !ctx.vars.has(at(a)) && !classes.has(at(a))) {
+      const owner = at(a), member = at(a + 2);
+      if (a + 3 === b) return owner === 'Math' ? { name: 'Double' } : owner === 'Double' ? { name: 'Double' } : owner === 'Float' ? { name: 'Float' } : owner === 'Int' ? { name: 'Int' } : { name: 'Long' };
+      if (owner === 'Math' && at(a + 3) === '(' && pairs.get(a + 3) === b - 1) {
+        if (MATH_DOUBLE.has(member)) return { name: 'Double' };
+        if (member === 'round') return { name: 'Long' };
+        if (['abs', 'max', 'min', 'signum', 'floorDiv', 'floorMod'].includes(member)) {
+          const types = split(a + 4, b - 1).map(([x, y]) => infer(x, y, ctx));
+          return types.reduce<Type | undefined>((acc, t) => (acc ? promoteNumeric(acc, t) ?? acc : t), undefined) ?? unknown;
+        }
+      }
+    }
     if (at(a + 1) === '(' && pairs.get(a + 1) === b - 1) {
       if (['println', 'print'].includes(at(a))) return unit;
+      // kotlin.math functions called by their bare name (`sqrt(16.0)`, `abs(-3)`): Double results, or the promoted argument type
+      if (!functions.has(at(a)) && !ctx.vars.has(at(a)) && !classes.has(at(a)) && (MATH_DOUBLE.has(at(a)) || ['abs', 'min', 'max', 'sign', 'round'].includes(at(a)))) {
+        if (MATH_DOUBLE.has(at(a))) return { name: 'Double' };
+        const types = split(a + 2, b - 1).map(([x, y]) => infer(x, y, ctx));
+        const merged = types.reduce<Type | undefined>((acc, t) => (acc ? promoteNumeric(acc, t) ?? acc : t), undefined);
+        if (merged && ['Int', 'Long', 'Float', 'Double'].includes(merged.name)) return merged;
+      }
       if (classes.has(at(a))) {
         // A generic class's constructor call (`Box("seven")`) carries no
         // syntax of its own for the type argument -- Kotlin infers it from
@@ -918,6 +1127,17 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         }
         return { name: at(a) };
       }
+      const chosenOverload = overloadSets.has(at(a)) && !ctx.vars.has(at(a)) ? chooseOverload(at(a), a + 1, ctx) : undefined;
+      if (chosenOverload?.signature.result) return chosenOverload.signature.result;
+      const factoryKind = !functions.has(at(a)) && !ctx.vars.has(at(a)) ? COLLECTION_FACTORIES[at(a)] : undefined;
+      if (factoryKind) {
+        if (['mapOf', 'mutableMapOf'].includes(at(a)) && b - a > 3) {
+          const pairTypes = split(a + 2, b - 1).map(([x, y]) => { const to = top(x, y, 'to'); return to > x ? [infer(x, to, ctx), infer(to + 1, y, ctx)] as const : undefined; });
+          const first = pairTypes[0];
+          if (first && pairTypes.every((p) => p && p[0].name === first[0].name && p[1].name === first[1].name && !p[0].nullable && !p[1].nullable) && ['Int', 'Long', 'Double', 'Float', 'String', 'Boolean', 'Char'].includes(first[1].name) && ['Int', 'Long', 'String', 'Char', 'Boolean', 'Double'].includes(first[0].name)) return { name: `${factoryKind}<${first[0].name},${first[1].name}>` };
+        }
+        return { name: factoryKind };
+      }
       return ctx.vars.get(at(a))?.result ?? functions.get(at(a))?.result ?? unknown;
     }
     if (a + 1 === b) {
@@ -934,6 +1154,11 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       }
       return unknown;
     }
+    // A collection factory call with element types not worked out above: its kind is still known.
+    if (at(a + 1) === '(' && pairs.get(a + 1) === b - 1 && !functions.has(at(a)) && !ctx.vars.has(at(a))) {
+      const factory = COLLECTION_FACTORIES[at(a)];
+      if (factory) return { name: factory };
+    }
     return unknown;
   }
   function wrap(body: string, f: Frame): string {
@@ -944,7 +1169,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     const parts: [number, number][] = []; let start = a;
     for (let i = a; i < b; i++) {
       if (at(i) === ';') { if (start < i) parts.push([start, i]); start = i + 1; continue; }
-      if (i > start && newline(i - 1, i) && !['else', 'catch', 'finally', '.', '?.', '?:', '+', '-', '*', '/', '&&', '||', '{', '('].includes(at(i)) && !['=', '->', '+', '-', '*', '/', ',', 'return'].includes(at(i - 1))) {
+      // A line ending in an operator continues on the next (`val ok = a >= 1 &&` + `b != 2`). Not `<`/`>`: a statement may end in a type.
+      if (i > start && newline(i - 1, i) && !['else', 'catch', 'finally', '.', '?.', '?:', '+', '-', '*', '/', '%', '&&', '||', '{', '('].includes(at(i)) && !['=', '->', '+', '-', '*', '/', '%', ',', '&&', '||', '==', '!=', '===', '!==', '<=', '>=', '?:', '.', '?.', '!', 'in', 'is', '+=', '-=', '*=', '/='].includes(at(i - 1))) {
         parts.push([start, i]); start = i;
       }
       if (pairs.has(i) && pairs.get(i)! > i) i = pairs.get(i)!;
@@ -1069,11 +1295,18 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   }
   function lambda(a: number, b: number, ctx: Context, expected?: Type, label?: string, allowed = false): string {
     const arrow = top(a + 1, b, '->');
-    let params = arrow < 0 ? [] : parameters(a + 1, arrow);
+    // `{ (key, value) -> ... }` destructures one argument (a Pair, a Map.Entry, a data class): JS array-pattern `[key, value]`.
+    const destructured = new Map<number, string[]>();
+    let params = arrow < 0 ? [] : split(a + 1, arrow, ',', true).flatMap(([start, end], index) => {
+      if (at(start) !== '(' || !pairs.has(start)) return parameters(start, end);
+      destructured.set(index, split(start + 1, pairs.get(start)!, ',', true).map(([s]) => at(s)));
+      return [{ name: `__kt_destructured_${index}` } as Parameter];
+    });
     if (arrow < 0 && ((!expected?.params && label) || expected?.params?.length === 1)) params = [{ name: 'it', type: expected?.params?.[0] }];
     if (expected?.params && params.length !== expected.params.length) fail(`Lambda requires ${expected.params.length} parameter(s), got ${params.length}`, a);
     const inner = child(ctx);
     params = params.map((p, i) => { check(expected?.params?.[i], p.type, a); const type = p.type ?? expected?.params?.[i] ?? unknown; inner.vars.set(p.name, type); return { ...p, type }; });
+    for (const names of destructured.values()) for (const name of names) if (name !== '_') inner.vars.set(name, unknown);
     const f = frame('lambda', expected?.result, label, allowed); inner.frames.push(f);
     let receiver = '';
     if (expected?.receiver) { receiver = `__kt_receiver_${++serial}`; inner.receiver = receiver; inner.receiverType = expected.receiver; }
@@ -1097,16 +1330,35 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     if (receiver) {
       const declaredLocally = new Set(params.map(p => p.name));
       for (const m of body.matchAll(/\b(?:const|let)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=/g)) declaredLocally.add(m[1]);
+      // A local or outer variable wins over a receiver member (Kotlin resolves locals first), as do top-level functions and classes.
+      const notMember = (name: string) => declaredLocally.has(name) || receiverExcludedNames.has(name) || name === receiver || name.startsWith('__kt')
+        || inner.vars.has(name) || classes.has(name) || (functions.has(name) && !memberOnlyFunctions.has(name)) || builtins.has(name);
       body = body
         .replace(/\$\{\s*this\.([A-Za-z_][A-Za-z0-9_]*)\s*\}/g, `\${${receiver}.$1}`)
         .replace(/\$\{\s*this\s*\}/g, `\${${receiver}}`)
         .replace(/\$this\b/g, `$${receiver}`)
-        .replace(/\$\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}/g, (whole, name) =>
-          declaredLocally.has(name) || receiverExcludedNames.has(name) ? whole : `\${${receiver}.${name}}`)
-        .replace(/\$([A-Za-z_][A-Za-z0-9_]*)\b/g, (whole, name) =>
-          declaredLocally.has(name) || receiverExcludedNames.has(name) || name === receiver ? whole : `\${${receiver}.${name}}`);
+        // `${name}` and the first name of a longer expression (`${owner.name}`, `${total()}`)
+        .replace(/\$\{(\s*)([A-Za-z_][A-Za-z0-9_]*)(?=\s*[}.?([!])/g, (whole, space, name) => notMember(name) ? whole : `\${${space}${receiver}.${name}`)
+        .replace(/\$([A-Za-z_][A-Za-z0-9_]*)\b/g, (whole, name) => notMember(name) ? whole : `\${${receiver}.${name}}`);
     }
-    return `((${[...(receiver ? [receiver] : []), ...params.map((p, i) => p.name === '_' ? `__kt_unused_${i}` : p.name)].join(', ')}) => {\n${wrap(body, f)}\n})`;
+    const jsParam = (p: Parameter, i: number) => destructured.has(i) ? `[${destructured.get(i)!.map((n) => (n === '_' ? '' : n)).join(', ')}]` : p.name === '_' ? `__kt_unused_${i}` : p.name;
+    return `((${[...(receiver ? [receiver] : []), ...params.map(jsParam)].join(', ')}) => {\n${wrap(body, f)}\n})`;
+  }
+  /** The overload a call `name(args)` resolves to: the first whose parameters accept every argument's type (Kotlin does not widen Int to Double). */
+  function chooseOverload(name: string, open: number, ctx: Context): { jsName: string; signature: Signature } | undefined {
+    const candidates = overloadSets.get(name);
+    if (!candidates || !pairs.has(open)) return undefined;
+    const args = split(open + 1, pairs.get(open)!).filter(([x, y]) => y > x);
+    const types = args.map(([x, y]) => infer(x, y, ctx));
+    const accepts = (sig: Signature) => {
+      const params = sig.params;
+      const required = params.filter((p) => p.defaultCode === undefined && p.mode !== 'vararg').length;
+      const vararg = params.some((p) => p.mode === 'vararg');
+      if (args.length < required || (!vararg && args.length > params.length)) return false;
+      return types.every((t, i) => { const param = params[Math.min(i, params.length - 1)]; return !param?.type || t.name === '?' || compatible(param.type, t); });
+    };
+    // an exact type match beats a merely compatible one (Any accepts everything)
+    return candidates.find((c) => accepts(c.signature) && types.every((t, i) => t.name === '?' || c.signature.params[i]?.type?.name === t.name)) ?? candidates.find((c) => accepts(c.signature));
   }
   function callInfo(open: number, ctx: Context): { signature?: Signature; name: string; inline: boolean } {
     const name = at(open - 1) === 'invoke' && ['.', '?.'].includes(at(open - 2)) ? at(open - 3) : at(open - 1);
@@ -1114,7 +1366,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     const memberDot = ['.', '?.'].includes(at(open - 2));
     const signature = variable?.name === 'Function' ? { params: (variable.receiver ? [variable.receiver, ...variable.params!] : variable.params!).map((type, i) => ({ name: `p${i}`, type })), result: variable.result, inline: false }
       : (memberDot && !ctx.vars.has(name) && scopeMemberSignatures.has(name) && !userMemberNames.has(name)) ? scopeMemberSignatures.get(name)
-      : functions.get(name) ?? (!['.', '?.'].includes(at(open - 2)) && !(ctx.receiver && name === 'repeat') ? builtins.get(name) : undefined);
+      : functions.get(name) ?? (!['.', '?.'].includes(at(open - 2)) && !(ctx.receiver && name === 'repeat') && !ambiguousFunctions.has(name) ? builtins.get(name) : undefined);
     return { signature, name, inline: signature?.inline ?? ['forEach', 'map', 'filter', 'fold', 'flatMap', 'mapNotNull', 'filterNot', 'run', 'let', 'also', 'apply', 'repeat'].includes(name) };
   }
   // ---- String templates: typed interpolation ---------------------------------
@@ -1166,7 +1418,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const identifier = /^[A-Za-z_][A-Za-z0-9_]*/.exec(inner.slice(k + 1))?.[0];
         if (identifier) {
           const type = ctx.vars.get(identifier);
-          if (type && isDecimal(type)) { out += '${__kt_decimalText(' + identifier + ')}'; changed = true; } else out += '$' + identifier;
+          const wrappedName = type ? decimalCall(identifier, type) : undefined;
+          if (wrappedName) { out += '${' + wrappedName + '}'; changed = true; } else out += '$' + identifier;
           k += 1 + identifier.length; continue;
         }
       }
@@ -1185,6 +1438,10 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const assertion = lastOperator(a, b, ['!!']);
       const cast = top(a, b, 'as');
       if (elvis >= 0 || assertion >= 0 || cast >= 0 || top(a, b, '?.') >= 0) {
+        // An assignment statement (`m["a"] = m["a"]!! + 1`) is lowered side by side: splitting at the `+` first would assert the assignment itself.
+        const assignAt = top(a, b, '=');
+        const atStatementStart = a === 0 || newline(a - 1, a) || [';', '{', '}'].includes(at(a - 1));
+        if (assignAt > a && atStatementStart && !['val', 'var', 'fun', 'class', 'return'].includes(at(a))) return `${lower(a, assignAt, ctx)} = ${lower(assignAt + 1, b, ctx)}`;
         // Kotlin Elvis binds more tightly than comparisons and Boolean operators.
         for (const operators of [['||'], ['&&'], ['==', '!=', '===', '!=='], ['<', '>', '<=', '>=']]) {
           const splitAt = lastOperator(a, b, operators);
@@ -1258,7 +1515,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const p = at(i - 1);
       if (chainKeywords.has(p)) return true;
       if (/^[A-Za-z0-9_"']/.test(p)) return false;
-      return ![')', ']', '}', '!!', '.', '?.', '::', ...chainOperators].includes(p);
+      return ![')', ']', '}', '!!', '.', '?.', '::', '++', '--', ...chainOperators].includes(p);
     };
     // Where the receiver expression that ends at token `end` begins (`u?.address`, `find()`, `a.b(1).c`), or
     // undefined when it is something this simple walk does not recognise.
@@ -1311,6 +1568,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         if (at(k) === '(' && !newline(k - 1, k)) { const c = pairs.get(k); if (c === undefined || c < k || c >= b) return -1; k = c + 1; continue; }
         if (at(k) === '[' && !newline(k - 1, k)) { const c = pairs.get(k); if (c === undefined || c < k || c >= b) return -1; k = c + 1; continue; }
         if (at(k) === '!!') { k++; continue; }
+        // a trailing lambda belongs to the call before it: `s?.let { ... } ?: other`, `xs.map { ... } + ys`
+        if (at(k) === '{' && !newline(k - 1, k) && (at(k - 1) === ')' || (isName(at(k - 1)) && ['.', '?.'].includes(at(k - 2))))) { const c = pairs.get(k); if (c === undefined || c < k || c >= b) return -1; k = c + 1; continue; }
         break;
       }
       return k;
@@ -1331,7 +1590,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       }
       if (!operators.length) return null;
       const follower = at(j);
-      if (j < b && (['{', 'as', 'as?', '.', '?.', '(', '[', '::', '!!'].includes(follower) || follower.startsWith('"') || follower.startsWith("'") || isName(follower) && !chainKeywords.has(follower) && !newline(j - 1, j) && !['until', 'downTo', 'step', 'to'].includes(follower))) return null;
+      if (j < b && (['{', 'as', 'as?', '.', '?.', '(', '[', '::', '!!', '++', '--'].includes(follower) || follower.startsWith('"') || follower.startsWith("'") || isName(follower) && !chainKeywords.has(follower) && !newline(j - 1, j) && !['until', 'downTo', 'step', 'to'].includes(follower))) return null;
       if (primaries.some(p => p.type.nullable)) return null;
       return { primaries, operators, end: j };
     };
@@ -1350,6 +1609,12 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         if (op === '+' || op === '-') { groups.push(current); additive.push(op); additiveAt.push(n); current = { text: render(next), type: next.type }; continue; }
         if (current.type.name === 'String' && !current.type.nullable && stringOperator[op]) fail(`Unresolved reference: ${stringOperator[op]} (String has no operator ${op})`, operatorToken(n));
         const promoted = promoteNumeric(current.type, next.type) ?? unknown;
+        if (promoted.name === 'Float' && ['*', '/', '%'].includes(op)) {
+          current = { text: `Math.fround(${current.text} ${op} ${render(next)})`, type: promoted }; changed = true; continue;
+        }
+        if (op === '*' && current.type.name === 'Int' && next.type.name === 'Int') {
+          current = { text: `Math.imul(${current.text}, ${render(next)})`, type: promoted }; changed = true; continue;
+        }
         if (op === '/' && isIntegral(current.type) && isIntegral(next.type)) {
           current = { text: `__kt_idiv(${current.text} / ${render(next)})`, type: promoted }; changed = true;
         } else if (op === '%' && isIntegral(current.type) && isIntegral(next.type)) {
@@ -1363,10 +1628,28 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       for (let n = 0; n < additive.length; n++) {
         const op = additive[n]; const next = groups[n + 1];
         if (op === '-' && acc.type.name === 'String' && !acc.type.nullable) fail('Unresolved reference: minus (String has no operator -)', operatorToken(additiveAt[n]));
+        // Collection operators: list + element / list + list / set - element / map + pair ... (a JS `+` would stringify)
+        if ((op === '+' || op === '-') && /^(?:Mutable)?(?:List|Set|Map)\b|^Array\b/.test(acc.type.name) && !acc.type.nullable) {
+          acc = { text: `${op === '+' ? '__kt_plus' : '__kt_minus'}(${acc.text}, ${next.text})`, type: acc.type }; changed = true; continue;
+        }
+        // Char arithmetic: Char + Int and Char - Int are Chars, Char - Char is an Int (a Char is a JS string here, so `+` would concatenate)
+        if (acc.type.name === 'Char' && !acc.type.nullable && (op === '+' || op === '-') && isIntegral(next.type)) {
+          acc = { text: `__kt_charPlus(${acc.text}, ${op === '-' ? '-' : ''}(${next.text}))`, type: { name: 'Char' } }; changed = true; continue;
+        }
+        if (acc.type.name === 'Char' && !acc.type.nullable && op === '-' && next.type.name === 'Char') {
+          acc = { text: `__kt_charDiff(${acc.text}, ${next.text})`, type: { name: 'Int' } }; changed = true; continue;
+        }
         if (op === '+' && acc.type.name === 'String') {
-          const text = isDecimal(next.type) ? (changed = true, `__kt_decimalText(${next.text})`) : next.text;
+          const wrapped = decimalCall(next.text, next.type);
+          const text = wrapped ? (changed = true, wrapped) : next.text;
           acc = { text: `${acc.text} + ${text}`, type: acc.type };
-        } else acc = { text: `${acc.text} ${op} ${next.text}`, type: promoteNumeric(acc.type, next.type) ?? (op === '+' && acc.type.name === next.type.name ? acc.type : unknown) };
+        } else {
+          const sum = promoteNumeric(acc.type, next.type);
+          // Float results are rounded to 32 bits; Int + and - wrap around at 32 bits like the JVM (2147483647 + 1 is -2147483648)
+          if (sum?.name === 'Float') { acc = { text: `Math.fround(${acc.text} ${op} ${next.text})`, type: sum }; changed = true; }
+          else if (acc.type.name === 'Int' && next.type.name === 'Int') { acc = { text: `((${acc.text} ${op} ${next.text}) | 0)`, type: sum ?? acc.type }; changed = true; }
+          else acc = { text: `${acc.text} ${op} ${next.text}`, type: sum ?? (op === '+' && acc.type.name === next.type.name ? acc.type : unknown) };
+        }
       }
       return changed ? acc.text : null;
     };
@@ -1385,6 +1668,11 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           emit(i, i + (negated ? 4 : 3), String((runtime === target) !== negated)); i += negated ? 3 : 2; continue;
         }
       }
+      // An expression statement with a top-level Elvis (`s?.let { ... } ?: println("none")`, `x ?: run { ... }`): lowered as ONE expression.
+      if (i > a && (newline(i - 1, i) || [';', '{', '}'].includes(at(i - 1))) && !STATEMENT_KEYWORDS.has(at(i))) {
+        const statementEnd = expressionEnd(i, b);
+        if (statementEnd > i && (top(i, statementEnd, '?:') > i || lastOperator(i, statementEnd, ['!!']) > i || top(i, statementEnd, 'as') > i)) { emit(i, statementEnd, lower(i, statementEnd, ctx)); i = statementEnd - 1; continue; }
+      }
       // Compound assignment needs the target's type: Kotlin's `x /= y` truncates for
       // Int/Long, and `text += decimal` must append Kotlin's decimal text (`600.0`).
       if (isName(at(i)) && (at(i + 1) === '/=' || at(i + 1) === '%=' || at(i + 1) === '+=') && !['.', '?.'].includes(at(i - 1))) {
@@ -1399,7 +1687,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
             emit(i, end, `${at(i)} = __kt_irem(${at(i)}, (${lower(i + 2, end, ctx)}))`); i = end - 1; continue;
           }
           if (at(i + 1) === '+=' && target.name === 'String' && isDecimal(rightType)) {
-            emit(i, end, `${at(i)} += __kt_decimalText(${lower(i + 2, end, ctx)})`); i = end - 1; continue;
+            emit(i, end, `${at(i)} += __kt_decimalText(${lower(i + 2, end, ctx)}${floatFlag(rightType)})`); i = end - 1; continue;
           }
         }
       }
@@ -1412,10 +1700,22 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         }
       }
       if (startsChain(i)) {
+        // `x.orEmpty()` / `x.isNullOrEmpty()` / `x.isNullOrBlank()` accept a null receiver: a helper call, not a member call on null.
+        const nullEnd = primaryEnd(i);
+        if (nullEnd > i + 4 && at(nullEnd - 1) === ')' && at(nullEnd - 2) === '(' && at(nullEnd - 4) === '.' && ['orEmpty', 'isNullOrEmpty', 'isNullOrBlank'].includes(at(nullEnd - 3)) && !functions.has(at(nullEnd - 3))) {
+          const receiverType = infer(i, nullEnd - 4, ctx);
+          const helper = `__kt_${at(nullEnd - 3)}`;
+          emit(i, nullEnd, at(nullEnd - 3) === 'orEmpty' ? `${helper}(${lower(i, nullEnd - 4, ctx)}, '${receiverType.name}')` : `${helper}(${lower(i, nullEnd - 4, ctx)})`);
+          i = nullEnd - 1; continue;
+        }
+        // `x.toString()` on a nullable receiver is "null" for null (Any?.toString())
+        if (nullEnd > i + 4 && at(nullEnd - 1) === ')' && at(nullEnd - 2) === '(' && at(nullEnd - 3) === 'toString' && at(nullEnd - 4) === '.' && infer(i, nullEnd - 4, ctx).nullable) {
+          emit(i, nullEnd, `String(${lower(i, nullEnd - 4, ctx)})`); i = nullEnd - 1; continue;
+        }
         // `d.toString()` on a Float/Double must give Kotlin's decimal text ("25.0").
         const primary = primaryEnd(i);
         if (primary > i + 4 && at(primary - 1) === ')' && at(primary - 2) === '(' && at(primary - 3) === 'toString' && at(primary - 4) === '.' && isDecimal(infer(i, primary - 4, ctx))) {
-          emit(i, primary, `__kt_decimalText(${lower(i, primary - 4, ctx)})`); i = primary - 1; continue;
+          emit(i, primary, `__kt_decimalText(${lower(i, primary - 4, ctx)}${floatFlag(infer(i, primary - 4, ctx))})`); i = primary - 1; continue;
         }
         const chain = parseChain(i);
         const rendered = chain ? renderChain(chain) : null;
@@ -1444,10 +1744,13 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // `for (x in xs)` where xs is a List/Set/Array of NULLABLE elements: x is nullable inside the loop.
       if (at(i) === 'for' && at(i + 1) === '(' && isName(at(i + 2)) && at(i + 3) === 'in' && pairs.has(i + 1)) {
         const closeParen = pairs.get(i + 1)!;
-        const element = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(infer(i + 4, closeParen, ctx).name);
-        const inner = (element?.[1] ?? element?.[2] ?? '').trim();
+        const loopSubject = infer(i + 4, closeParen, ctx);
+        const element = /^(?:Mutable)?(?:List|Set)<(.+)>$|^Array<(.+)>$/.exec(loopSubject.name);
+        const inner = loopSubject.name === 'String' && !loopSubject.nullable ? 'Char' : (element?.[1] ?? element?.[2] ?? '').trim();
         if (inner.endsWith('?') && !inner.includes('<')) ctx.vars.set(at(i + 2), { name: inner.slice(0, -1), nullable: true });
         else if (classProps.has(inner) || ['Int', 'Long', 'Double', 'String', 'Boolean', 'Char'].includes(inner)) ctx.vars.set(at(i + 2), { name: inner });
+        // any loop variable is a local, even when its type is unknown (inside a receiver lambda it must not become `receiver.i`)
+        else if (!ctx.vars.has(at(i + 2))) ctx.vars.set(at(i + 2), unknown);
       }
       // Arithmetic on a nullable number that was never null-checked is a compile error (`n + 1`, `total += score`).
       {
@@ -1462,7 +1765,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         }
       }
       const variable = ctx.vars.get(at(i));
-      const guardedInCondition = (text(a, i).includes(`${at(i)} != null &&`) || text(a, i).includes(`${at(i)} == null ||`));
+      // a null check earlier on the SAME line counts (`if (x != null) println(x + 1)`); one in another statement or function does not
+      const sameLineBefore = ((options.priorText ?? '') + text(0, i)).split('\n').pop() ?? '';
+      const guardedInCondition = (isName(at(i)) && new RegExp(`\\b${at(i)}\\s*(?:!==?|===?)\\s*null\\b`).test(sameLineBefore)) || (text(a, i).includes(`${at(i)} != null &&`) || text(a, i).includes(`${at(i)} == null ||`) || (isName(at(i)) && new RegExp(`\\b${at(i)}\\s*==\\s*null\\s*\\)[^\\n]*\\belse\\b`).test(((options.priorText ?? '') + text(0, i)).split('\n').pop() ?? '')));
       if (variable?.nullable && variable.name !== 'Function' && variable.runtimeName === 'Nothing' && !guardedInCondition) {
         // A call to an extension whose OWN declared receiver type is
         // itself nullable (`fun String?.lengthOrZero() = ...`) is real
@@ -1473,7 +1778,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         // "needs ?. or !!." rule below, same as the existing `toString`
         // exception.
         const calledExtensionAcceptsNull = functions.get(at(i + 2))?.receiver?.nullable;
-        if (at(i + 1) === '.' && !['toString'].includes(at(i + 2)) && !calledExtensionAcceptsNull) fail('Only safe (?.) or non-null asserted (!!.) calls are allowed on this nullable receiver', i);
+        if (at(i + 1) === '.' && !['toString'].includes(at(i + 2)) && !NULL_TOLERANT_MEMBERS.has(at(i + 2)) && !calledExtensionAcceptsNull) fail('Only safe (?.) or non-null asserted (!!.) calls are allowed on this nullable receiver', i);
         if (['Int', 'Long', 'Float', 'Double'].includes(variable.name) && !stringConcatenation(i) && ((i + 1 < b && ['+', '-', '*', '/', '%'].includes(at(i + 1))) || (i > a && ['+', '-', '*', '/', '%'].includes(at(i - 1))))) fail('Nullable numeric value requires a null check or fallback before arithmetic', i);
       }
       if (at(i) === 'filterIsInstance' && at(i + 1) === '<') {
@@ -1496,7 +1801,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const result = sig.result ?? fnExpected?.result ?? (at(h.body) === '{' ? unit : undefined);
         const f = frame('function', result, h.name); inner.frames.push(f);
         params.forEach(p => inner.vars.set(p.name, sig.inline && p.type.name === 'Function' && p.mode !== 'noinline'
-          ? {...p.type, inlineOwner: f, inlineMode: p.mode === 'crossinline' ? 'crossinline' : 'inline'} : p.type));
+          ? {...p.type, inlineOwner: f, inlineMode: p.mode === 'crossinline' ? 'crossinline' : 'inline'}
+          : p.mode === 'vararg' && p.type.name !== '?' ? { name: `Array<${p.type.name}>` } : p.type));
         let receiverParam = '';
         if (sig.receiver || fnExpected?.receiver) {
           receiverParam = `__kt_receiver_${++serial}`;
@@ -1529,7 +1835,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           const actual: Type = { name: 'Function', params: params.map(p => p.type), receiver: sig.receiver ?? fnExpected?.receiver, result: sig.result ?? result ?? unknown };
           check(fnExpected, actual, i);
         }
-        const declaredName = h.anonymous ? '' : sig.receiver ? extensionJsName(h.name, sig.receiver.name) : h.name;
+        const declaredName = h.anonymous ? '' : sig.receiver ? extensionJsName(h.name, sig.receiver.name) : overloadJsName.get(i) ?? h.name;
         emit(i, end, `${h.anonymous ? 'function' : 'fun ' + declaredName}(${paramCode})${h.anonymous ? '' : ': ' + (sig.result?.name === 'Function' ? 'Function' : (sig.result?.name === '?' ? 'Any' : sig.result?.name) ?? 'Any')} {\n${wrap(body, f)}\n}`);
         i = end - 1; continue;
       }
@@ -1724,6 +2030,12 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         const collectionNames: Record<string, string[]> = {
           windowed: ['size', 'step', 'partialWindows'],
           chunked: ['size'],
+          // Kotlin library members whose optional parameters are written by name (`s.contains("x", ignoreCase = true)`)
+          contains: ['other', 'ignoreCase'], startsWith: ['prefix', 'ignoreCase'], endsWith: ['suffix', 'ignoreCase'], equals: ['other', 'ignoreCase'],
+          replace: ['oldValue', 'newValue', 'ignoreCase'], replaceFirst: ['oldValue', 'newValue', 'ignoreCase'], split: ['delimiter', 'ignoreCase', 'limit'],
+          joinToString: ['separator', 'prefix', 'postfix', 'limit', 'truncated', 'transform'], indexOf: ['element', 'startIndex', 'ignoreCase'],
+          padStart: ['length', 'padChar'], padEnd: ['length', 'padChar'], substring: ['startIndex', 'endIndex'], coerceIn: ['minimumValue', 'maximumValue'],
+          take: ['n'], drop: ['n'], repeat: ['n'], compareTo: ['other', 'ignoreCase'],
           fold: ['onSuccess', 'onFailure'],
         };
         const names = at(i - 2) === '.' ? collectionNames[info.name] : info.signature?.params.map(p => p.name);
@@ -1737,7 +2049,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           return lower(start, y, ctx, param?.type, callable ? info.name : undefined, info.inline && !param?.mode, forwarding);
         });
         if (['println', 'print'].includes(info.name) && !functions.has(info.name)) {
-          rendered = rendered.map((value, index) => ['Float', 'Double'].includes(infer(args[index][0], args[index][1], ctx).name) ? `__kt_decimalText(${value})` : value);
+          rendered = rendered.map((value, index) => decimalCall(value, infer(args[index][0], args[index][1], ctx)) ?? value);
         }
         if (names && args.some(([x]) => at(x + 1) === '=')) {
           // Every unfilled position is left as the literal string 'undefined'
@@ -1824,8 +2136,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           if (!expectedLambda && at(i - 2) === '.' && ELEMENT_CALLBACKS.has(at(i - 1))) {
             let r = i - 3;
             while (r > a && (at(r - 1) === '.' || at(r - 1) === '?.' || (pairs.has(r) && pairs.get(r)! < r))) r = pairs.has(r) && pairs.get(r)! < r ? pairs.get(r)! - 1 : r - 2;
-            const container = /^(?:Mutable)?(?:List|Set)<(\w+)>$|^Array<(\w+)>$/.exec(infer(Math.max(a, r), i - 2, ctx).name);
-            const element = container?.[1] ?? container?.[2];
+            const receiverType = infer(Math.max(a, r), i - 2, ctx);
+            const container = /^(?:Mutable)?(?:List|Set)<(\w+)>$|^Array<(\w+)>$/.exec(receiverType.name);
+            const element = receiverType.name === 'String' && !receiverType.nullable ? 'Char' : (container?.[1] ?? container?.[2]);
             if (element && ['Int', 'Long', 'Double', 'String', 'Boolean', 'Char'].includes(element)) expectedLambda = { name: 'Function', params: [{ name: element }], result: unknown };
           }
           emit(i, end + 1, `(${lambda(i, end, ctx, expectedLambda, info.name, info.inline && !param?.mode)})`);
@@ -1858,6 +2171,13 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // `run { }`, `repeat(3) { }`, a `::` reference). A bare `delay` / `yield` / `run` is an
       // ordinary variable that merely shares the name (`var delay = 2`, `"${delay}s"`).
       if (builtins.has(at(i)) && !(ctx.receiver && at(i) === 'repeat') && !functions.has(at(i)) && !ctx.vars.has(at(i)) && !['.', '?.'].includes(at(i - 1)) && (['(', '{', '<'].includes(at(i + 1)) || at(i - 1) === '::')) emit(i, i + 1, `__kt_${at(i)}`);
+      // a call to an overloaded function: pick the declaration by argument types and call it by its own JS name
+      if (isName(at(i)) && at(i + 1) === '(' && overloadSets.has(at(i)) && !['.', '?.', '::', 'fun'].includes(at(i - 1)) && !ctx.vars.has(at(i))) {
+        const chosen = chooseOverload(at(i), i + 1, ctx);
+        if (chosen) { emit(i, i + 1, chosen.jsName); continue; }
+      }
+      // a Float literal holds a 32-bit value: `0.1f` is Math.fround(0.1), not the double 0.1
+      if (/^\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?[fF]$/.test(at(i)) && !/^0[xX]/.test(at(i))) { emit(i, i + 1, `Math.fround(${at(i).slice(0, -1)})`); continue; }
       if (ctx.receiver && at(i) === 'this') emit(i, i + 1, ctx.receiver);
       // Any other bare identifier read inside a receiver block (World 13's
       // `run`/`apply`/`with`) that isn't a known local var, a declared
@@ -1869,7 +2189,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       // dedicated rule above already rewrites on its own -- without this,
       // both rules fire for the same token and the receiver prefix is
       // emitted twice (`receiver.name` then `receiver.namereceiver.name =`).
-      else if (ctx.receiver && isName(at(i)) && !ctx.vars.has(at(i)) && !['.', '?.'].includes(at(i - 1)) && at(i + 1) !== '=' && !['val', 'var', 'fun'].includes(at(i - 1)) && !functions.has(at(i)) && !classes.has(at(i)) && !builtins.has(at(i)) && !receiverExcludedNames.has(at(i))) emit(i, i + 1, `${ctx.receiver}.${at(i)}`);
+      else if (ctx.receiver && isName(at(i)) && !ctx.vars.has(at(i)) && !['.', '?.'].includes(at(i - 1)) && at(i + 1) !== '=' && !['val', 'var', 'fun'].includes(at(i - 1)) && (!functions.has(at(i)) || memberOnlyFunctions.has(at(i))) && !classes.has(at(i)) && !builtins.has(at(i)) && !receiverExcludedNames.has(at(i))) emit(i, i + 1, `${ctx.receiver}.${at(i)}`);
       if (at(i) === '/' && i > a && !['*', '/', '%', ')', ']'].includes(at(i - 2)) && !['.', '?.', '(', '['].includes(at(i + 2)) && i + 1 < b && isName(at(i - 1)) && /^(Int|Long)$/.test(ctx.vars.get(at(i - 1))?.name ?? '') && (ctx.vars.get(at(i + 1))?.name === 'Int' || /^\d+$/.test(at(i + 1)))) {
         emit(i - 1, i + 2, `__kt_idiv(${at(i - 1)} / ${at(i + 1)})`); i++;
       }
@@ -1947,5 +2267,5 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   }
   const rootContext: Context = { vars: new Map(options.vars as Map<string, Type> | undefined), frames: [] };
   const lowered = lower(0, t.length, rootContext);
-  return options.decimalResult && t.length && isDecimal(infer(0, t.length, rootContext)) ? `__kt_decimalText(${lowered})` : lowered;
+  return options.decimalResult && t.length && decimalCall(lowered, infer(0, t.length, rootContext)) ? decimalCall(lowered, infer(0, t.length, rootContext))! : lowered;
 }

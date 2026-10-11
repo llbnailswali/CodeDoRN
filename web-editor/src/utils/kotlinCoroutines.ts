@@ -10,6 +10,7 @@
  * timing, or sibling-coroutine interleaving. Lesson 4 adds a small context
  * model, but dispatcher values remain metadata and never switch threads.
  */
+import { CancellationException } from './kotlinExceptions';
 
 export class KotlinJob {
   private completed = false;
@@ -82,11 +83,11 @@ export class KotlinJob {
   toString(): string { return `Job{${this.cancelled ? 'Cancelled' : this.completed ? 'Completed' : 'Active'}}`; }
 }
 
-export class KotlinCancellationException extends Error {
+export class KotlinCancellationException extends CancellationException {
   constructor(message = 'Coroutine was cancelled') {
     super(message);
-    this.name = 'CancellationException';
   }
+  toString(): string { return `CancellationException: ${this.message}`; }
 }
 
 export class KotlinDeferred<T = unknown> extends KotlinJob {
@@ -392,3 +393,49 @@ export const prepareLessonOneCoroutineSource = prepareCoroutineSource;
 export function kotlinGlobalScopeLaunch(block: () => unknown): KotlinJob {
   return new KotlinJob(block);
 }
+
+/**
+ * `kotlinx.coroutines.sync.Mutex`. This runtime never interleaves two coroutines inside a block (launch/async run their work
+ * whole, `delay` is a no-op), so the lock is only ever found held when the SAME mutex is locked again inside its own block. Real
+ * Kotlin's Mutex is not reentrant and suspends there forever; that deadlock is reported instead of hanging the editor.
+ */
+export class KotlinMutex {
+  private locked = false;
+  get isLocked(): boolean { return this.locked; }
+  lock(): void {
+    if (this.locked) throw new Error('IllegalStateException: Deadlock: this Mutex is already locked (a Kotlin Mutex is not reentrant, so this coroutine would wait forever)');
+    this.locked = true;
+  }
+  tryLock(): boolean { if (this.locked) return false; this.locked = true; return true; }
+  unlock(): void {
+    if (!this.locked) throw new Error('IllegalStateException: This mutex is not locked');
+    this.locked = false;
+  }
+  withLock<T>(block: () => T): T {
+    this.lock();
+    try { return block(); } finally { this.locked = false; }
+  }
+  toString(): string { return `Mutex@${this.locked ? 'locked' : 'unlocked'}`; }
+}
+
+/** `java.util.concurrent.atomic.AtomicInteger` / `AtomicLong`: a counter whose read-modify-write calls return Kotlin's values. */
+export class KotlinAtomicNumber {
+  constructor(private value: number = 0) {}
+  get(): number { return this.value; }
+  set(value: number): void { this.value = value; }
+  getAndSet(value: number): number { const old = this.value; this.value = value; return old; }
+  incrementAndGet(): number { return ++this.value; }
+  decrementAndGet(): number { return --this.value; }
+  getAndIncrement(): number { return this.value++; }
+  getAndDecrement(): number { return this.value--; }
+  addAndGet(delta: number): number { this.value += delta; return this.value; }
+  getAndAdd(delta: number): number { const old = this.value; this.value += delta; return old; }
+  compareAndSet(expected: number, next: number): boolean { if (this.value !== expected) return false; this.value = next; return true; }
+  updateAndGet(fn: (v: number) => number): number { this.value = fn(this.value); return this.value; }
+  toInt(): number { return this.value; }
+  toString(): string { return String(this.value); }
+}
+
+/** `jobs.joinAll()` / `joinAll(a, b)` and `deferreds.awaitAll()` / `awaitAll(a, b)`. */
+export function kotlinJoinAll(jobs: Iterable<KotlinJob>): void { for (const job of jobs) job.join(); }
+export function kotlinAwaitAll<T>(deferreds: Iterable<KotlinDeferred<T>>): T[] { return Array.from(deferreds, (d) => d.await()); }
