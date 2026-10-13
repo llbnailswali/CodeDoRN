@@ -8,6 +8,32 @@ no duplicate scenarios), it applies here too.
 
 The real Kotlin compiler is the authority on disputed semantics. The simulator is not.
 
+## 0. Required first output when starting a world
+
+Whenever a new world's quiz data gathering begins, the **first response must be a planning report** before research, question writing, or other data collection. Do not start gathering until this report has been shown to the user. This applies even if the user says “begin,” “proceed,” or “do all steps”; acknowledge the request by presenting the plan first, then continue.
+
+The report must analyze lesson complexity and show:
+
+- Every regular lesson, its proposed question count, and a brief reason tied to concept breadth, traps, compile/runtime boundaries, and distinct scenario needs. Counts must vary where justified; never default to 10 per lesson.
+- Per-set arithmetic: lesson-question subtotal + planned cross-lesson questions = set total.
+- Regular-quiz total, separate Boss count, and whole-world total. Verify every subtotal and grand total arithmetically.
+- A difficulty-mix guide for lesson count bands (for example, about 2/6/4 for 12 questions, 2/6/3 for 11, 2/4/3 for 9, and 2/4/2 for 8), plus planned set and Boss mixes where useful. These are guides, not quotas; lesson complexity and question quality take priority.
+- Any assumptions, curriculum uncertainties, or scope choices that could change the totals.
+
+Use a compact table for lesson allocation and a clearly itemized set/total summary, for example:
+
+```text
+Set 1: 34 lesson questions + 4 cross-lesson questions = 38
+Set 2: 29 + 4 = 33
+Set 3: 32 + 4 = 36
+Set 4: 45 + 4 = 49
+Regular quiz: 156 questions
+Boss quiz: 12 questions, separate
+Whole-world bank: 168 questions
+```
+
+Those numbers are illustrative only. Calculate each new world's report from its actual curriculum and chosen set structure; do not reuse the example totals. Record the approved allocation in `QUIZ_WORLD_<N>_CONCEPT_MAP.md` before authoring, and revise the report and map if curriculum analysis later changes the plan.
+
 ## 1. Structure
 
 - The Quiz offers **sets plus the full quiz** (and "Review mistakes"). There is no per-lesson quiz.
@@ -157,14 +183,15 @@ runner behaviour or checks change. Add a `PITFALLS.md` entry for every new quiz 
 1. **Scan** (`npx tsx scripts/quiz-audit/scan.ts <N>` in `web-editor/`): filler options, generic prompts, repeated explanations, hints and code, answer-position balance, multi-select answer counts, per-lesson type and difficulty mix.
 2. **Read every question** (`scripts/quiz-audit/dump.ts <N> <from> <to>`, about 30 per pass). Look for: a question that does not match its code, a statement that cannot be true as worded, duplicate scenarios (same code with renamed variables), set questions that use a concept outside the set's lessons, "hard" labels on trivial traces, "find the error" lines that compile or whose compiler line differs from the keyed line, multi-select with no code but a prompt that says "this code", and broken code chips in prompts (wrap signatures in explicit backticks).
 3. **Run every executable question through real kotlinc** (`scripts/quiz-audit/real.ts <N>`; compile errors are reported at code line + 4). Check predictions, find-error lines, each fill-in chip and both code-comparison programs. Code-comparison snippets that show only calls report false alarms; verify those by hand with the declaration added. Evaluate multi-select and single-choice facts with a small ad hoc script, one option at a time. If kotlinc disagrees with a key, fix the question.
-4. **Fix** by rewriting the question (replace the line in the world's file), keeping its difficulty label. Re-run `scan.ts`, `real.ts`, `npx tsc --noEmit`, `npm run test:quiz-bank`, `npm run audit:quiz-bank`, `npm run generate:native-data`.
-5. **Record** in the world's `QUIZ_WORLD_<N>_CONCEPT_MAP.md` under "Audit findings and evidence" (what was fixed, what stays open) and update section 12.
+4. **Human wording/distractor pass:** read every regular, set, and Boss question after answer-position rebalancing. Check that the prompt asks exactly one thing, distractors represent real misconceptions rather than filler, explanations match the displayed option order and code, hard labels require meaningful reasoning, and repeated wording does not hide duplicate scenarios. Rewrite any defect in the world's source file.
+5. **Fix and verify** by re-running `scan.ts`, `real.ts`, `npx tsc --noEmit`, `npm run test:quiz-bank`, `npm run audit:quiz-bank`, `npm run audit:quiz-standard`, and `npm run generate:native-data -- --check`.
+6. **Record** in the world's `QUIZ_WORLD_<N>_CONCEPT_MAP.md` under "Audit findings and evidence" (what was fixed, what stays open) and update section 12.
 
 Limits: an audit like this checks keys, scope, duplicates, wording and display of code, but it does not re-write every explanation or judge each distractor in depth (Codex's audits of Worlds 7, 9 and 10 did more of that), and it does not check phone rendering. The scripts live in `web-editor/scripts/quiz-audit/` (new, not yet committed).
 
 ## 12. Progress log (resume here)
 
-Last updated 2026-10-11. Update this section at the end of every quiz work session; keep it short.
+Last updated 2026-10-13. Update this section at the end of every quiz work session; keep it short.
 
 **Done**
 - Standard written (sections 1-11) and imported by CLAUDE.md (it is the only file loaded automatically for quiz work).
@@ -191,6 +218,12 @@ Last updated 2026-10-11. Update this section at the end of every quiz work sessi
 - Audit tools in `web-editor/scripts/quiz-audit/` (see the audit procedure above): `scan.ts <world>`, `dump.ts <world> <from> <to>`, `real.ts <world>`, `std-scan.ts` (all worlds).
 - Gates pass: `tsc`, `test:quiz-bank`, `audit:quiz-bank`, `test:world8-quiz-kotlin`; app data regenerated (`generate:native-data`).
 - Follow-up real-Kotlin sweep defects are resolved for Worlds 4, 6, 9 and 10 (details below). `real.ts` confirms no prediction mismatch in World 6, no issue in World 9, and the corrected compile-error line markers in Worlds 4 and 10. Remaining reports are documented runtime failures or comparison fragments, not incorrect keys. Typecheck, quiz-bank tests, duplicate/scope audit, standard audit, and native-data generation pass after these fixes.
+- World 11 authored with complexity-based variable lesson counts (8–11 each; 135 direct questions), 16 cross-lesson questions (4 per set), and a separate 12-question Boss; 163 total. Four redundant questions were removed from Nested Classes and Object Declarations, and nine mapped coverage gaps were added across higher-risk lessons. Verification passes: 136 real-kotlinc executable cases with 0 problems, bank tests, strict scope/duplicate audit, standard audit, editor/root TypeScript checks, and generated native-data check. App routing and generated native bank are registered. See `QUIZ_WORLD_11_CONCEPT_MAP.md`; phone-width review and a human wording/distractor pass remain.
+- World 12 authored with variable lesson counts (8–12 each): 137 direct, 20 cross-lesson, and 12 separate Boss questions; 169 total. Real Kotlin verifies 173 executable variants with 0 problems. Five sets and the Boss are registered in web and native quiz data. Structure, scope, type mix, and chip checks pass; see `QUIZ_WORLD_12_CONCEPT_MAP.md`. Phone-width visual review remains.
+- World 11 human wording/distractor review complete (2026-10-13): all 163 questions reviewed; corrected reversed comparison explanations caused by answer-position rebalancing, one extension-property precedence explanation, and two set-question explanation mismatches. Bank tests, strict scope/duplicate audit, standard audit, TypeScript checks, and native-data synchronization pass. Phone-width visual review remains pending; see `QUIZ_WORLD_11_CONCEPT_MAP.md`.
+- World 12 human wording/distractor review complete (2026-10-13): all 169 questions reviewed; corrected explanation references reversed by answer-position rebalancing across generic transforms, bounds, projections, reified checks, and type-safe API comparisons, plus clarified invariant/declaration-site set explanations. Bank tests, strict scope/duplicate audit, standard audit, TypeScript checks, and native-data synchronization pass. Phone-width visual review remains pending; see `QUIZ_WORLD_12_CONCEPT_MAP.md`.
+- World 13 content and human wording/distractor review complete (2026-10-13): 88 direct, 12 set, and 12 Boss questions (112 total). Replaced mechanically numbered scenarios and stock distractors with distinct scope-function cases, corrected set prompt/type mismatches, balanced true/false and comparison answers, and added World 13 to strict scope/duplicate auditing and web/native routing. Real Kotlin verifies 78 executable variants with 0 problems; all automated and synchronization gates pass. Phone-width visual review remains pending; see `QUIZ_WORLD_13_CONCEPT_MAP.md`.
+- World 14 content and human wording/distractor review complete (2026-10-13): 121 direct, 16 set, and 12 Boss questions (149 total). All questions were read after answer balancing; position-dependent explanations, one incomplete output key, duplicate comparison code, and generic source prompts were repaired. Real Kotlin verifies 109 executable variants with 0 problems; bank, strict scope/duplicate, standard, editor/native TypeScript, native synchronization, and production-build gates pass. Phone-width visual review remains pending; see `QUIZ_WORLD_14_CONCEPT_MAP.md`.
 
 **Resolved by the follow-up real-Kotlin sweep:**
 - World 6 predictions `w6q-map-8`, `w6q-change-4`, and `w6q-change-8` now compile and match their keys. Runtime-error prompts `w6q-arr-9` and `w6q-create-9` say the line crashes when run.
@@ -199,15 +232,15 @@ Last updated 2026-10-11. Update this section at the end of every quiz work sessi
 - The remaining reports in Worlds 4 and 6 include expected runtime-error cases and code-comparison fragments that are not standalone programs; these are documented false alarms, not unresolved answer-key defects.
 
 **Not done (in priority order)**
-1. User to complete phone-width visual reviews for all 10 worlds. Content audits are done for all 10 worlds (World 1 last, by Claude).
+1. User to complete phone-width visual reviews for completed Worlds 1–14.
 2. Type-mix soft guideline (no type above 40% of a lesson, at least 3 types): Worlds 7, 9, 10 are clean; Worlds 1-5 and 8 still warn,
    mostly predict_output at 45-67% in Worlds 2-4. Scan with `npx tsx scripts/quiz-audit/std-scan.ts`.
    World 6 has two documented 50% lesson-level cases: operation tracing in mutation and type selection in choosing a collection.
-3. DONE: `audit:quiz-standard` enforces the ranges, Boss mix and smells (see Enforcement above). Still open: make `real.ts` (find-error line vs compiler line, prediction vs real output) a permanent test for all worlds.
+3. DONE: `audit:quiz-standard` enforces the ranges, Boss mix and smells (see Enforcement above). `real.ts` has been extended to include Boss banks; continue using it as a manual audit gate.
 4. Review the other worlds' prompts and explanations against the highlighting rule (section 8; Worlds 2 and 6 have almost no chips in explanations: 0 of 90 and 1 of 128) and add the broken-chip check to `audit:quiz-standard`.
 5. Not rendered-checked on a phone: multi-line options, single_choice with code, and the formatter fix.
 6. Worlds 6, 7 and 8 are not registered in `web-editor/src/data/quizBank/index.ts` (`NEW_QUIZ_BANKS`); confirm whether the app uses them.
 7. Concept maps still list old per-lesson allocations in places; update each when its lesson questions are re-audited.
 8. `w4q-range-8` printed "true.0" once in a test run (flake, not reproduced): possible state leak in the runner.
 
-**How to resume:** Quiz content audits are complete for all 10 worlds. The user owns phone-width visual reviews. Next: the open items above (type-mix polish, enforcing the standard in `test-quiz-bank.ts`, bank registration, phone rendering), then Worlds 11+ when their quiz banks exist.
+**How to resume:** Quiz content audits are complete for Worlds 1–14, including the required human wording/distractor pass. Phone-width visual reviews remain owned by the user. From now on, every new world must be completed as one uninterrupted non-visual workflow: planning/allocation, authoring and integration, scan, reading every regular/set/Boss question, real-Kotlin verification, human wording/distractor repair, all automated gates, native-data synchronization, and concept-map/progress recording. Do not hand off at an intermediate milestone. Next: World 15 unless the user chooses an open maintenance item above.

@@ -3162,3 +3162,51 @@ only; kotlinc agrees on the line and still rejects the program).
 8. `Wrapper(x).value.size`: the `x.size` rewrite started at `value` after `).`; it must not start a chain after `).`/`].`.
 9. `xs.maxByOrNull { ... } is Sq` (a call with a trailing lambda before `is`) is bound to a lambda parameter first; the guard set
    `isLambdaSubjects` stops the recursion.
+
+## World 16 quiz: coroutine gaps in the in-app engine (2026-10-13)
+
+Found while verifying the rewritten World 16 quiz; real kotlinc is right in every case. Baseline tool:
+`npx tsx scripts/quiz-audit/w16-engine-vs-real.ts` (every World 16 lesson and quiz program on both engines; lesson fragments that only
+real kotlinc accepts as local `suspend fun`s, and GlobalScope/`Dispatchers.Default` programs whose real output varies run to run, are
+expected noise).
+
+**Fixed in the runner (2026-10-13):**
+1. `launch`/`async` now only SCHEDULE a child (`pending` queue in `kotlinCoroutines.ts`); queued children run in order when the
+   parent suspends (`join`, `await`, `yield`, `delay`, end of a scope). `async` used to run its body at once. `start()` schedules too.
+   Do not let the queue call `join()` on a queued job: `join()` drains the queue first and the children ran in reverse order.
+2. Structured failure: a child failing in an ordinary scope cancels its siblings and its parent immediately (`failScope`); the scope
+   function rethrows the child's original exception. `await()` on the failed Deferred throws that exception (not
+   CancellationException); `await()` on a cancelled Deferred throws CancellationException (it used to return `null`).
+3. `coroutineScope`/`supervisorScope`/`withContext` get their own Job and wait for their children (`withContext` did not wait).
+4. `val job: Job = async { }` (Deferred is a Job), `runBlocking(CoroutineName("x")) { }`, `Dispatchers.Default + CoroutineName("x")`
+   (rewritten to a list of elements), `delay(10L * id)` (Long).
+5. `this` inside `runBlocking { }` is a CoroutineScope (`main` runs with `kotlinScopeReceiver` as `this`), so `Loader(this)` +
+   `scope.launch { }` work.
+6. `kotlinClassChecks.ts` took `val job = Loader(this).start()` to be a `Loader` and reported `job.join()` as unresolved; only a
+   bare constructor call now names the class.
+
+**Still open (needs real suspension):** a child still runs its whole body at once, so it cannot stop part-way inside `delay`/`yield`.
+A child that is cancelled while it "waits" in `delay` runs to the end instead (prints what follows the delay, never sees
+`CancellationException`, `catch (e: CancellationException)` never runs); virtual time is not modelled (`delay(50)` vs no delay
+ordering, "cancel at 250 ms"). Fixing this needs suspend functions and builder lambdas compiled to generators, including inline
+lambdas (`repeat`, `forEach`, `map`). The six quiz ids that depend on it are in `REAL_KOTLIN_ONLY` in
+`web-editor/scripts/test-quiz-bank.ts`. Lesson "Try it" runs of the same pattern show the same wrong output.
+
+## World 13 quiz: scope-function gaps in the in-app engine (2026-10-13)
+
+Found while verifying the rewritten World 13 quiz (real kotlinc agrees with every key). Both are now fixed:
+
+1. A template EXPRESSION that used members of an implicit receiver failed: `with(p) { "sum=${x + y}" }` gave "Unresolved reference: x".
+   The receiver-lambda lowering only rewrote the FIRST name of a `${...}`, and only when `}`, `.`, `?`, `(`, `[` or `!` followed it.
+   It now rewrites every bare receiver member inside a `${...}` (`rewriteTemplateMembers` in `kotlinFunctions.ts`): names after
+   `.`/`?.`, names inside nested string literals, lambda parameters inside the template, locals/top-level names and capitalised
+   names are left alone.
+2. Labeled `this` (`"O".run outer@{ "I".run { this@outer + this } }`) gave "Invalid or unexpected token": a labeled trailing lambda
+   without parentheses was lowered as an argument lambda, and `this@outer` was mangled. `rewriteLabeledThis` (`kotlinCoroutines.ts`,
+   called first in `transpileKotlinToJS`) saves the labeled lambda's receiver in `val __kt_this_<label> = this` on the same line and
+   renames `this@<label>`; the label is dropped unless a `return@<label>` needs it. Error lines do not move.
+
+Still open (found while testing these, both older than this fix): `this@ClassName` (`class Box { fun f() = run { this@Box.v } }`)
+fails with a JS syntax error; a string literal nested inside a template inside a receiver lambda
+(`"ab".run { "${if (length > 1) "long" else "short"}" }`) is mangled (`__kt_receiver_3.long`), while the same template outside a
+receiver lambda works.

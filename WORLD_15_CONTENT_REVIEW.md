@@ -1,11 +1,9 @@
 # World 15 quality audit
 
 Authority: [LESSON_QUALITY_STANDARD.md](LESSON_QUALITY_STANDARD.md).
-Date: 2026-09-21. Status: **Verified** (execution/coverage correctness
-only) — all 15 lessons. This audit did NOT include a
-[LESSON_CLARITY_STANDARD.md](LESSON_CLARITY_STANDARD.md) pass — that
-remains queued for the later, batch clarity audit across all worlds, per
-explicit direction this session.
+Date: 2026-10-13. Status: **Verified** — all 15 lessons. Execution,
+coverage correctness, and the human clarity/wording pass are complete.
+Phone-width visual review remains outside this workflow.
 
 ## Result
 
@@ -218,9 +216,8 @@ NumberFormatException`), not just a bare dotted identifier.
 
 ## Scope not covered by this pass
 
-- `LESSON_CLARITY_STANDARD.md`'s readability/confusion/dash-collision/
-  generic-subtitle checks — deferred, per explicit direction, to a later
-  batch pass across all worlds.
+- Browser visual QA and a real-Kotlin-compiler comparison, matching every
+  other world's review file's disclosed scope in this environment.
 - `java.io.IOException` in the Checked vs Unchecked Exception Model
   lesson's `@Throws` Explore card/Predict question — genuinely
   non-executable in this simulator (no Java stdlib surface modeled at
@@ -231,5 +228,3 @@ NumberFormatException`), not just a bare dotted identifier.
   still excluded from execution in `test:world15-content` with a
   documented reason, matching this file's established pattern for a
   justified, recorded capability limit rather than a silently-skipped gap.
-- Browser visual QA and a real-Kotlin-compiler comparison, matching every
-  other world's review file's disclosed scope in this environment.

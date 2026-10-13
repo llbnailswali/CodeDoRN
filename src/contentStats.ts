@@ -24,7 +24,7 @@ export const CONTENT_STATS = {
    "items": 192
   }
  },
- "quizQuestions": 1233,
+ "quizQuestions": 2135,
  "practice": {
   "writeRun": 144,
   "debug": 81

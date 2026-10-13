@@ -1,5 +1,5 @@
 /**
- * Enforces the mechanical rules of QUIZ_QUALITY_STANDARD.md on every quiz bank (Worlds 1-10).
+ * Enforces the mechanical rules of QUIZ_QUALITY_STANDARD.md on every authored quiz bank (Worlds 1-16).
  *
  *   npm run audit:quiz-standard
  *
@@ -29,7 +29,27 @@ const ORDER = ['easy', 'medium', 'hard'];
 /** Question ids allowed to break a HARD rule, with the reason. Keep this list empty unless a rule truly cannot apply. */
 const EXCEPTIONS: Record<string, string> = {};
 /** "<world>:<lesson id suffix>" -> why a type-mix WARNING is accepted (also record it in the world's concept map). */
-const TYPE_MIX_REASONS: Record<string, string> = {};
+const TYPE_MIX_REASONS: Record<string, string> = {
+  '14:what-sequences-are': 'Foundational sequence identity is primarily tested through code-backed semantic recognition; forced output questions would not test deferred construction.',
+  '14:eager-collection-processing': 'The lesson distinguishes execution models and stage timing, so code-backed semantic choices are the clearest fit.',
+  '14:lazy-processing': 'Includes the foundation set synthesis; recognition of deferred execution and caching misconceptions is intentionally prominent.',
+  '14:intermediate-operations': 'Includes creation-and-operations set synthesis; operation ordering and bounded-chain traces intentionally increase code-based questions.',
+  '14:assequence': 'Conversion-boundary placement is primarily a semantic recognition skill, supported by comparison and trace questions.',
+  '14:terminal-operations': 'Terminal contracts differ by result and stopping behavior; code-backed selection avoids artificial output-only variants.',
+  '14:sequence-evaluation-order': 'The curriculum emphasizes trace interpretation; single-choice traces are retained instead of duplicating output programs.',
+  '14:short-circuiting': 'Includes consumption-and-control set synthesis; bounded and unbounded execution traces intentionally dominate this behavior-focused lesson.',
+  '14:sequences-vs-collections': 'The lesson is an abstraction comparison, so several design-choice questions are intentional.',
+  '14:performance-trade-offs': 'Performance claims are judged semantically without fabricated timing outputs, making recognition questions appropriate.',
+  '14:when-sequences-should-and-should-not-be-used': 'Includes design-set synthesis and intentionally emphasizes justified API-choice recognition.',
+  '16:coroutine-fundamentals-coroutine-builder': 'Four semantic choices distinguish builder ownership and completion contracts; five remaining questions span true/false, output, and error diagnosis.',
+  '16:await-suspending-functions': 'Direct and foundation-set synthesis uses semantic choices for legal call sites and API contracts alongside four other question types.',
+  '16:suspend-coroutine-context': 'Context elements require four precise semantic distinctions; executable traces and error diagnosis cover application.',
+  '16:dispatchers-jobs': 'Direct and context-set questions deliberately separate dispatcher policy from Job lifecycle through semantic choices and four applied types.',
+  '16:coroutinescope': 'Direct and ownership-set questions emphasize scope contract distinctions, supported by output, error, multi-select, and comparison questions.',
+  '16:supervisorscope': 'Four choices distinguish supervision from ordinary scope behavior; output, error, and set synthesis test consequences.',
+  '16:exception-handling-in-coroutines': 'Direct and failure-set synthesis uses semantic choices for ownership and cancellation policy alongside four applied types.',
+  '16:coroutine-best-practices': 'Direct and design-set synthesis intentionally emphasizes justified API and ownership decisions alongside four applied types.',
+};
 
 const failures: string[] = [];
 const warnings: string[] = [];
@@ -72,6 +92,16 @@ function checkWorld(n: number, bank: QuizQuestion[]) {
     const options = (q as unknown as { options?: string[] }).options ?? [];
     for (const option of options) {
       if (/^Not .* \(\d\)$/.test(option) || (right !== undefined && option === `Not ${right}`)) fail(q.id, `filler option "${option}"`);
+    }
+    if (n === 12) {
+      for (const [field, value] of [['question', q.question], ['explanation', q.explanation]] as const) {
+        if (value.split('`').length % 2 === 0) fail(q.id, `unpaired code chip in ${field}`);
+        for (const chip of value.match(/`[^`]*`/g) ?? []) {
+          if (chip.length <= 2) fail(q.id, `empty code chip in ${field}`);
+          if (/[<=]`$/.test(chip)) fail(q.id, `incomplete code chip in ${field}: ${chip}`);
+        }
+      }
+      if (options.some((option) => option.includes('`'))) fail(q.id, 'options display backticks literally; use plain text or monoOptions');
     }
   }
 
@@ -127,7 +157,7 @@ function checkWorld(n: number, bank: QuizQuestion[]) {
 
 async function main() {
   const rows: string[] = [];
-  for (let n = 1; n <= 10; n++) {
+  for (let n = 1; n <= 16; n++) {
     const bank = await loadBank(n);
     const r = checkWorld(n, bank);
     rows.push(`world ${n}: ${r.total} questions (${r.boss} Boss)`);

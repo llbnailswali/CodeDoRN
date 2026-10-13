@@ -3,18 +3,22 @@
  * (the other options keep their relative order), and for every code_comparison it swaps A and B where needed. Targets are a balanced,
  * seeded shuffle (no slot more than twice in a row), so the result is repeatable. The questions themselves do not change.
  *
- *   npx tsx scripts/rebalance-quiz-answers.ts          rewrite src/data/quizBank/world1Quiz.ts
- *   npx tsx scripts/rebalance-quiz-answers.ts --report print the current spread only
+ *   npx tsx scripts/rebalance-quiz-answers.ts                 rewrite World 1 (default)
+ *   npx tsx scripts/rebalance-quiz-answers.ts --world=14       rewrite World 14
+ *   npx tsx scripts/rebalance-quiz-answers.ts --world=14 --report  print the spread only
  */
 import { Project, SyntaxKind, ObjectLiteralExpression } from 'ts-morph';
 
 const report = process.argv.includes('--report');
+const world = Number(process.argv.find((arg) => arg.startsWith('--world='))?.slice('--world='.length) ?? '1');
+if (!Number.isInteger(world) || world < 1 || world > 16) throw new Error(`invalid world number: ${world}`);
 const project = new Project({ skipAddingFilesFromTsConfig: true });
-const file = project.addSourceFileAtPath('src/data/quizBank/world1Quiz.ts');
-const array = file.getVariableDeclarationOrThrow('WORLD_1_QUIZ').getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression);
+const file = project.addSourceFileAtPath(`src/data/quizBank/world${world}Quiz.ts`);
+const array = file.getVariableDeclarationOrThrow(`WORLD_${world}_QUIZ`).getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression);
 const questions = array.getElements() as ObjectLiteralExpression[];
 
-const prop = (o: ObjectLiteralExpression, name: string) => o.getProperty(name)?.asKind(SyntaxKind.PropertyAssignment);
+const prop = (o: ObjectLiteralExpression, name: string) =>
+  (o.getProperty(name) ?? o.getProperty(`"${name}"`))?.asKind(SyntaxKind.PropertyAssignment);
 const type = (o: ObjectLiteralExpression) => prop(o, 'type')?.getInitializer()?.getText().replace(/['"]/g, '') ?? '';
 
 function mulberry32(seed: number) {
@@ -52,7 +56,7 @@ console.log(`code_comparison A/B now ${JSON.stringify(spread(comparison.map(answ
 console.log(`true_false true/false now ${tf.filter((x) => x === 'true').length}/${tf.filter((x) => x === 'false').length}`);
 if (report) process.exit(0);
 
-const choiceTargets = targets(choice.length, 4, 20261004);
+const choiceTargets = targets(choice.length, 4, 20261004 + world);
 choice.forEach((o, i) => {
   const optionsProp = prop(o, 'options')!;
   const optionArray = optionsProp.getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression);
@@ -64,7 +68,7 @@ choice.forEach((o, i) => {
   prop(o, 'answer')!.setInitializer(String(choiceTargets[i]));
 });
 
-const comparisonTargets = targets(comparison.length, 2, 424242);
+const comparisonTargets = targets(comparison.length, 2, 424242 + world);
 comparison.forEach((o, i) => {
   if (answerOf(o) === comparisonTargets[i]) return;
   const a = prop(o, 'a')!.getInitializer()!.getText();
@@ -75,4 +79,4 @@ comparison.forEach((o, i) => {
 });
 
 file.saveSync();
-console.log('rewrote src/data/quizBank/world1Quiz.ts');
+console.log(`rewrote src/data/quizBank/world${world}Quiz.ts`);

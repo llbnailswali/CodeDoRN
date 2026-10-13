@@ -277,3 +277,71 @@ export const WORLD_10_QUIZ_SETS: QuizSet[] = [
 export const WORLD_10_QUIZ_BOSS: QuizBoss = {
   id: 'w10-boss', worldId: 'world-10', title: 'Data Transformation Engine', subtitle: 'Combine collection transformations and analysis.', lessonId: 'world-10-boss',
 };
+
+export const WORLD_11_QUIZ_SETS: QuizSet[] = [
+  { id: 'w11-set-inheritance-contracts', worldId: 'world-11', title: 'Inheritance & Type Contracts', subtitle: 'Build class hierarchies and combine interface contracts.', lessonIds: ['world-11-inheritance-abstract-classes', 'world-11-interfaces-multiple-interface-implementa', 'world-11-sealed-classes-sealed-interfaces'] },
+  { id: 'w11-set-domain-nesting', worldId: 'world-11', title: 'Domain Modeling & Nested Types', subtitle: 'Model values, states, nested helpers, and owner-bound inner classes.', lessonIds: ['world-11-data-classes-in-domain-modeling-enum-cla', 'world-11-nested-classes', 'world-11-inner-classes'] },
+  { id: 'w11-set-objects-extensions', worldId: 'world-11', title: 'Objects & Extension Design', subtitle: 'Use shared objects, companion factories, and receiver-based helpers.', lessonIds: ['world-11-object-declarations', 'world-11-companion-objects', 'world-11-extension-functions'] },
+  { id: 'w11-set-delegation-api', worldId: 'world-11', title: 'Extensions, Delegation & API Design', subtitle: 'Compute views, delegate behavior, and protect public APIs.', lessonIds: ['world-11-extension-properties', 'world-11-delegation', 'world-11-delegated-properties', 'world-11-visibility-and-api-design'] },
+];
+
+export const WORLD_11_QUIZ_BOSS: QuizBoss = {
+  id: 'w11-boss', worldId: 'world-11', title: 'Domain Model Engine', subtitle: 'Combine World 11 OOP features in a maintainable domain model.', lessonId: 'world-11-boss',
+};
+
+export const WORLD_12_QUIZ_SETS: QuizSet[] = [
+  { id: 'w12-set-foundations', worldId: 'world-12', title: 'Generic Foundations', subtitle: 'Create and use generic classes, functions, and type parameters.', lessonIds: ['world-12-generic-classes', 'world-12-generic-functions', 'world-12-type-parameters'] },
+  { id: 'w12-set-constraints-consumers', worldId: 'world-12', title: 'Constraints & Consumers', subtitle: 'Apply bounds and safely pass values into consumers.', lessonIds: ['world-12-generic-constraints', 'world-12-multiple-constraints', 'world-12-in-variance'] },
+  { id: 'w12-set-variance', worldId: 'world-12', title: 'Variance Relationships', subtitle: 'Use producers, invariant containers, and declared variance.', lessonIds: ['world-12-out-variance', 'world-12-invariance', 'world-12-declaration-site-variance'] },
+  { id: 'w12-set-projections', worldId: 'world-12', title: 'Projections & Runtime Types', subtitle: 'Read and write projected types, then check reified values.', lessonIds: ['world-12-use-site-variance', 'world-12-star-projections', 'world-12-reified-type-parameters'] },
+  { id: 'w12-set-apis', worldId: 'world-12', title: 'Type-safe APIs', subtitle: 'Use aliases and build type-safe generic operations.', lessonIds: ['world-12-type-aliases', 'world-12-type-safe-generic-apis'] },
+];
+
+export const WORLD_12_QUIZ_BOSS: QuizBoss = {
+  id: 'w12-boss', worldId: 'world-12', title: 'Generic Data Toolkit', subtitle: 'Combine generic types into a safe data toolkit.', lessonId: 'world-12-boss',
+};
+
+export const WORLD_13_QUIZ_SETS: QuizSet[] = [
+  { id: 'w13-set-foundations', worldId: 'world-13', title: 'Scope Foundations', subtitle: 'Trace let, apply, and also through receivers and returned values.', lessonIds: ['world-13-let-run', 'world-13-apply', 'world-13-also'] },
+  { id: 'w13-set-context-results', worldId: 'world-13', title: 'Context and Results', subtitle: 'Use with, this and it, and the return families of scope functions.', lessonIds: ['world-13-with', 'world-13-this-vs-it', 'world-13-return-values-of-scope-functions'] },
+  { id: 'w13-set-design-composition', worldId: 'world-13', title: 'Design and Composition', subtitle: 'Choose, chain, and simplify scope functions in readable code.', lessonIds: ['world-13-choosing-the-appropriate-scope-function', 'world-13-scope-function-chaining', 'world-13-avoiding-overuse-and-nesting'] },
+];
+
+export const WORLD_13_QUIZ_BOSS: QuizBoss = {
+  id: 'w13-boss', worldId: 'world-13', title: 'Scope Configuration Pipeline', subtitle: 'Combine scope functions into a readable configuration and transformation pipeline.', lessonId: 'world-13-boss',
+};
+
+export const WORLD_14_QUIZ_SETS: QuizSet[] = [
+  { id: 'w14-set-foundations', worldId: 'world-14', title: 'Sequence Foundations', subtitle: 'Contrast eager stages with deferred, element-oriented sequence work.', lessonIds: ['world-14-what-sequences-are', 'world-14-eager-collection-processing', 'world-14-lazy-processing'] },
+  { id: 'w14-set-creation-operations', worldId: 'world-14', title: 'Creation and Operations', subtitle: 'Create sequence sources and compose lazy intermediate operations.', lessonIds: ['world-14-creating-sequences', 'world-14-assequence', 'world-14-intermediate-operations'] },
+  { id: 'w14-set-consumption-control', worldId: 'world-14', title: 'Consumption and Control', subtitle: 'Trace terminal demand, evaluation order, and short-circuiting.', lessonIds: ['world-14-terminal-operations', 'world-14-sequence-evaluation-order', 'world-14-short-circuiting'] },
+  { id: 'w14-set-design-performance', worldId: 'world-14', title: 'Design and Performance', subtitle: 'Choose collections or sequences using observable work and reuse needs.', lessonIds: ['world-14-sequences-vs-collections', 'world-14-performance-trade-offs', 'world-14-when-sequences-should-and-should-not-be-used'] },
+];
+
+export const WORLD_14_QUIZ_BOSS: QuizBoss = {
+  id: 'w14-boss', worldId: 'world-14', title: 'Large Dataset Processor', subtitle: 'Build and justify a bounded lazy-processing pipeline.', lessonId: 'world-14-boss',
+};
+
+export const WORLD_15_QUIZ_SETS: QuizSet[] = [
+  { id: 'w15-set-exception-flow', worldId: 'world-15', title: 'Exception Flow', subtitle: 'Trace risky work, matching handlers, and guaranteed cleanup.', lessonIds: ['world-15-exceptions-try', 'world-15-catch', 'world-15-finally'] },
+  { id: 'w15-set-throwing-handling', worldId: 'world-15', title: 'Throwing and Handling', subtitle: 'Throw meaningful failures, order handlers, and return fallback values.', lessonIds: ['world-15-throw', 'world-15-multiple-catch-blocks', 'world-15-try-as-an-expression'] },
+  { id: 'w15-set-failure-models', worldId: 'world-15', title: 'Failure Models', subtitle: 'Model domain failures and represent success or failure explicitly.', lessonIds: ['world-15-custom-exceptions', 'world-15-checked-vs-unchecked-exception-model', 'world-15-result'] },
+  { id: 'w15-set-result-pipelines', worldId: 'world-15', title: 'Result Pipelines', subtitle: 'Capture, transform, observe, recover, and translate failures deliberately.', lessonIds: ['world-15-runcatching', 'world-15-success-failure-handling', 'world-15-error-handling-patterns'] },
+  { id: 'w15-set-failure-design', worldId: 'world-15', title: 'Failure Design', subtitle: 'Keep failures visible and give callers useful, stable context.', lessonIds: ['world-15-avoiding-swallowed-errors', 'world-15-designing-meaningful-failure-paths'] },
+];
+
+export const WORLD_15_QUIZ_BOSS: QuizBoss = {
+  id: 'w15-boss', worldId: 'world-15', title: 'Reliable Order Engine', subtitle: 'Combine validation, domain failures, cleanup, and explicit Result handling.', lessonId: 'world-15-boss',
+};
+
+export const WORLD_16_QUIZ_SETS: QuizSet[] = [
+  { id: 'w16-set-coroutine-foundations', worldId: 'world-16', title: 'Coroutine Foundations', subtitle: 'Start owned work, await values, and compose suspending functions.', lessonIds: ['world-16-coroutine-fundamentals-coroutine-builder', 'world-16-launch-async', 'world-16-await-suspending-functions'] },
+  { id: 'w16-set-context-execution', worldId: 'world-16', title: 'Context and Execution', subtitle: 'Inherit coroutine context and distinguish dispatcher roles from Job lifecycle.', lessonIds: ['world-16-suspend-coroutine-context', 'world-16-dispatchers-jobs'] },
+  { id: 'w16-set-cancellation-ownership', worldId: 'world-16', title: 'Cancellation and Ownership', subtitle: 'Cooperate with cancellation and keep child lifetime inside structured scopes.', lessonIds: ['world-16-cancellation-cooperative-cancellation', 'world-16-structured-concurrency', 'world-16-coroutinescope'] },
+  { id: 'w16-set-supervision-failure', worldId: 'world-16', title: 'Supervision and Failure', subtitle: 'Choose ordinary or supervised failure behavior and handle exceptions deliberately.', lessonIds: ['world-16-supervisorscope', 'world-16-exception-handling-in-coroutines'] },
+  { id: 'w16-set-coroutine-design', worldId: 'world-16', title: 'Coroutine Design', subtitle: 'Apply structured ownership, explicit results, and cooperative cancellation.', lessonIds: ['world-16-coroutine-best-practices'] },
+];
+
+export const WORLD_16_QUIZ_BOSS: QuizBoss = {
+  id: 'w16-boss', worldId: 'world-16', title: 'Concurrent Task Runner', subtitle: 'Combine coroutine builders, ownership, context, cancellation, and failure policy.', lessonId: 'world-16-boss',
+};
