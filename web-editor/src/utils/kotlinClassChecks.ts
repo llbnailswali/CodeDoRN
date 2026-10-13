@@ -313,7 +313,16 @@ export function checkClassMemberRules(source: string): ClassRuleError | null {
   for (const mm of m.matchAll(/\b(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(:\s*([A-Za-z_][A-Za-z0-9_]*)[^=\n]*)?(=\s*([^\n]*))?/g)) {
     const typed = mm[3] && classNames.has(mm[3]);
     const call = mm[5] !== undefined ? /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(/.exec(mm[5]) : null;
-    if (!(typed || (call && classNames.has(call[1])))) ambiguous.add(mm[1]);
+    // `val job = Loader(this).start()` is the result of `start()`, not a Loader: only a bare constructor call names the class.
+    const wholeCall = call ? (() => {
+      let depth = 0;
+      for (let i = call[0].length - 1; i < mm[5].length; i++) {
+        if (mm[5][i] === '(') depth++;
+        else if (mm[5][i] === ')' && --depth === 0) return /^\s*(?:\/\/.*)?$/.test(mm[5].slice(i + 1));
+      }
+      return false;
+    })() : false;
+    if (!(typed || (call && wholeCall && classNames.has(call[1])))) ambiguous.add(mm[1]);
   }
   for (const mm of m.matchAll(/\bfor\s*\(\s*\(?([A-Za-z_][A-Za-z0-9_, ]*)\)?\s+in\b/g)) for (const n of mm[1].split(',')) ambiguous.add(n.trim());
   for (const mm of m.matchAll(/\{\s*([A-Za-z_][A-Za-z0-9_, ]*)\s*->/g)) for (const n of mm[1].split(',')) ambiguous.add(n.trim());

@@ -19,6 +19,7 @@ import {
   KotlinAtomicNumber,
   kotlinJoinAll,
   kotlinAwaitAll,
+  kotlinScopeReceiver,
   kotlinCoroutineContext,
   kotlinCoroutineName,
   kotlinCoroutineExceptionHandler,
@@ -31,6 +32,7 @@ import {
   kotlinRunBlocking,
   kotlinGlobalScopeLaunch,
   prepareCoroutineSource,
+  rewriteLabeledThis,
 } from './kotlinCoroutines';
 import {
   Throwable, Exception, RuntimeException, IllegalStateException, IllegalArgumentException,
@@ -3562,6 +3564,7 @@ export function transpileKotlinToJS(kotlinCode: string): string {
   // imports are not executable in the new-Function sandbox, and `suspend`
   // is modifier metadata for this deliberately synchronous teaching subset.
   // The helper's lexical scan preserves matching text in strings/comments.
+  kotlinCode = rewriteLabeledThis(kotlinCode);
   kotlinCode = prepareCoroutineSource(kotlinCode);
   kotlinCode = transpileSecondaryConstructors(hoistAnonymousObjects(transpileRichEnums(transpileDelegatesObservable(kotlinCode))));
   // a bare `apply { }` / `also { }` (an implicit `this` receiver, e.g. `fun add(x) = apply { items.add(x) }`) is `this.apply { }`
@@ -4954,7 +4957,7 @@ export async function compileAndRunKotlin(
       const __kt_runCatching = (block) => runCatching(block);
       // World 16 Lesson 1 uses a deterministic single-threaded child queue.
       // These helpers do not imply real scheduling; see kotlinCoroutines.ts.
-      const __kt_runBlocking = (block) => kotlinRunBlocking(block);
+      const __kt_runBlocking = (contextOrBlock, maybeBlock) => kotlinRunBlocking(contextOrBlock, maybeBlock);
       const __kt_coroutineScope = (block) => kotlinCoroutineScope(block);
       const __kt_supervisorScope = (block) => kotlinSupervisorScope(block);
       const __kt_CoroutineExceptionHandler = (handler) => kotlinCoroutineExceptionHandler(handler);
@@ -4985,7 +4988,8 @@ export async function compileAndRunKotlin(
       let __lastResult = undefined;
       if (typeof main === 'function') {
         try {
-          __lastResult = main();
+          // this inside runBlocking/coroutineScope lambdas is the coroutine scope (Loader(this), scope.launch { }).
+          __lastResult = main.call(kotlinScopeReceiver);
         } catch (__kt_error) {
           // Remember which Kotlin line was running (set by the line markers) for the error report.
           __kt_tag(__kt_error);
@@ -5039,6 +5043,7 @@ export async function compileAndRunKotlin(
       'KotlinAtomicNumber',
       'kotlinJoinAll',
       'kotlinAwaitAll',
+      'kotlinScopeReceiver',
       'kotlinCoroutineContext',
       'kotlinCoroutineName',
       'kotlinCoroutineExceptionHandler',
@@ -5085,6 +5090,7 @@ export async function compileAndRunKotlin(
           KotlinAtomicNumber,
           kotlinJoinAll,
           kotlinAwaitAll,
+          kotlinScopeReceiver,
           kotlinCoroutineContext,
           kotlinCoroutineName,
           kotlinCoroutineExceptionHandler,

@@ -776,7 +776,7 @@ export const SUPERVISOR_SCOPE_LESSON: FiveStageLesson = {
     fixedCode: "import kotlinx.coroutines.*\n\nfun main() = runBlocking {\n  supervisorScope {\n    val remote = async<String> {\n      throw IllegalStateException(\"offline\")\n    }\n    val cached = async {\n      \"cached\"\n    }\n    try {\n      remote.await()\n    } catch (e: IllegalStateException) {\n      println(\"offline\")\n    }\n    println(cached.await())\n  }\n}",
     expectedOutput: "offline\ncached",
     hints: ["The two results are intentionally independent.", "Catching await handles the failed Deferred, but ordinary coroutineScope still fails as a unit.", "Use supervisorScope so the cached sibling remains valid without a later scope failure."],
-    explanation: "The broken scope prints offline and cached, then propagates the child failure and prints scope failed. The supervisor version keeps the handled failure isolated and ends after cached."
+    explanation: "The broken scope prints offline, but the failed child has already cancelled the cached sibling, so the scope fails and prints scope failed. The supervisor version keeps the handled failure isolated and ends after cached."
   },
   mastered: {
     topicTitle: "supervisorScope", summary: "You can isolate independent sibling failure while preserving structured ownership and explicit error handling.", passedCount: "5 / 5 PASSED",

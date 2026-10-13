@@ -107,9 +107,9 @@ const lesson9Cases: ProgramCase[] = [
   ...lesson9.explore.cards.map((card, index) => ({ id: `lesson-9.${card.id}`, code: card.code.join('\n'), expected: ['child\nafter', 'bad\n7', 'handled', 'scope failed', 'true'][index], success: true })),
   ...lesson9.predict.questions.map((question, index) => ({ id: `lesson-9.${question.id}`, code: (question.code ?? []).join('\n'), expected: ['caught\n5', 'owned\ndone', '', '', ''][index], success: true })),
   { id: 'lesson-9.write.solution', code: lesson9.writeRun!.solutionCode, expected: 'bad\n7', success: true },
-  { id: 'lesson-9.write.starter', code: lesson9.writeRun!.initialCode, expected: 'bad\n7\nscope failed', success: true },
+  { id: 'lesson-9.write.starter', code: lesson9.writeRun!.initialCode, expected: 'bad\nscope failed', success: true },
   { id: 'lesson-9.debug.fixed', code: lesson9.debug!.fixedCode, expected: 'offline\ncached', success: true },
-  { id: 'lesson-9.debug.broken', code: lesson9.debug!.brokenCode, expected: 'offline\ncached\nscope failed', success: true },
+  { id: 'lesson-9.debug.broken', code: lesson9.debug!.brokenCode, expected: 'offline\nscope failed', success: true },
 ];
 
 // Lesson 10 was redesigned after the original handoff's content was found to
@@ -215,8 +215,8 @@ export async function verifyWorld16CoroutineLessons(): Promise<void> {
   assert.notEqual('0', lesson7.debug!.expectedOutput);
   assert.notEqual('0', lesson8.writeRun!.expectedOutput);
   assert.notEqual('pending', lesson8.debug!.expectedOutput);
-  assert.notEqual('bad\n7\nscope failed', lesson9.writeRun!.expectedOutput);
-  assert.notEqual('offline\ncached\nscope failed', lesson9.debug!.expectedOutput);
+  assert.notEqual('bad\nscope failed', lesson9.writeRun!.expectedOutput);
+  assert.notEqual('offline\nscope failed', lesson9.debug!.expectedOutput);
   assert.notEqual('', lesson10.writeRun!.expectedOutput);
   assert.notEqual('done', lesson10.debug!.expectedOutput);
   assert.notEqual('', lesson12.writeRun!.expectedOutput);

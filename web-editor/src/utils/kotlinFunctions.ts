@@ -603,7 +603,10 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     // Registering their zero-parameter blocks prevents the generic trailing-
     // lambda fallback from inventing an `it` parameter and renames calls to
     // the sandbox's __kt_-prefixed runtime functions.
-    ['runBlocking', { inline: false, params: [{ name: 'block', type: { name: 'Function', params: [], result: unknown } }], result: unknown }],
+    ['runBlocking', { inline: false, params: [
+      { name: 'context', type: { name: 'CoroutineContext' }, defaultCode: 'undefined' },
+      { name: 'block', type: { name: 'Function', params: [], result: unknown } },
+    ], result: unknown }],
     ['coroutineScope', { inline: false, params: [{ name: 'block', type: { name: 'Function', params: [], result: unknown } }], result: unknown }],
     ['supervisorScope', { inline: false, params: [{ name: 'block', type: { name: 'Function', params: [], result: unknown } }], result: unknown }],
     ['CoroutineExceptionHandler', { inline: false, params: [{ name: 'handler', type: { name: 'Function', params: [{ name: 'CoroutineContext' }, { name: 'Throwable' }], result: unit } }], result: { name: 'CoroutineContext' } }],
@@ -615,7 +618,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       { name: 'start', type: unknown, defaultCode: 'undefined' },
       { name: 'block', type: { name: 'Function', params: [], result: unknown } },
     ], result: { name: 'Deferred' } }],
-    ['delay', { inline: false, params: [{ name: 'milliseconds', type: { name: 'Int' } }], result: unit }],
+    ['delay', { inline: false, params: [{ name: 'milliseconds', type: unknown }], result: unit }],
     ['yield', { inline: false, params: [], result: unit }],
     ['ensureActive', { inline: false, params: [], result: unit }],
     ['withContext', { inline: false, params: [
@@ -726,6 +729,42 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   // renamed to their `__kt_`-prefixed runtime equivalents, and a few bare
   // keywords/literals that can appear in an expression position.
   const receiverExcludedNames = new Set(['for', 'in', 'while', 'do', 'if', 'else', 'when', 'is', 'as', 'return', 'break', 'continue', 'try', 'catch', 'finally', 'throw', 'val', 'var', 'fun', 'step', 'until', 'downTo', 'println', 'print', 'listOf', 'mutableListOf', 'arrayOf', 'setOf', 'mutableSetOf', 'mapOf', 'mutableMapOf', 'emptyList', 'Pair', 'TODO', 'true', 'false', 'null', 'it', 'this', 'super', '__kt_line']);
+  /**
+   * Inside a receiver lambda, rewrites each bare name of every `${...}` template expression that is a member of the receiver to
+   * `receiver.name`. Names after a `.`/`?.`, names inside a nested string literal, a lambda's own parameters, type-like (capitalised)
+   * names and anything `isOther` says is not a member are left alone.
+   */
+  function rewriteTemplateMembers(text: string, receiver: string, isOther: (name: string) => boolean): string {
+    let out = '';
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] !== '$' || text[i + 1] !== '{') { out += text[i]; continue; }
+      let depth = 1, k = i + 2, quoted = false;
+      for (; k < text.length && depth > 0; k++) {
+        const c = text[k];
+        if (quoted) { if (c === '\\') k++; else if (c === '"') quoted = false; continue; }
+        if (c === '"') quoted = true; else if (c === '{') depth++; else if (c === '}') depth--;
+      }
+      const expr = text.slice(i + 2, k - 1);
+      const lambdaParams = new Set<string>();
+      for (const m of expr.matchAll(/\{\s*([A-Za-z_][A-Za-z0-9_,\s]*?)\s*->/g)) m[1].split(',').forEach((n) => lambdaParams.add(n.trim()));
+      let rewritten = '';
+      const pieces = expr.split(/("(?:[^"\\]|\\.)*")/);
+      let position = 0;
+      for (const piece of pieces) {
+        if (piece.startsWith('"')) { rewritten += piece; position += piece.length; continue; }
+        rewritten += piece.replace(/(?<![\w.$])([a-z_][A-Za-z0-9_]*)\b(?!\s*->)/g, (whole, name: string, offset: number) => {
+          const before = expr.slice(0, position + offset).trimEnd();
+          if (before.endsWith('.') || before.endsWith('?.') || before.endsWith('::')) return whole;
+          if (lambdaParams.has(name) || isOther(name)) return whole;
+          return `${receiver}.${name}`;
+        });
+        position += piece.length;
+      }
+      out += '${' + rewritten + '}';
+      i = k - 1;
+    }
+    return out;
+  }
   let serial = 0;
   const child = (ctx: Context): Context => ({ ...ctx, vars: new Map(ctx.vars), frames: [...ctx.frames] });
   const frame = (kind: Frame['kind'], result?: Type, label?: string, inline = false): Frame => ({ token: `__kt_target_${++serial}`, label, kind, inline, used: false, result });
@@ -734,6 +773,10 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     if (actual.name === 'Nothing' && actual.nullable) return !!expected.nullable;
     if (actual.nullable && !expected.nullable) return false;
     if (expected.name !== actual.name) {
+      // A Deferred is a Job (`val job: Job = async { 5 }`).
+      if (expected.name === 'Job' && /^Deferred(<|$)/.test(actual.name)) return true;
+      // Combined coroutine contexts (`Dispatchers.Default + CoroutineName("x")`) are passed as a list of elements.
+      if (expected.name === 'CoroutineContext') return true;
       // General class/type checking remains with the existing runner.
       if (classes.has(expected.name) && classes.has(actual.name)) return true;
       // A user class or object may implement or extend a type from a library or from another declaration, so it is never rejected against a non-value type.
@@ -1365,9 +1408,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         .replace(/\$\{\s*this\.([A-Za-z_][A-Za-z0-9_]*)\s*\}/g, `\${${receiver}.$1}`)
         .replace(/\$\{\s*this\s*\}/g, `\${${receiver}}`)
         .replace(/\$this\b/g, `$${receiver}`)
-        // `${name}` and the first name of a longer expression (`${owner.name}`, `${total()}`)
-        .replace(/\$\{(\s*)([A-Za-z_][A-Za-z0-9_]*)(?=\s*[}.?([!])/g, (whole, space, name) => notMember(name) ? whole : `\${${space}${receiver}.${name}`)
         .replace(/\$([A-Za-z_][A-Za-z0-9_]*)\b/g, (whole, name) => notMember(name) ? whole : `\${${receiver}.${name}}`);
+      // Every receiver member named inside a `${...}` expression (`${owner.name}`, `${total()}`, `${x + y}`, `${length * 2}`).
+      body = rewriteTemplateMembers(body, receiver, notMember);
     }
     const jsParam = (p: Parameter, i: number) => destructured.has(i) ? `[${destructured.get(i)!.map((n) => (n === '_' ? '' : n)).join(', ')}]` : p.name === '_' ? `__kt_unused_${i}` : p.name;
     return `((${[...(receiver ? [receiver] : []), ...params.map(jsParam)].join(', ')}) => {\n${wrap(body, f)}\n})`;
