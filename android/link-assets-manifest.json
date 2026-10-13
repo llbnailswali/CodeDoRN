@@ -1,0 +1,45 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/JetBrainsMono-Bold.ttf",
+      "sha1": "232a94de2b5a946509245dd3194d2af39ddb2c74"
+    },
+    {
+      "path": "assets/fonts/JetBrainsMono-Medium.ttf",
+      "sha1": "698631756d8d1c68a0362f09188c2fcbddc640dd"
+    },
+    {
+      "path": "assets/fonts/JetBrainsMono-Regular.ttf",
+      "sha1": "106d8b3f35586b0a822565156a486c652da9de6b"
+    },
+    {
+      "path": "assets/fonts/JetBrainsMono-SemiBold.ttf",
+      "sha1": "5ed47060eadfdfb4dc80fef66f2ddc927a8fd625"
+    },
+    {
+      "path": "assets/fonts/Lexend-Bold.ttf",
+      "sha1": "23410c6a7cc11cb90316116114ec03421992aa2a"
+    },
+    {
+      "path": "assets/fonts/Lexend-Medium.ttf",
+      "sha1": "d6f992288998a3e474beb4f7da2da20ab8df6046"
+    },
+    {
+      "path": "assets/fonts/Lexend-Regular.ttf",
+      "sha1": "d56ffeb823de26300732bb779ec268ee121b1263"
+    },
+    {
+      "path": "assets/fonts/Lexend-SemiBold.ttf",
+      "sha1": "9a8d8d8f8c5e3ef5e3a51c20bf4ed08b24740942"
+    },
+    {
+      "path": "assets/fonts/MaterialSymbolsFilled.ttf",
+      "sha1": "5458bc66f2d590080021332f25c23f25c9273ce8"
+    },
+    {
+      "path": "assets/fonts/MaterialSymbolsOutlined.ttf",
+      "sha1": "0f5e85f183cbc9484a84073858ed9de54d487c6b"
+    }
+  ]
+}

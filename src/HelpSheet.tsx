@@ -67,8 +67,8 @@ export function HelpSheet({ p, current, onChoose, onClose }: { p: Palette; curre
 }
 
 const s = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent', justifyContent: 'flex-end', zIndex: 50 },
-  backdropTint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent', justifyContent: 'flex-end', zIndex: 50 },
+  backdropTint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.2)' },
   sheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, borderWidth: BW, borderBottomWidth: 0, padding: 20, paddingBottom: 28, gap: 12 },
   title: { fontFamily: FONT.outfit.sb, fontSize: fz(16 * MAIN), lineHeight: lh(16, 1.5), letterSpacing: -0.025 * 16 * MAIN, includeFontPadding: false },
   sub: { fontFamily: FONT.outfit.md, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.4), includeFontPadding: false },

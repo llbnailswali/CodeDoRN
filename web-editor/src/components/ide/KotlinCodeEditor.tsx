@@ -1702,17 +1702,29 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
           </div>
         </div>
         {bottomOverlay && (
-          <div className="absolute bottom-[52px] left-2 right-2 z-20" data-purpose="editor-bottom-overlay">
+          <div
+            className="absolute left-2 right-2 z-20"
+            style={{ bottom: virtualKeyboardVisible && keyboardOpen ? 52 : 'calc(52px + env(safe-area-inset-bottom, 0px))' }}
+            data-purpose="editor-bottom-overlay"
+          >
             {bottomOverlay}
           </div>
         )}
         {topOverlay && (
-          <div className="absolute bottom-2 left-[28px] z-20" data-purpose="editor-corner-overlay">
+          <div
+            className="absolute left-[28px] z-20"
+            style={{ bottom: virtualKeyboardVisible && keyboardOpen ? 8 : 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}
+            data-purpose="editor-corner-overlay"
+          >
             {topOverlay}
           </div>
         )}
         {(floatingAction || (virtualKeyboardVisible && keyboardOpen)) && (
-          <div className="absolute bottom-2 right-3 z-20 flex items-center gap-2" data-purpose="editor-floating-action">
+          <div
+            className="absolute right-3 z-20 flex items-center gap-2"
+            style={{ bottom: virtualKeyboardVisible && keyboardOpen ? 8 : 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}
+            data-purpose="editor-floating-action"
+          >
             {virtualKeyboardVisible && keyboardOpen && (
               <button
                 type="button"

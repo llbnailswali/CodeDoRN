@@ -551,11 +551,8 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       }`}
     >
       {/* ================= BEGIN: Minimal Top Toolbar (Sticky Top) ================= */}
-      {/* Safe-area padding lives on this OUTER element with no fixed height,
-          so it adds to the header's total height instead of eating into a
-          fixed h-10 box (which squished/clipped the button row on devices
-          with a real status-bar inset -- invisible in browser preview,
-          where the inset is always 0). */}
+      {/* Full-screen native presentation still leaves the toolbar below the
+          iOS status/notch area. This is the only top safe-area inset. */}
       <header
         ref={autoHideHeader.ref}
         style={autoHideHeader.style}
@@ -896,7 +893,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       {/* ================= BEGIN: Task Details Modal (Hero Scale Animation) ================= */}
       {!tryItMode && showTaskModal && (
         <div
-          className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center px-4 py-2 sm:px-6 sm:py-3 select-text ${
+          className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center px-4 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] select-text ${
             modalAnimState === 'closing'
               ? 'animate-hero-backdrop-out'
               : modalAnimState === 'opening'
@@ -908,7 +905,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
           <div
             ref={modalRef}
             style={modalAnimState === 'open' ? undefined : heroStyle}
-            className={`w-full max-w-[372px] mx-auto rounded-2xl border shadow-2xl max-h-[calc(100dvh-1rem)] flex flex-col overflow-hidden ${
+            className={`w-full max-w-[372px] mx-auto rounded-2xl border shadow-2xl max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-1rem)] flex flex-col overflow-hidden ${
               modalAnimState === 'closing'
                 ? 'animate-hero-down'
                 : modalAnimState === 'opening'

@@ -7,10 +7,8 @@ import { BW, Icon, MAIN, fz } from './shell';
 import { accentFor, lh } from './parts';
 import { QuizAnswer, QuizQuestion, correctAnswerText, gradeQuizAnswer, hasAnswer } from './quizQuestions';
 import { SAMPLE_QUIZ } from './quizSample';
-import { LESSONS } from './lessonData';
 import { ShadowStack } from './shadows';
 import { FONT, Palette } from './theme';
-import { makeKotlinExampleRunnable } from './utils/kotlinExample';
 
 // The screen a Quiz card opens (web: src/components/quiz/QuizSession.tsx, QuizQuestionScreen.tsx, QuizAnswerBodies.tsx, QuizCodePanel.tsx
 // and QuizSessionComplete.tsx): one question at a time, then a result screen. It really plays: pick an answer, "Check answer", read the
@@ -85,7 +83,7 @@ const LINE_STYLE: Record<CodeLineState, { backgroundColor: string; borderLeftCol
  * asked. React Native cannot round the background of text inside a sentence, so the sentence is laid out as wrapping words and chips. A
  * collapsed row (numberOfLines) keeps the code in the code font without a box, because that layout cannot be clamped to lines.
  */
-function RichText({ text, style, dark, numberOfLines }: { text: string; style: StyleProp<TextStyle>; dark: boolean; numberOfLines?: number }) {
+function RichText({ text, style, dark, numberOfLines, subtle = false }: { text: string; style: StyleProp<TextStyle>; dark: boolean; numberOfLines?: number; subtle?: boolean }) {
   const parts = text.replace(/\s+/g, ' ').trim().split('`');
   // Plain questions should remain one text flow. Rendering them through the
   // rich inline-code layout below puts the sentence's text fragments into a
@@ -118,8 +116,8 @@ function RichText({ text, style, dark, numberOfLines }: { text: string; style: S
         if (i % 2 === 1) {
           const spaceAfter = /^\s/.test(parts[i + 1] ?? '');
           return [
-            <View key={`c${i}`} style={{ backgroundColor: dark ? '#0D1322' : '#EEF2FF', borderRadius: 7, borderWidth: 1, borderColor: dark ? 'rgba(129,140,248,0.35)' : '#C7D2FE', paddingHorizontal: 8, paddingVertical: 2, marginRight: spaceAfter ? 5 : 0, marginVertical: 1 }}>
-              <Text style={{ fontFamily: FONT.mono.sb, fontSize: codeSize, lineHeight: (base.lineHeight ?? codeSize * 1.4) * 0.9, color: dark ? '#E2E8F0' : '#4338CA', includeFontPadding: false }}>{part}</Text>
+            <View key={`c${i}`} style={{ backgroundColor: subtle ? (dark ? 'rgba(129,140,248,0.06)' : 'rgba(99,102,241,0.06)') : (dark ? '#0D1322' : '#EEF2FF'), borderRadius: 7, borderWidth: subtle ? BW : 1, borderColor: subtle ? (dark ? 'rgba(129,140,248,0.16)' : 'rgba(99,102,241,0.16)') : (dark ? 'rgba(129,140,248,0.35)' : '#C7D2FE'), paddingHorizontal: subtle ? 5 : 8, paddingVertical: subtle ? 1 : 2, marginRight: spaceAfter ? 5 : 0, marginVertical: 1 }}>
+              <Text style={{ fontFamily: FONT.mono.sb, fontSize: codeSize, lineHeight: (base.lineHeight ?? codeSize * 1.4) * 0.9, color: subtle ? (dark ? '#CBD5E1' : '#4F566B') : (dark ? '#E2E8F0' : '#4338CA'), includeFontPadding: false }}>{part}</Text>
             </View>,
           ];
         }
@@ -372,7 +370,12 @@ function Option({
   return (
     <Pressable disabled={locked} onPress={onPress} style={[s.option, compact && s.optionCompact, surface(state, dark)]}>
       <Indicator state={state} multi={multi} compact={compact} />
-      <Text style={[mono ? s.optionMono : s.optionText, compact && s.optionTextCompact, { color: dark ? '#F1F5F9' : '#222638' }]}>{label}</Text>
+      <RichText
+        text={label}
+        style={[mono ? s.optionMono : s.optionText, compact && s.optionTextCompact, { color: dark ? '#F1F5F9' : '#222638' }]}
+        dark={dark}
+        subtle
+      />
       {tag && (
         <View style={s.tag}>
           <Icon name={tag.icon} size={compact ? 13 : 16} exact color={tagColor(state, dark)} />
@@ -563,7 +566,7 @@ function QuizToolbar({ p, world, label, question, topInset, step, total, checked
       : { bg: dark ? 'rgba(245,158,11,0.18)' : '#FEF3C7', fg: dark ? '#FCD34D' : '#B45309' };
   return (
     <View style={{ paddingTop: topInset, backgroundColor: bg, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: dark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
-      <View style={{ height: 6 }} />
+      <View style={{ height: 1 }} />
       <View style={[s.header, { paddingRight: 0, paddingTop: 0 }]}> 
         <Pressable onPress={onClose} style={[s.closeBtn, dark ? { borderColor: 'rgba(255,255,255,0.15)', backgroundColor: '#121826' } : { borderColor: '#CBD5E1', backgroundColor: '#FFFFFF' }]}>
           <Icon name="close" size={20} exact color={dark ? '#E2E8F0' : '#334155'} />
@@ -608,18 +611,12 @@ function QuestionScreen({
   value: QuizAnswer;
   checked: boolean;
   onDraftChange: (answer: QuizAnswer, isChecked: boolean) => void;
-  onScrollRef: (ref: ScrollView | null) => void;
+  onScrollRef: (ref: any) => void;
 }) {
   const dark = p.isDark;
   const [hintOpen, setHintOpen] = React.useState(false);
 
   const correct = checked && gradeQuizAnswer(q, value);
-  const runnableCode = 'code' in q ? q.code : undefined;
-  const runnableLesson = runnableCode?.length ? Object.values(LESSONS).find((item) => item.id === q.lessonId) : undefined;
-  const stageRunner = NativeModules.WebStage;
-  const playCode = runnableCode?.length && runnableLesson && typeof stageRunner?.open === 'function' ? () => {
-    void stageRunner.open(runnableLesson.key, 'writeRun', dark, false, true, makeKotlinExampleRunnable(runnableCode)).catch(() => {});
-  } : undefined;
   const bg = dark ? '#0B0F19' : '#F3F4F8';
   const title = dark ? '#F8FAFC' : '#1C2033';
   const muted = dark ? '#94A3B8' : '#64748B';
@@ -638,10 +635,6 @@ function QuestionScreen({
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <RichText text={q.question} style={[s.question, { color: title, flex: 1 }]} dark={dark} />
-            {playCode && <Pressable onPress={playCode} accessibilityRole="button" accessibilityLabel="Play this code in Write and Run" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 2, paddingHorizontal: 10, height: 30, borderRadius: 16, backgroundColor: dark ? '#4338CA' : '#4F46E5' }}>
-              <Svg width={15} height={15} viewBox="0 0 24 24"><Path d="M8 5v14l11-7z" fill="#FFFFFF" /></Svg>
-              <Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(12), color: '#FFFFFF', includeFontPadding: false }}>Play</Text>
-            </Pressable>}
           </View>
           {q.type === 'multi_select' && (
             <View style={[s.selectedPill, { backgroundColor: dark ? 'rgba(99,102,241,0.2)' : '#E0E7FF' }]}>
@@ -914,7 +907,7 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
   const draftsRef = React.useRef(drafts);
   const activeIndexRef = React.useRef(startIndex);
   const pagerRef = React.useRef<PagerView | null>(null);
-  const questionScrollRefs = React.useRef<Array<ScrollView | null>>([]);
+  const questionScrollRefs = React.useRef<Array<any>>([]);
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [confirmLeave, setConfirmLeave] = React.useState(false);
   const [sessionQuestions, setSessionQuestions] = React.useState(questions);
@@ -1017,7 +1010,7 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
         ref={pagerRef}
         style={{ flex: 1 }}
         initialPage={startIndex}
-        onPageSelected={(event) => handlePageSelected(event.nativeEvent.position)}
+        onPageSelected={(event: any) => handlePageSelected(event.nativeEvent.position)}
         overScrollMode="never"
         offscreenPageLimit={1}
         orientation="horizontal"
@@ -1190,7 +1183,7 @@ const s = StyleSheet.create({
   quizActionDisabled: { shadowOpacity: 0.25, elevation: 2 },
   quizActionText: { fontSize: fz(16 * MAIN), lineHeight: lh(16, 1.4) },
   // leave dialog
-  leaveOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end', padding: 16, zIndex: 20 },
+  leaveOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end', padding: 16, zIndex: 20 },
   leaveCard: { width: '100%', borderRadius: 16, padding: 20, gap: 12 },
   leaveTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(18 * MAIN), lineHeight: lh(18, 1.5556), includeFontPadding: false },
   leaveBtn: { height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

@@ -264,7 +264,7 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
                 </View>
               </Pressable>
             </Step>
-          ) : null
+          ) : undefined
         }
       />
       {confirmReset && (
@@ -299,7 +299,7 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
 
 const s = StyleSheet.create({
   toolbar: { borderBottomWidth: BW, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.14, shadowRadius: 3 },
-  toolbarInner: { minHeight: 64, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toolbarInner: { paddingHorizontal: 16, paddingTop: 1, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
   back: { width: 38, height: 38, borderRadius: 12, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },
   kicker: { fontFamily: FONT.mono.b, fontSize: fz(10), letterSpacing: 0.8, includeFontPadding: false },
   heading: { fontFamily: FONT.outfit.b, fontSize: fz(18), lineHeight: lh(18, 1.35), includeFontPadding: false },
@@ -309,7 +309,7 @@ const s = StyleSheet.create({
   statsCaption: { flex: 1, fontFamily: FONT.body, fontSize: fz(13), lineHeight: lh(13, 1.4), paddingBottom: 6, includeFontPadding: false },
   pctBadge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 6 },
   pctText: { fontFamily: FONT.mono.b, fontSize: fz(14), lineHeight: lh(14, 1.2), includeFontPadding: false },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end', zIndex: 20 },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end', zIndex: 20 },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: BW, borderBottomWidth: 0, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, gap: 12 },
   sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
   sheetText: { fontFamily: FONT.body, fontSize: fz(13), lineHeight: lh(13, 1.45), includeFontPadding: false },

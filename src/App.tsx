@@ -1,6 +1,7 @@
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, LayoutAnimation, Platform, StatusBar, StyleSheet, Text, UIManager, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurriculumScreen } from './CurriculumScreen';
 import { HomeListContent } from './HomeListScreen';
 import { LessonScreen } from './LessonScreen';
@@ -44,6 +45,7 @@ function Placeholder({ label, dark }: { label: string; dark: boolean }) {
 }
 
 export function App({ dark = true }: { dark?: boolean }) {
+  const safeAreaInsets = useSafeAreaInsets();
   const [isDark, setIsDark] = React.useState(dark);
   const [themeLoaded, setThemeLoaded] = React.useState(false);
   const [tab, setTab] = React.useState<TabId>('learn');
@@ -98,7 +100,12 @@ export function App({ dark = true }: { dark?: boolean }) {
   // The lesson being played (the five-stage screen, full screen over everything).
   const [lesson, setLesson] = React.useState<{ world: number; title: string } | null>(null);
   const p = isDark ? DARK : LIGHT;
-  const topInset = StatusBar.currentHeight ?? 24;
+  // Android exposes the status-bar height directly, while iOS safe areas vary
+  // by device (notch, Dynamic Island, landscape). Every full-screen route uses
+  // this shared inset for its header, so keep it tied to the live device value.
+  const topInset = Platform.OS === 'android'
+    ? Math.max(StatusBar.currentHeight ?? 0, safeAreaInsets.top)
+    : safeAreaInsets.top;
 
   React.useEffect(() => {
     AsyncStorage.getItem(THEME_STORAGE_KEY).then((saved) => {
@@ -246,8 +253,8 @@ export function App({ dark = true }: { dark?: boolean }) {
     setTaskWorld({ order, mode: activity, single: true });
   }, [openQuizCard]);
   const show = (id: TabId) => visitedTabs.has(id)
-    ? { ...StyleSheet.absoluteFillObject, opacity: tab === id ? 1 : 0, zIndex: tab === id ? 1 : 0 }
-    : { ...StyleSheet.absoluteFillObject, opacity: 0, zIndex: -1 };
+    ? { ...StyleSheet.absoluteFill, opacity: tab === id ? 1 : 0, zIndex: tab === id ? 1 : 0 }
+    : { ...StyleSheet.absoluteFill, opacity: 0, zIndex: -1 };
 
   // Full-screen screens sit on top of the ones below them. A covered screen is switched to display: none, so Android neither lays it out
   // nor draws it on every frame (the Home journey alone is hundreds of views plus a large SVG), while its state and scroll position stay.
@@ -257,7 +264,7 @@ export function App({ dark = true }: { dark?: boolean }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: p.page }}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={{ flex: 1, display: baseCovered ? 'none' : 'flex' }}>
       <Header
         p={p}

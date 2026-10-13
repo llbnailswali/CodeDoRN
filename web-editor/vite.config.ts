@@ -5,6 +5,10 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // The iOS editor is loaded from WebStageAssets/index.html via a file URL.
+    // Relative output paths keep scripts, styles and lazy chunks inside that
+    // bundled directory instead of resolving them against file:///assets.
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

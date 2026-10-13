@@ -31,6 +31,18 @@ export const navShadows = (dark: boolean): ShadowSpec[] =>
     ? [{ dy: -8, blur: 24, rgb: '0,0,0', alpha: 0.7 }]
     : [{ dy: -6, blur: 16, rgb: '0,0,0', alpha: 0.04 }, { dy: -2, blur: 8, rgb: '255,255,255', alpha: 0.85 }];
 
+// Material Symbols ligature lookup is reliable on Android but not on iOS.
+// Use the font's codepoints so the same icon is rendered on both platforms.
+const MATERIAL_SYMBOL_CODEPOINTS: Record<string, number> = {
+  add: 0xe145, arrow_back: 0xe5c4, arrow_forward: 0xe5c8, assignment_turned_in: 0xe862,
+  auto_stories: 0xe0c3, autorenew: 0xe863, bug_report: 0xe868, check: 0xe5ca,
+  check_circle: 0xe86c, chevron_right: 0xe5cc, close: 0xe5cd, code: 0xe86f,
+  error: 0xe000, expand_more: 0xe5cf, fast_forward: 0xe01f, info: 0xe88e,
+  insights: 0xf092, lightbulb: 0xe90f, lock: 0xe897, military_tech: 0xea3b,
+  play_arrow: 0xe037, psychology: 0xea4b, refresh: 0xe5d5, remove: 0xe15b,
+  replay: 0xe042, rocket_launch: 0xeb9b, school: 0xe80c, terminal: 0xeb8e, tune: 0xe429, person: 0xe7fd,
+};
+
 /**
  * A Material Symbols glyph. In the web every icon renders at 24px whatever its text-[Npx] class says (the unlayered
  * `.material-symbols-outlined { font-size: 24px }` in index.css beats Tailwind's utilities), so `size` is ignored on purpose.
@@ -40,7 +52,7 @@ export function Icon({ name, color, size, exact, filled }: { name: string; size?
   const px = exact && size ? size : 24;
   return (
     <Text style={{ fontFamily: filled ? FONT.iconsFilled : FONT.icons, fontSize: fz(px), lineHeight: px, color, includeFontPadding: false }}>
-      {name}
+      {MATERIAL_SYMBOL_CODEPOINTS[name] ? String.fromCodePoint(MATERIAL_SYMBOL_CODEPOINTS[name]) : name}
     </Text>
   );
 }
@@ -155,7 +167,7 @@ export function BottomNav({ p, active: activeTab = 'learn', onSelect }: { p: Pal
 
 const s = StyleSheet.create({
   // header
-  headerInner: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  headerInner: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logoBox: { width: 40, height: 40, borderRadius: 12, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontFamily: FONT.outfit.xb, fontSize: fz(16), lineHeight: 24, includeFontPadding: false },

@@ -739,7 +739,7 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
       {/* ================= Hero-Animated Task Modal ================= */}
       {showTaskModal && (
         <div
-          className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center px-4 py-2 sm:px-6 sm:py-3 select-text ${
+          className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center px-4 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] select-text ${
             modalAnimState === 'closing'
               ? 'animate-hero-backdrop-out'
               : modalAnimState === 'opening'
@@ -751,7 +751,7 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
           <div
             ref={modalRef}
             style={modalAnimState === 'open' ? undefined : heroStyle}
-            className={`w-full max-w-[372px] mx-auto rounded-2xl border shadow-2xl max-h-[calc(100dvh-1rem)] flex flex-col overflow-hidden ${
+            className={`w-full max-w-[372px] mx-auto rounded-2xl border shadow-2xl max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-1rem)] flex flex-col overflow-hidden ${
               modalAnimState === 'closing'
                 ? 'animate-hero-down'
                 : modalAnimState === 'opening'

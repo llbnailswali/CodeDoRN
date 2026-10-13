@@ -204,9 +204,9 @@ export type WorldActivity = 'quiz' | 'writeRun' | 'debug';
 export type ActivityPosition = 'midLeft' | 'center' | 'midRight';
 
 export type Anchors = {
-  box: (order: number) => (el: View | null) => void;
-  top: (order: number) => (el: View | null) => void;
-  activity: (order: number, activity: WorldActivity) => (el: View | null) => void;
+  box: (order: number) => (el: any) => void;
+  top: (order: number) => (el: any) => void;
+  activity: (order: number, activity: WorldActivity) => (el: any) => void;
 };
 
 export const WORLD_ACTIVITIES: Array<{ id: WorldActivity; label: string; icon: string; dark: string; light: string }> = [
@@ -739,7 +739,7 @@ const s = StyleSheet.create({
   // marginRight -3: slack so a line that is a hair wider than the card is never wrapped-and-clipped (Android measures it as 1 line).
   currentSub: { marginRight: -3, fontFamily: FONT.body, fontSize: fz(12 * MAIN), lineHeight: 16.5 * MAIN, marginTop: 4, includeFontPadding: false },
   cta: { height: 44, width: '100%', borderRadius: 12, overflow: 'hidden' },
-  ctaContent: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  ctaContent: { ...StyleSheet.absoluteFill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   ctaText: { fontFamily: FONT.outfit.sb, fontSize: fz(14 * MAIN), lineHeight: 20 * MAIN, color: '#FFFFFF', includeFontPadding: false },
   // boss node and final card
   bossBox: { width: 48, height: 48, borderRadius: 16, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },

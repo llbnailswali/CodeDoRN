@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 // Visual tokens copied from the web Home (Tailwind classes in src/components/Home.tsx, Header.tsx, Navigation.tsx).
 export interface Palette {
   isDark: boolean;
@@ -77,8 +79,9 @@ export const FONT = {
   jakarta: { md: 'Lexend-Medium', sb: 'Lexend-SemiBold', b: 'Lexend-Bold' },
   body: 'Lexend-Regular',
   mono: { r: 'JetBrainsMono-Regular', md: 'JetBrainsMono-Medium', sb: 'JetBrainsMono-SemiBold', b: 'JetBrainsMono-Bold' },
-  icons: 'MaterialSymbolsOutlined',
-  iconsFilled: 'MaterialSymbolsFilled',
+  // iOS resolves the internal font family name; Android resolves the asset filename.
+  icons: Platform.OS === 'ios' ? 'MaterialSymbolsOutlined-Regular' : 'MaterialSymbolsOutlined',
+  iconsFilled: Platform.OS === 'ios' ? 'MaterialSymbolsOutlinedFilled-Regular' : 'MaterialSymbolsFilled',
 };
 
 /** Tailwind colour families used by the per-world node styling (50 / 200 / 400 / 500 / 700 / 950). */

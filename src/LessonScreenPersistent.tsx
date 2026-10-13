@@ -443,7 +443,7 @@ function IndicatorRail({
   status?: (idx: number) => 'correct' | 'wrong' | 'locked' | null;
   onLayoutBar?: (h: number) => void;
 }) {
-  const ref = React.useRef<ScrollView>(null);
+  const ref = React.useRef<any>(null);
   const xs = React.useRef<number[]>([]);
   const width = React.useRef(0);
   React.useEffect(() => {
@@ -556,7 +556,7 @@ export function LessonScreenPersistent({
   const [answers, setAnswers] = React.useState<Record<number, string>>({});
   const [skipOpen, setSkipOpen] = React.useState(false);
 
-  const scrollRef = React.useRef<ScrollView>(null);
+  const scrollRef = React.useRef<any>(null);
   const stageOpacity = React.useRef(new Animated.Value(1)).current;
   const scrollY = React.useRef(0);
   // Explore and Predict: the toolbar overlaps the content. Scrolling down hides it, scrolling up shows it again at once.
@@ -610,7 +610,7 @@ export function LessonScreenPersistent({
   const savedScroll = React.useRef<Partial<Record<StageKey, number>>>({});
   const cardTops = React.useRef<number[]>([]);
   const cardHeights = React.useRef<number[]>([]);
-  const cardRefs = React.useRef<Array<View | null>>([]);
+  const cardRefs = React.useRef<Array<any>>([]);
   const settleTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardsY = React.useRef(0);
   const barH = React.useRef(44);
@@ -1019,11 +1019,11 @@ export function LessonScreenPersistent({
         'learn-body',
         <View style={{ minHeight: 480 }}>
           <View style={{ paddingTop: 4, marginBottom: 8, paddingHorizontal: 10 }}>
-            <HighlightedLearnText text={learn.title} terms={learnHighlightTerms} dark={dark} style={heading(dark, 24, { lineHeight: lh(24, 1.3333), marginBottom: 6 })} />
+            <HighlightedLearnText text={learn.title} terms={learnHighlightTerms} dark={dark} style={heading(dark, 16, { lineHeight: lh(16, 1.4), marginBottom: 6 })} />
           </View>
           {learnReveal >= 1 && (
             <RevealedItem animate={learnReveal === 1} onLayout={() => onLearnItemLayout(1)}>
-              <HighlightedLearnText text={learn.subtitle} terms={learnHighlightTerms} dark={dark} style={{ fontFamily: FONT.body, fontSize: px(15), lineHeight: lh(15, 1.625), color: t.body, marginTop: 4, marginBottom: 12, paddingHorizontal: 10, includeFontPadding: false }} />
+              <HighlightedLearnText text={learn.subtitle} terms={learnHighlightTerms} dark={dark} style={{ fontFamily: FONT.body, fontSize: px(13), lineHeight: lh(13, 1.55), color: t.body, marginTop: 4, marginBottom: 12, paddingHorizontal: 10, includeFontPadding: false }} />
             </RevealedItem>
           )}
           {learnReveal >= 2 && (
