@@ -2,7 +2,7 @@
 
 Goal: any program a learner writes for a topic should run in the CodeDo editor and print what **real kotlinc** prints. We fix
 **topics** (families of everyday operations), not single programs. Started after two long ChatGPT "all worlds" programs showed that
-fixing one program at a time is the wrong unit. Last updated after the second round (Worlds 6, 7, 10, 13, 15 topics), 2026-10.
+fixing one program at a time is the wrong unit. Last updated after the World 9 lambdas / higher-order functions audit, 2026-10-14.
 
 ## How the audit works
 
@@ -53,20 +53,21 @@ We cannot support everything, so: **never be wrong or confusing**.
 | builders (13: StringBuilder, buildString/buildList, scope functions) | 24/25 | DONE, 1 known limit (`sb[i]`) |
 | functions (5) (default/named args, vararg + spread, recursion, local functions, Pair returns, overloads, higher-order basics) | 57/57 | DONE |
 | classes/OOP (8, 11) (classes, ctors/secondary ctors, init, accessors with `field`, companion, data/enum (members, constant bodies, companion)/interface/abstract/sealed, `object`, anonymous objects, operator overloading, `lazy`/`observable`/`vetoable`, lateinit, generics-in-classes basics) | 90/90 | DONE (in gate) |
-| generics (12), lambdas (9), sequences (14), coroutines (16) | no topic cases yet | write cases first |
+| lambdas (9) (callable types, closures, references, anonymous functions, local/non-local returns, inline modifiers, collection callbacks) | 60/60 | DONE (in gate), no new known limits |
+| sequences (14), generics (12), coroutines (16) | no topic cases yet | write cases first |
 
-885 cases in 15 topics are replayed by `npm run test:topic-coverage` (in `check:all`). kotlinc error agreement: 93.7%, no false rejections.
+945 cases in 16 topics are replayed by `npm run test:topic-coverage` (in `check:all`). kotlinc error agreement: 93.7%, no false rejections.
 
 
-## Tier progress (2026-10-11)
+## Tier progress (2026-10-14)
 
-- **Tier 1:** done for Worlds 1-8, 10, 11, 13, 15 (15 topics, 885 cases). NOT done: Worlds 9, 12, 14, 16, 17.
+- **Tier 1:** done for Worlds 1-11, 13, 15 (16 topics, 945 replayed cases). NOT done: Worlds 12, 14, 16, 17.
 - **Tier 2:** no dedicated sweep; only extras that surfaced while auditing the done topics were added.
 - **Tier 3 ("not supported" message):** done for Flow, Java I/O, kotlinx.serialization. Not confirmed for threads/timing, reflection, Java time/net, exact Long beyond 2^53.
 
 ## Next steps (in order)
 
-1. Worlds 12 (generics), 9 (lambdas / higher-order), 14 (sequences), 16 (coroutines basics). Write cases first, then audit.
+1. World 14 (sequences), then World 12 (generics), then World 16 (coroutines basics). Write cases first, then audit. These were not started in the World 9 audit.
 2. Run the two big ChatGPT-style programs again as end-to-end checks (banking and food-delivery are described in PITFALLS; the food
    program was last stopped at `toTypedArray`, which now exists, so it is worth re-running).
 3. Re-check the Tier 2 list below only if a topic needs it.
@@ -76,7 +77,7 @@ We cannot support everything, so: **never be wrong or confusing**.
 - A whole Double inside a generic CLASS (type parameter `T` holding 46000.0) prints without `.0` (`Success(value=46000)` for `Success<T>(46000.0)`):
   JS has no Int/Double at runtime. Fixed statically for List/Set/Map literals and their common operations, declared Double data class
   properties, and typed println/templates; NOT for a generic class's type parameter or a collection nested in another container.
-- A function with a block body and no `return` still yields `undefined` (prints `null`), not `Unit`; `println`/`print`/`assert` do return Unit.
+- Fixed in World 9: block-body functions, anonymous functions, empty/assignment-only lambdas and Unit-typed callbacks return `kotlin.Unit`; bare early returns do too. A silent main does not display its Unit return value.
 - Int `++`/`--` and compound `+=` on an Int do not wrap at 32 bits (only `+ - *` in expressions do).
 
 ## Where the code is
@@ -102,8 +103,18 @@ We cannot support everything, so: **never be wrong or confusing**.
 3. A fix to shared lowering can break an unrelated world: always run `check:all`, both Explore audits and `compare:errors`.
 4. Reproduce first with the audit/kotlinc, pin the case, then fix; the real compiler is the authority.
 
+## World 9 verification (2026-10-14)
+
+- 60 deterministic executable cases, including four unchanged Boss quiz seeds; 60/60 match real kotlinc.
+- Nine negative cases in `scripts/topic-coverage/lambda-errors.ts` are included in `compare:errors`: wrong arity, missing/extra argument,
+  argument/result type mismatch, forbidden return, wrong label, and unsafe nullable invocation. All nine agree with kotlinc.
+- Error comparison: 6153/6565 scored programs (93.7%), zero false rejections, no baseline regressions; 546 compiler-crash cases skipped
+  by the existing harness. The saved baseline was not changed.
+- No quiz answers or generated native data changed. No known limits added. Generic-class Double printing and Int compound overflow remain open.
+
 ## Uncommitted state
 
-Nothing from these rounds is committed (large diff across `web-editor/src/utils/*`, `scripts/*`, `package.json`, `PITFALLS.md`,
-this file). `android/app/src/main/java/com/codedorn/MainApplication.kt` also shows as modified; that change (debug server host
-`localhost:8081`) was NOT made by this work. Decide whether to commit before starting the next round.
+The World 9 audit changes are uncommitted, as requested. The previous rounds' engine changes are already in the checkout's HEAD;
+the old claim that all rounds and an Android debug-host edit were pending was stale. This audit started with unrelated documentation,
+World 1 quiz edits, staged concept-map deletions, and spreadsheet files; those were preserved. See the task's final changed-file list
+for the files belonging to this audit. Do not treat the entire working tree as this task's diff.

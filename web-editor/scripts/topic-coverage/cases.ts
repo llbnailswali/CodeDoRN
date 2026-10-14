@@ -323,6 +323,75 @@ export const TOPICS: Record<string, { worlds: string; cases: string[] }> = {
       "class Op(val n: Int) {\n    fun apply(a: Int, b: Int) = a + b + n\n}\nfun main() {\n    val o = Op(1)\n    println(\"${o.apply(3, 4)}\")\n}",
     ],
   },
+  lambdas: {
+    worlds: '9',
+    cases: [
+      "val double = { number: Int -> number * 2 }\nprintln(double(6))",
+      "val f: (Int) -> Int = { it + 3 }\nprintln(f(2))\nprintln(f.invoke(5))",
+      "val f = { a: Int, b: Int -> a + b }\nprintln(f(3, 7))",
+      "val f = { \"PONG\" }\nprintln(f())",
+      "val f = { x: Int ->\n val bonus = x * 2\n println(bonus)\n bonus + 1\n}\nprintln(f(4))",
+      "val f: (String, Int) -> String = { text, count -> text.repeat(count) }\nprintln(f(\"a\", 3))",
+      "val f: (String, Int) -> Int = { _, n -> n + 1 }\nprintln(f(\"ignored\", 6))",
+      "val f: () -> Unit = { println(\"action\") }\nprintln(f())",
+      "var hits = 0\nval f: () -> Unit = { hits += 1 }\nprintln(f())\nprintln(hits)",
+      "val f: () -> Unit = { 42 }\nprintln(f())",
+      "val f: ((Int) -> Int)? = null\nprintln(f?.invoke(3) ?: -1)",
+      "val f: ((Int) -> Int)? = { it * 3 }\nprintln(f?.invoke(4))",
+      "val f: (Int) -> String? = { if (it > 0) \"yes\" else null }\nprintln(f(0))\nprintln(f(1))",
+      "typealias Transform = (Int) -> Int\nfun main() {\n val f: Transform = { it + 2 }\n println(f(3))\n}",
+      "fun apply(n: Int, op: (Int) -> Int): Int = op(n)\nprintln(apply(4, { it + 1 }))\nprintln(apply(4) { it * 2 })",
+      "fun twice(action: () -> Unit) { action(); action() }\ntwice { println(\"tick\") }",
+      "fun makeAdder(n: Int): (Int) -> Int { return { it + n } }\nval f = makeAdder(5)\nprintln(f(8))",
+      "fun counter(): () -> Int {\n var n = 0\n return { n += 1; n }\n}\nval a = counter()\nval b = counter()\nprintln(a())\nprintln(a())\nprintln(b())",
+      "var factor = 2\nval f = { n: Int -> n * factor }\nprintln(f(5))\nfactor = 3\nprintln(f(5))",
+      "val fs: List<(Int) -> Int> = listOf({ it + 1 }, { it * 2 })\nprintln(fs[0](4))\nprintln(fs[1].invoke(4))",
+      "val fs: Map<String, (Int) -> Int> = mapOf(\"inc\" to { n: Int -> n + 1 })\nprintln(fs[\"inc\"]?.invoke(4))",
+      "fun double(n: Int): Int = n * 2\nval f: (Int) -> Int = ::double\nprintln(f(4))\nprintln(listOf(1, 2).map(::double))",
+      "println(listOf(\"a\", \"three\").map(String::length))",
+      "class Meter(val offset: Int) { fun read(n: Int): Int = offset + n }\nval meter = Meter(5)\nval f = meter::read\nprintln(f(2))",
+      "class Meter(val offset: Int) { fun read(n: Int): Int = offset + n }\nval f: (Meter, Int) -> Int = Meter::read\nprintln(f(Meter(5), 2))",
+      "class Ticket(val code: Int)\nval f: (Int) -> Ticket = ::Ticket\nprintln(f(42).code)",
+      "val f = fun(n: Int): Int { if (n < 0) return 0; return n + 2 }\nprintln(f(-4))\nprintln(f(5))\nprintln(\"done\")",
+      "val f = fun(n: Int): Int = n * n\nprintln(f(6))",
+      "val f: (String) -> String = fun(word) = \"[\" + word + \"]\"\nprintln(f(\"sun\"))",
+      "println(listOf(1, 2, 3, 4).filter(fun(n: Int): Boolean { return n % 2 == 0 }))",
+      "listOf(1, 2, 3).forEach { if (it == 2) return@forEach; println(it) }\nprintln(\"done\")",
+      "val f: (Int) -> Int = charge@ { n -> if (n < 5) return@charge 0; 12 }\nprintln(f(3))\nprintln(f(8))",
+      "fun find(): Int {\n listOf(1, 2, 3).forEach { if (it == 2) return it }\n return -1\n}\nprintln(find())",
+      "inline fun execute(action: () -> Unit) { action() }\nfun answer(): Int { execute { return 9 }; return 0 }\nfun main() { println(answer()) }",
+      "inline fun keep(noinline op: (Int) -> Int): (Int) -> Int = op\nfun main() { println(keep { it + 1 }(4)) }",
+      "inline fun wrapped(crossinline action: () -> Unit) { val task = { action() }; task() }\nfun main() { wrapped { println(\"safe\") } }",
+      "println(listOf(2, 3).map { outer -> listOf(10, 20).map { outer + it } })",
+      "println(listOf(1, 2, 3).map { it * 2 }.filter { it > 2 })",
+      "println(listOf(1, 2, 3).fold(10) { acc, n -> acc + n })",
+      "println(listOf(1, 2, 3).reduce { acc, n -> acc * n })",
+      "println(listOf(1, 2, 3).any { it > 2 })\nprintln(listOf(1, 2, 3).all { it > 0 })\nprintln(listOf(1, 2, 3).count { it % 2 == 1 })",
+      "println(listOf(\"bbb\", \"a\", \"cc\").sortedBy { it.length })",
+      "println(listOf(1, 2, 3, 4).groupBy { it % 2 })",
+      "println(listOf(1, 2, 3).sumOf { it * 2 })",
+      "val f: String.(Int) -> String = { n -> this + n }\nprintln(\"Box-\".f(4))",
+      "val f: (Int) -> String = { n -> when(n) {\n 0 -> \"none\"\n 1 -> \"one\"\n else -> \"many\"\n} }\nprintln(f(0))\nprintln(f(3))",
+      "val f = { n: Int -> if (n > 0) \"positive\" else \"other\" }\nprintln(f(2))\nprintln(f(0))",
+      "var n = 0\nval a = { n += 2 }\nval b = { n += 3 }\na(); b(); a()\nprintln(n)",
+      "fun compose(a: (Int) -> Int, b: (Int) -> Int): (Int) -> Int = { b(a(it)) }\nval f = compose({ it + 2 }, { it * 3 })\nprintln(f(4))",
+      "val f = fun() { println(\"action\") }\nprintln(f())",
+      "fun action() { println(\"action\") }\nval f: () -> Unit = ::action\nprintln(f())",
+      // Quiz seed: w9q-boss-4 (unchanged executable snippet).
+      "fun shout(text: String): String = text + \"!\"\nfun format(name: String, style: (String) -> String): String = style(name)\nfun main() {\n  println(format(\"Ana\", ::shout))\n  println(format(\"Bo\") {\n    it + \"?\"\n  })\n}",
+      // Quiz seed: w9q-boss-6 (unchanged executable snippet).
+      "fun main() {\n  val describe = { n: Int ->\n    val label = if (n % 2 == 0) \"even\" else \"odd\"\n    label + n\n  }\n  println(describe(4))\n  println(describe(7))\n}",
+      // Quiz seed: w9q-boss-8 (unchanged executable snippet).
+      "fun main() {\n  listOf(1, 2, 3, 4).forEach {\n    if (it % 2 == 0) return@forEach\n    println(it)\n  }\n  println(\"done\")\n}",
+      // Quiz seed: w9q-boss-12 (unchanged executable snippet).
+      "fun makeScaler(factor: Int): (Int) -> Int = {\n  it * factor\n}\nfun applyAll(values: List<Int>, op: (Int) -> Int): List<Int> {\n  val result = mutableListOf<Int>()\n  for (v in values) {\n    result.add(op(v))\n  }\n  return result\n}\nfun main() {\n  val triple = makeScaler(3)\n  println(applyAll(listOf(1, 2, 3), triple))\n  println(applyAll(listOf(1, 2, 3)) {\n    it + triple(1)\n  })\n}",
+      "val f = { }\nprintln(f())",
+      "var n = 0\nval f = { n += 1 }\nprintln(f())\nprintln(n)",
+      "fun action(stop: Boolean) { if (stop) return; println(\"work\") }\nprintln(action(true))\nprintln(action(false))",
+      "class Item(val price: Int)\nval f: (Item) -> Int = Item::price\nprintln(f(Item(7)))",
+      "val fs: Map<String, (Int, Int) -> Int> = mapOf(\"add\" to { a: Int, b: Int -> a + b })\nprintln(fs[\"add\"]?.invoke(3, 4))",
+    ],
+  },
   collectionsTyped: {
     worlds: '6, 10',
     cases: [
@@ -380,7 +449,7 @@ export const TOPICS: Record<string, { worlds: string; cases: string[] }> = {
  * Topics whose every case matches real kotlinc: `npm run test:topic-coverage` replays the stored kotlinc outputs
  * (expected.json, written by `npm run audit:topic-coverage -- --write-expected`) for exactly these topics.
  */
-export const DONE_TOPICS = ['strings', 'chars', 'numbers', 'ranges', 'decisions', 'arrays', 'lists', 'sets', 'maps', 'collectionsTyped', 'nulls', 'exceptions', 'builders', 'functions', 'classes'];
+export const DONE_TOPICS = ['strings', 'chars', 'numbers', 'ranges', 'decisions', 'arrays', 'lists', 'sets', 'maps', 'collectionsTyped', 'nulls', 'exceptions', 'builders', 'functions', 'classes', 'lambdas'];
 
 /** Cases that differ from kotlinc ON PURPOSE, with the reason. Everything else in a DONE topic must match. */
 export const KNOWN_LIMITS: Record<string, string> = {

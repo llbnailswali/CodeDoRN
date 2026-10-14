@@ -6,6 +6,7 @@
 import { AVAILABLE_FIVE_STAGE_LESSONS } from '../src/data/lessonStagesData';
 import fs from 'node:fs';
 import path from 'node:path';
+import { makeKotlinExampleRunnable } from '../../src/utils/kotlinExample';
 import { compileAndRunKotlin } from '../src/utils/kotlinRunner';
 
 // Cards whose output came from real kotlinc because the simulator cannot reproduce it (see scripts/minikotlin/real-only-outputs.json).
@@ -25,8 +26,7 @@ for (const lesson of Object.values(AVAILABLE_FIVE_STAGE_LESSONS)) {
     withOutput++;
     const ro = realOnly[`${lesson.id}/${c.id}`];
     if (ro) { if (JSON.stringify(ro.output) !== JSON.stringify(c.output)) bad.push(`${lesson.id}/${c.id}: stored output differs from real-only-outputs.json`); realOnlyChecked++; continue; }
-    const f = c.code.join('\n');
-    const r = await compileAndRunKotlin(f.includes('fun main(') ? f : `fun main() {\n${f}\n}`);
+    const r = await compileAndRunKotlin(makeKotlinExampleRunnable(c.code));
     if (!r.success) bad.push(`${lesson.id}/${c.id}: does not run: ${r.error?.message}`);
     else if (norm(r.output) !== c.output.join('\n')) bad.push(`${lesson.id}/${c.id}: stored ${JSON.stringify(c.output.join('\n'))} but prints ${JSON.stringify(norm(r.output))}`);
   }

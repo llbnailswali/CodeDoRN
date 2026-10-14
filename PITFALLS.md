@@ -3210,3 +3210,35 @@ Still open (found while testing these, both older than this fix): `this@ClassNam
 fails with a JS syntax error; a string literal nested inside a template inside a receiver lambda
 (`"ab".run { "${if (length > 1) "long" else "short"}" }`) is mangled (`__kt_receiver_3.long`), while the same template outside a
 receiver lambda works.
+
+
+## World 9 topic audit: Unit callable results were JavaScript undefined or assignment values
+
+Pinned with real kotlinc in the `lambdas` topic: `println(f())` printed `null` for a Unit-typed callback, an empty lambda,
+an anonymous block-body function, and a reference to a block-body function. An inferred lambda ending in `n += 1` returned
+that assignment's numeric JS value instead of Unit. `valueBody` now treats assignments as statements and returns the Unit singleton
+for empty/statement/Unit bodies; function-frame fallthrough and bare returns also return Unit. Ordinary value results stay intact.
+The output fallback must suppress a returned Unit when there is no stdout: otherwise every silent main displays `kotlin.Unit`.
+Both Explore audits and the real-compiler error comparison caught this integration regression. Generic-class Double formatting and
+Int compound overflow are still unfixed; this change does not address either.
+
+## World 9 topic audit: callable types nested in map annotations escaped lowering
+
+`Map<String, (Int) -> Int>` and `Map<String, (Int, Int) -> Int>` survived as raw Kotlin declarations and failed with a JS syntax error.
+Declaration scanning stopped at the generic comma, and type parsing mistook a nested function arrow for the outer type's arrow.
+Scan the complete annotation with balanced generic delimiters, recognize only a top-level function arrow, and erase nested callable
+annotations in emitted declarations while retaining the original static type in the lowering context. Pinned map callbacks are invoked
+with `?.invoke`; typed list callbacks are also covered. Do not weaken these cases to untyped declarations.
+
+## World 9 topic audit: property references were called as methods
+
+`listOf("a", "three").map(String::length)` attempted `receiver.length(...)` and crashed. Callable-reference lowering now distinguishes
+String length and statically known class properties from methods, reading the property when the reference is invoked. Both unbound
+`String::length` and `Item::price` are pinned, alongside bound/unbound methods and constructor references. This is callable property
+access, not reflection support.
+
+## Explore output audit: imports must stay outside the generated main
+
+The output audit wrapped a declaration-only Delegates example's import inside `fun main`, producing `Unexpected import`, while the
+actual Try it path ran correctly. It now uses the same `makeKotlinExampleRunnable` helper as Try it, preserving file-scope directives.
+No lesson, quiz, stored card output, or generated native copy was changed to satisfy the audit.

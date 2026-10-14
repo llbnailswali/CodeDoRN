@@ -202,7 +202,14 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     if (a >= b) return unknown;
     if (at(b - 1) === '?' && top(a, b, '->') < 0) return { ...readType(a, b - 1), nullable: true };
     if (at(a) === '(' && pairs.get(a) === b - 1) return readType(a + 1, b - 1);
-    const arrow = top(a, b, '->');
+    // An arrow inside a generic argument belongs to that argument, not the outer type.
+    let arrow = -1, angle = 0;
+    for (let k = a; k < b; k++) {
+      if (at(k) === '<') angle++;
+      if (at(k) === '>') angle--;
+      if (at(k) === '->' && angle === 0) { arrow = k; break; }
+      if (pairs.has(k) && pairs.get(k)! > k) k = pairs.get(k)!;
+    }
     if (arrow >= 0) {
       let open = a; let receiver: Type | undefined;
       if (at(a) !== '(') {
@@ -1233,6 +1240,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     return unknown;
   }
   function wrap(body: string, f: Frame): string {
+    // Kotlin callable fallthrough returns the Unit singleton, never JS undefined.
+    if (f.result?.name === 'Unit') body += '\nreturn Unit;';
     if (!f.used) return body;
     return `\nconst ${f.token} = {};\ntry {\n${body}\n} catch (__kt_jump) {\nif (__kt_jump && __kt_jump.__kt_target === ${f.token}) { return __kt_jump.value; }\nthrow __kt_jump;\n}\n`;
   }
@@ -1293,7 +1302,8 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
     const last = parts.pop()!;
     let output = parts.map(([x, y]) => lower(x, y, ctx) + ';').join('\n');
     const [x, y] = last;
-    const statement = ['return', 'throw', 'val', 'var', 'for', 'while', 'if'].includes(at(x));
+    const statement = ['return', 'throw', 'val', 'var', 'for', 'while', 'if'].includes(at(x))
+      || ['=', '+=', '-=', '*=', '/=', '%='].some(op => top(x, y, op) >= 0);
     const code = lower(x, y, ctx, expected);
     output += `\n${statement ? code : wrap(code)};`;
     return output;
@@ -1334,7 +1344,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
   }
   function valueBody(a: number, b: number, ctx: Context, expected?: Type): string {
     const parts = statements(a, b);
-    if (!parts.length) { check(expected, unit, a); return ''; }
+    if (!parts.length) { check(expected, unit, a); return 'return Unit;'; }
     const last = parts.pop()!;
     let output = parts.map(([x, y]) => lower(x, y, ctx) + ';').join('\n');
     const [x, y] = last;
@@ -1357,11 +1367,13 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
       const { text: tryText } = renderTry(x, ctx, { expected, asValue: true });
       return output + '\n' + tryText;
     }
-    const statement = ['return', 'throw', 'val', 'var', 'for', 'while', 'if'].includes(at(x));
+    const statement = ['return', 'throw', 'val', 'var', 'for', 'while', 'if'].includes(at(x))
+      || ['=', '+=', '-=', '*=', '/=', '%='].some(op => top(x, y, op) >= 0);
     const actual = statement ? unit : infer(x, y, ctx);
     if (!statement && expected?.name !== 'Unit') check(expected, actual, x);
     const code = lower(x, y, ctx, expected);
     output += `\n${statement || expected?.name === 'Unit' ? code : 'return ' + code};`;
+    if (statement || expected?.name === 'Unit') output += '\nreturn Unit;';
     return output;
   }
   function lambda(a: number, b: number, ctx: Context, expected?: Type, label?: string, allowed = false): string {
@@ -1928,7 +1940,19 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         }
       }
       if (['val', 'var'].includes(at(i)) && !constructorParamTokens.has(i) && isName(at(i + 1))) {
-        const end = expressionEnd(i + 2, b);
+        let initializer = i + 2;
+        if (at(initializer) === ':') {
+          // Type annotations may contain commas and nested callable types.
+          let angle = 0;
+          for (initializer++; initializer < b; initializer++) {
+            if (at(initializer) === '<') angle++;
+            if (at(initializer) === '>') angle--;
+            if (angle === 0 && ['=', ';', '}'].includes(at(initializer))) break;
+            if (newline(initializer - 1, initializer) && angle === 0) break;
+            if (pairs.has(initializer) && pairs.get(initializer)! > initializer) initializer = pairs.get(initializer)!;
+          }
+        }
+        const end = expressionEnd(at(initializer) === '=' ? initializer + 1 : i + 2, b);
         const eq = top(i + 2, end, '=');
         const colon = at(i + 2) === ':' ? i + 2 : -1;
         const declared = colon >= 0 ? readType(colon + 1, eq < 0 ? end : eq) : undefined;
@@ -1947,7 +1971,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           const rhs = lower(eq + 1, end, ctx, declared);
           if (!['{', 'fun'].includes(at(eq + 1))) check(declared, infer(eq + 1, end, ctx), eq + 1);
           ctx.vars.set(name, inferred);
-          emit(i, end, `${at(i)} ${name}${declared ? ': ' + (declared.name === 'Function' ? 'Function' : declared.name) : ''} = ${rhs}`);
+          emit(i, end, `${at(i)} ${name}${declared ? ': ' + (declared.name === 'Function' ? 'Function' : declared.name.includes('->') ? declared.name.split('<')[0] : declared.name) : ''} = ${rhs}`);
           i = end - 1; continue;
         }
       }
@@ -2004,7 +2028,7 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
         }
         let end = newline(start - 1, start) ? start : expressionEnd(start, b);
         const actual = infer(start, end, ctx); check(target.result, actual, start < end ? start : i); // kotlinc marks the returned expression
-        const value = start < end ? lower(start, end, ctx, target.result) : 'undefined';
+        const value = start < end ? lower(start, end, ctx, target.result) : 'Unit';
         if (target === ctx.frames.at(-1) && target.kind === 'function') emit(i, end, `return ${value}`);
         else { target.used = true; emit(i, end, `throw { __kt_target: ${target.token}, value: ${value} }`); }
         i = end - 1; continue;
@@ -2027,7 +2051,9 @@ export function lowerKotlinFunctions(source: string, options: LowerOptions = {})
           const name = at(ref + 1);
           const unbound = ref === i + 1 && (classes.has(at(i)) || ['String', 'Int', 'Double', 'Boolean'].includes(at(i)));
           const extension = functions.get(name)?.receiver;
-          const member = extension ? `__kt_extension_${name}(__kt_receiver, ...__kt_args)` : ['plus', 'minus', 'times', 'div'].includes(name)
+          const receiverType = unbound ? at(i) : infer(i, ref, ctx).name;
+          const property = (receiverType === 'String' && name === 'length') || classProps.get(receiverType)?.has(name);
+          const member = property ? `__kt_receiver.${name}` : extension ? `__kt_extension_${name}(__kt_receiver, ...__kt_args)` : ['plus', 'minus', 'times', 'div'].includes(name)
             ? `(__kt_receiver ${({ plus: '+', minus: '-', times: '*', div: '/' } as Record<string, string>)[name]} __kt_args[0])`
             : `__kt_receiver.${name}(...__kt_args)`;
           const replacement = unbound ? `((__kt_receiver, ...__kt_args) => ${member})`

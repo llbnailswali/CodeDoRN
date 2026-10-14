@@ -4,6 +4,7 @@
  */
 import { AVAILABLE_FIVE_STAGE_LESSONS } from '../../src/data/lessonStagesData';
 import { PRACTICE_DEBUG_BANK, PRACTICE_WRITE_RUN_BANK } from '../../src/data/practiceBank';
+import { LAMBDA_ERRORS } from '../topic-coverage/lambda-errors';
 import { OPERATORS, applyEdit, lineOf, maskStringsAndComments, rng } from './mutations';
 
 export interface Program { id: string; op: string; code: string; baseId: string; world: number; mutation?: { line: number; desc: string; before: string; after: string } }
@@ -49,6 +50,9 @@ export function buildPrograms(opts: { seed: number; perOp: number; genericPerOp:
     for (let i = candidates.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [candidates[i], candidates[j]] = [candidates[j], candidates[i]]; }
     const seen = new Set<string>();
     for (const c of candidates) { if (seen.has(c.code)) continue; seen.add(c.code); programs.push(c); if (seen.size >= (op.generic ? opts.genericPerOp : opts.perOp)) break; }
+  }
+  if (!opts.worlds?.length || opts.worlds.includes(9)) {
+    for (const { name, code } of LAMBDA_ERRORS) programs.push({ id: `world-9:lambdas:${name}`, op: 'lambda-errors', code, baseId: name, world: 9 });
   }
   return programs;
 }
