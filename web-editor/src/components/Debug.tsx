@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Stage5DebugData } from '../data/lessonStagesData';
 import { soundFX } from '../utils/audio';
 import { useBackClosesOverlay } from '../utils/overlayBack';
-import { compileAndRunKotlin, KotlinExecutionResult } from '../utils/kotlinRunner';
+import { compileAndRunWithFallback, KotlinExecutionResult } from '../utils/kotlinRunner';
 import { applySolutionPreservingComments } from '../utils/applySolution';
 import { renderVisibleWhitespace } from '../utils/outputDisplay';
 
@@ -118,7 +118,7 @@ export const Debug: React.FC<DebugStageProps> = ({
     setExecutionResult(null);
 
     try {
-      const result = await compileAndRunKotlin(code, {
+      const result = await compileAndRunWithFallback(code, {
         expectedOutput: data.expectedOutput,
       });
       setExecutionResult(result);

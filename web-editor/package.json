@@ -21,6 +21,8 @@
     "test:program-gaps": "tsx scripts/test-program-gaps.ts",
     "audit:topic-coverage": "tsx scripts/audit-topic-coverage.ts",
     "test:topic-coverage": "tsx scripts/test-topic-coverage.ts",
+    "test:online-fallback": "tsx scripts/test-online-fallback.ts",
+    "test:fix-formatting": "tsx scripts/test-fix-formatting.ts",
     "test:class-rules": "tsx scripts/test-class-rules.ts",
     "test:error-span": "tsx scripts/test-error-span.ts",
     "test:smart-cast": "tsx scripts/test-smart-cast-stability.ts",

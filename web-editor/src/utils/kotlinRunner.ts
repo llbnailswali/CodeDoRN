@@ -1,4 +1,5 @@
 import { checkClassMemberRules } from './kotlinClassChecks';
+import { runOnlineKotlin, onlineFallbackAvailable } from './onlineKotlin';
 import { prepareKotlinSource, scanKotlin, KotlinSourceError, NESTED_QUOTE } from './kotlinSource';
 import { hoistNestedDeclarations } from './kotlinNestedClasses';
 import { KotlinIndexedValue, KotlinList, KotlinMapEntry, KotlinPair, KotlinRange, KotlinSequence, makeRange, outOfBounds } from './kotlinCollections';
@@ -75,6 +76,8 @@ export interface KotlinExecutionResult {
   error?: KotlinDiagnostic;
   executionTimeMs: number;
   exitCode: number;
+  /** Which engine produced this result. Absent means the in-app simulator; 'online-kotlin' means the online fallback (real kotlinc). */
+  engine?: 'online-kotlin';
 }
 
 interface VarDeclaration {
@@ -4830,7 +4833,7 @@ export async function compileAndRunKotlin(
   };
 
   // Kotlin's `Unit` written as a value (`return Unit`, a lambda ending in `Unit`) prints as kotlin.Unit. A function that merely returns
-  // nothing still yields JS undefined, printed as null (see PITFALLS.md: the simulator can't print `Unit` it never sees).
+  // nothing returns this singleton through the callable lowerer as well.
   // Unit has no members: reading one gives undefined, exactly what a value-less `println(...)` used to give, so misuse such as
   // `println(1).name.uppercase()` is reported on the member that does not exist.
   const __kt_Unit: any = new Proxy(Object.freeze({ toString: () => 'kotlin.Unit', equals: (other: unknown) => other === __kt_Unit }), {
@@ -5181,7 +5184,7 @@ export async function compileAndRunKotlin(
   }
 
   const elapsed = Math.max(1, Math.round(performance.now() - startTime));
-  const finalOutput = stdout.length > 0 ? stdout.join('\n') : returnValue !== undefined ? String(returnValue) : '';
+  const finalOutput = stdout.length > 0 ? stdout.join('\n') : returnValue !== undefined && returnValue !== __kt_Unit ? String(returnValue) : '';
 
   // Validate output against expected output if defined
   const expectedTarget = options?.expectedOutput ?? options?.testCase?.expected;
@@ -5293,6 +5296,27 @@ function applyInputSwaps(code: string, inputSwaps: HardcodeCheck['inputSwaps']):
   return mutated;
 }
 
+/**
+ * The simulator's run, with an online fallback: when the simulator's own result is a failure (engine gap, compile/run error, or a wrong
+ * output), the same program is run by real Kotlin online and THAT answer is returned instead (marked `engine: 'online-kotlin'`), so a
+ * simulator gap never blocks a learner and a correct program can still pass. If the online service is unavailable the simulator's
+ * result is returned unchanged. Never calls the network outside a browser/WebView (see onlineKotlin.ts).
+ */
+export async function compileAndRunWithFallback(
+  code: string,
+  options?: { testCase?: { call?: string; expected?: string }; expectedOutput?: string; timeoutMs?: number }
+): Promise<KotlinExecutionResult> {
+  const result = await compileAndRunKotlin(code, options);
+  if (result.success || result.error?.type === 'hardcoded_output' || !code.trim() || !onlineFallbackAvailable()) return result;
+  // A lesson that grades a function call has no main(): give the online compiler one that prints the call.
+  const call = options?.testCase?.call;
+  const needsMain = !!call && !/\bfun\s+main\s*\(/.test(code);
+  const onlineCode = needsMain ? `${code}\n\nfun main() {\n    println(${call})\n}\n` : code;
+  const expected = options?.expectedOutput ?? options?.testCase?.expected;
+  const online = await runOnlineKotlin(onlineCode, expected);
+  return online ?? result;
+}
+
 export async function runKotlinCode(
   code: string,
   expectedOutput?: string,
@@ -5310,7 +5334,7 @@ export async function runKotlinCode(
     }
   }
 
-  const result = await compileAndRunKotlin(code, {
+  const result = await compileAndRunWithFallback(code, {
     expectedOutput,
     testCase,
   });
@@ -5324,7 +5348,7 @@ export async function runKotlinCode(
   const mutatedCode = applyInputSwaps(code, hardcodeCheck.inputSwaps);
   if (mutatedCode === null) return result;
 
-  const mutatedResult = await compileAndRunKotlin(mutatedCode, {
+  const mutatedResult = await compileAndRunWithFallback(mutatedCode, {
     expectedOutput: hardcodeCheck.alternateExpectedOutput,
   });
   if (mutatedResult.success) return result;

@@ -3,7 +3,7 @@ import { Bug } from 'lucide-react';
 import { Stage5DebugData } from '../data/lessonStagesData';
 import { soundFX } from '../utils/audio';
 import { deriveTaskSymbols } from '../utils/editorLogic';
-import { compileAndRunKotlin, KotlinExecutionResult } from '../utils/kotlinRunner';
+import { compileAndRunKotlin, compileAndRunWithFallback, KotlinExecutionResult } from '../utils/kotlinRunner';
 import { applySolutionPreservingComments } from '../utils/applySolution';
 import { renderVisibleWhitespace, renderTaskText } from '../utils/outputDisplay';
 import { KotlinCodeEditor, KotlinCodeEditorHandle } from './ide/KotlinCodeEditor';
@@ -12,9 +12,7 @@ import { useAutoHideHeader } from '../utils/useAutoHideHeader';
 import { ExpectedOutputChip } from './ide/ExpectedOutputChip';
 import { CompileErrorBar } from './ide/CompileErrorBar';
 import { RunButtons } from './ide/RunButtons';
-import { suggestFix } from '../utils/compileFixes';
-import { runWithRealKotlin } from '../utils/realKotlin';
-import { runWithMinikotlin } from '../utils/minikotlinRun';
+import { runWithOnlineKotlin } from '../utils/onlineKotlin';
 import { useLongPress } from '../utils/useLongPress';
 import { useBackClosesOverlay, useBackGuard } from '../utils/overlayBack';
 import { useStageVisible } from '../utils/stageVisibility';
@@ -291,30 +289,15 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
   };
 
   const compileErrorSpan = resolveErrorSpan(userCode, executionResult?.error);
-  const compileFix = React.useMemo(() => suggestFix(userCode, executionResult?.error), [userCode, executionResult]);
 
-  // Same display as a normal run, but the code goes to the real Kotlin compiler (dev server). It never completes the exercise.
-  const [realRunning, setRealRunning] = useState(false);
-  const [miniRunning, setMiniRunning] = useState(false);
-  const handleRealExecute = async () => {
-    if (realRunning) return;
+  const [onlineRunning, setOnlineRunning] = useState(false);
+  // JetBrains' online Kotlin compiler (real kotlinc). Same display, never completes the task.
+  const handleOnlineExecute = async () => {
+    if (onlineRunning) return;
     soundFX.playClick();
-    setRealRunning(true);
-    const res = await runWithRealKotlin(userCode, data.expectedOutput);
-    setRealRunning(false);
-    setExecutionResult(res);
-    setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
-    if (res.success) soundFX.playSuccess();
-    else soundFX.playError();
-  };
-
-  // minikotlin.run (WebAssembly compiler in a worker): a comparison engine. Same display, never completes the task.
-  const handleMiniExecute = async () => {
-    if (miniRunning) return;
-    soundFX.playClick();
-    setMiniRunning(true);
-    const res = await runWithMinikotlin(userCode, data.expectedOutput);
-    setMiniRunning(false);
+    setOnlineRunning(true);
+    const res = await runWithOnlineKotlin(userCode, data.expectedOutput);
+    setOnlineRunning(false);
     setExecutionResult(res);
     setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
     if (res.success) soundFX.playSuccess();
@@ -327,7 +310,7 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
     setIsTesting(true);
 
     try {
-      const result = await compileAndRunKotlin(userCode, {
+      const result = await compileAndRunWithFallback(userCode, {
         expectedOutput: data.expectedOutput,
       });
 
@@ -655,7 +638,6 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
               line={executionResult.error.line}
               message={executionResult.error.message}
               isDark={isDark}
-              fix={compileFix ? { label: compileFix.label, onApply: () => { soundFX.playClick(); editorRef.current?.replaceCode(compileFix.code, compileFix.caret); } } : null}
             />
           ) : undefined
         }
@@ -667,10 +649,8 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
               showRun
               runDisabled={isTesting}
               runHandlers={runButtonLongPress}
-              onRealRun={handleRealExecute}
-              realRunning={realRunning}
-              onMiniRun={handleMiniExecute}
-              miniRunning={miniRunning}
+              onOnlineRun={handleOnlineExecute}
+              onlineRunning={onlineRunning}
             />
             <CopyCodeButton code={userCode} isDark={isDark} />
           </>
@@ -1002,6 +982,14 @@ export const DebugIde: React.FC<DebugIdeProps> = ({
                 <span className={`text-slate-500 font-mono text-[10.5px]`}>
                   {executionResult.executionTimeMs}ms
                 </span>
+                {executionResult.engine === 'online-kotlin' && (
+                  <span
+                    title="The editor could not run this program, so it was checked by real Kotlin online."
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${isDark ? 'border-sky-700/50 text-sky-300 bg-sky-950/60' : 'border-sky-300 text-sky-700 bg-sky-50'}`}
+                  >
+                    Real Kotlin (online)
+                  </span>
+                )}
               </div>
               <button
                 type="button"

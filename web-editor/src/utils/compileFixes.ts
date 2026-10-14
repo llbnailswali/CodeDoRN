@@ -24,6 +24,24 @@ function lineStartOffset(code: string, line: number): number {
   return offset;
 }
 
+/** The leading whitespace of the line that holds the innermost still-open `{` before `offset` (so a closing brace can line up with it). */
+function openerIndent(code: string, offset: number): string {
+  const masked = maskStringsAndComments(code).slice(0, offset);
+  const open: number[] = [];
+  const partner: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
+  for (let i = 0; i < masked.length; i++) {
+    const c = masked[i];
+    if (c === '(' || c === '[' || c === '{') open.push(i);
+    else if (c === ')' || c === ']' || c === '}') {
+      while (open.length && masked[open[open.length - 1]] !== partner[c]) open.pop();
+      open.pop();
+    }
+  }
+  const brace = [...open].reverse().find((i) => masked[i] === '{');
+  if (brace === undefined) return /^[ \t]*/.exec(code.slice(code.lastIndexOf('\n', offset - 1) + 1))![0];
+  return /^[ \t]*/.exec(code.slice(code.lastIndexOf('\n', brace - 1) + 1))![0];
+}
+
 /** Edit distance for "did you mean": insert, delete, replace, or swap two neighbouring letters (a very common typo) each cost 1. */
 export function distance(a: string, b: string): number {
   const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
@@ -59,6 +77,24 @@ export function suggestFix(code: string, error: KotlinDiagnostic | null | undefi
   if (expecting && error.column !== undefined && error.line >= 1 && error.line <= lines.length) {
     const at = Math.min(error.column, lines[error.line - 1].length);
     const offset = lineStartOffset(code, error.line - 1) + at;
+    // A missing `}` goes on its own line, indented like the line that opened the block, not glued after the previous code.
+    if (expecting[1] === '}' && code.slice(offset).trim() === '') {
+      // Nothing but whitespace follows: the block ends at the very end of the file, so the brace goes on the LAST line (the compiler reports
+      // the end of the last line with code, which would put it above any blank lines or trailing indent the learner left).
+      const indent = openerIndent(code, offset);
+      const lastLineStart = code.lastIndexOf('\n') + 1;
+      if (code.slice(lastLineStart).trim() === '') {
+        const closed = code.slice(0, lastLineStart) + indent + '}';
+        const endsWithNewline = lastLineStart === code.length && code.length > 0;
+        return { label: `Add the missing }`, code: closed + (endsWithNewline ? '\n' : ''), caret: closed.length };
+      }
+      const text = '\n' + indent + '}';
+      return { label: `Add the missing }`, code: code + text, caret: code.length + text.length };
+    }
+    if (expecting[1] === '}' && lines[error.line - 1].slice(at).trim() === '') {
+      const text = '\n' + openerIndent(code, offset) + '}';
+      return { label: `Add the missing }`, code: code.slice(0, offset) + text + code.slice(offset), caret: offset + text.length };
+    }
     return { label: `Add the missing ${expecting[1]}`, code: code.slice(0, offset) + expecting[1] + code.slice(offset), caret: offset + 1 };
   }
 

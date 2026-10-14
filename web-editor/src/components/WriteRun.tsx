@@ -6,15 +6,13 @@ import { deriveTaskSymbols } from '../utils/editorLogic';
 import { runKotlinCode, KotlinExecutionResult } from '../utils/kotlinRunner';
 import { applySolutionPreservingComments } from '../utils/applySolution';
 import { renderVisibleWhitespace, renderTaskText, stripTaskMarkup } from '../utils/outputDisplay';
-import { TryItOutput } from './ide/TryItOutput';
+import { TryItOutputSheet } from './ide/TryItOutputSheet';
 import { resolveErrorSpan } from '../utils/errorSpan';
 import { useAutoHideHeader } from '../utils/useAutoHideHeader';
 import { ExpectedOutputChip } from './ide/ExpectedOutputChip';
 import { CompileErrorBar } from './ide/CompileErrorBar';
 import { RunButtons } from './ide/RunButtons';
-import { suggestFix } from '../utils/compileFixes';
-import { runWithRealKotlin } from '../utils/realKotlin';
-import { runWithMinikotlin } from '../utils/minikotlinRun';
+import { runWithOnlineKotlin } from '../utils/onlineKotlin';
 import { CopyCodeButton } from './ide/CopyCodeButton';
 import { KotlinCodeEditor, KotlinCodeEditorHandle } from './ide/KotlinCodeEditor';
 import { renderKotlinCodeLines } from '../utils/codeHighlighter';
@@ -92,6 +90,8 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   const [executionResult, setExecutionResult] = useState<KotlinExecutionResult | null>(null);
   const [tryItKeyboardVisible, setTryItKeyboardVisible] = useState(false);
   const [showOutputPanel, setShowOutputPanel] = useState<boolean>(false);
+  // Try it shows its output in a bottom sheet that opens after every run (Run, K, M or J), compile errors included.
+  const [tryItSheetOpen, setTryItSheetOpen] = useState<boolean>(false);
   const [showSolutionModal, setShowSolutionModal] = useState<boolean>(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState<boolean>(false);
 
@@ -219,6 +219,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   // Android Back closes the topmost open overlay before it navigates (see utils/overlayBack.ts).
   useBackClosesOverlay(showSolutionModal, () => setShowSolutionModal(false));
   useBackClosesOverlay(!tryItMode && showOutputPanel, () => setShowOutputPanel(false));
+  useBackClosesOverlay(tryItMode && tryItSheetOpen, () => setTryItSheetOpen(false));
   useBackClosesOverlay(showOverflowMenu, () => setShowOverflowMenu(false));
   useBackClosesOverlay(showTaskModal && modalAnimState !== 'closing', () => handleCloseTaskModal());
 
@@ -416,31 +417,23 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   };
 
   const compileErrorSpan = resolveErrorSpan(userCode, executionResult?.error);
-  const compileFix = React.useMemo(() => suggestFix(userCode, executionResult?.error), [userCode, executionResult]);
 
-  // Same display as a normal run, but the code goes to the real Kotlin compiler (dev server). It never completes the task.
-  const [realRunning, setRealRunning] = useState(false);
-  const [miniRunning, setMiniRunning] = useState(false);
-  const handleRealExecute = async () => {
-    if (realRunning) return;
-    soundFX.playClick();
-    setRealRunning(true);
-    const res = await runWithRealKotlin(userCode, tryItMode ? undefined : data.expectedOutput);
-    setRealRunning(false);
-    setExecutionResult(res);
-    setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
-    setHasRunCode(true);
-    if (res.success) soundFX.playSuccess();
-    else soundFX.playError();
-  };
+  // Try it opens its output sheet after a run, except for a located compile error: that one is shown in the slim error bar under the
+  // editor (as in Write & Run) so the underlined line stays visible instead of being covered by the sheet.
+  useEffect(() => {
+    if (tryItMode && executionResult) setTryItSheetOpen(!compileErrorSpan);
+  }, [tryItMode, executionResult]);
 
-  // minikotlin.run (WebAssembly compiler in a worker): a comparison engine. Same display, never completes the task.
-  const handleMiniExecute = async () => {
-    if (miniRunning) return;
+  const [onlineRunning, setOnlineRunning] = useState(false);
+  // The simulator run (and its online fallback, which can take a few seconds): blocks a second tap and drives the spinner.
+  const [isRunning, setIsRunning] = useState(false);
+  // JetBrains' online Kotlin compiler (real kotlinc). Same display, never completes the task.
+  const handleOnlineExecute = async () => {
+    if (onlineRunning) return;
     soundFX.playClick();
-    setMiniRunning(true);
-    const res = await runWithMinikotlin(userCode, tryItMode ? undefined : data.expectedOutput);
-    setMiniRunning(false);
+    setOnlineRunning(true);
+    const res = await runWithOnlineKotlin(userCode, tryItMode ? undefined : data.expectedOutput);
+    setOnlineRunning(false);
     setExecutionResult(res);
     setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
     setHasRunCode(true);
@@ -450,6 +443,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
 
   // Execute Kotlin Code
   const handleExecute = async () => {
+    if (isRunning) return;
     soundFX.playClick();
 
     // Prevent success if the user hasn't edited anything yet
@@ -476,9 +470,15 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
       return;
     }
 
-    const res = tryItMode
-      ? await runKotlinCode(userCode)
-      : await runKotlinCode(userCode, data.expectedOutput, data.testCase, data.hardcodeCheck);
+    setIsRunning(true);
+    let res: KotlinExecutionResult;
+    try {
+      res = tryItMode
+        ? await runKotlinCode(userCode)
+        : await runKotlinCode(userCode, data.expectedOutput, data.testCase, data.hardcodeCheck);
+    } finally {
+      setIsRunning(false);
+    }
     setExecutionResult(res);
     // A compile-time error is shown under the editor (CompileErrorBar) so its underlined line stays visible, not in the dialog.
     setShowOutputPanel(!resolveErrorSpan(userCode, res.error));
@@ -797,42 +797,36 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
             <RunButtons
               isDark={isDark}
               accent="indigo"
-              showRun={!tryItMode}
+              showRun
+              runDisabled={isRunning}
               runHandlers={runButtonLongPress}
-              onRealRun={handleRealExecute}
-              realRunning={realRunning}
-              onMiniRun={handleMiniExecute}
-              miniRunning={miniRunning}
+              onOnlineRun={handleOnlineExecute}
+              onlineRunning={onlineRunning}
             />
             <CopyCodeButton code={userCode} isDark={isDark} />
           </>
         }
-        floatingActionAboveOutput={tryItMode}
         errorSpan={compileErrorSpan}
         onScrollDirection={autoHideHeader.onScrollDirection}
         topOverlay={(!tryItMode && data.expectedOutput) ? <ExpectedOutputChip expectedOutput={data.expectedOutput} isDark={isDark} /> : undefined}
-        outputPanel={
-          tryItMode ? (
-            <TryItOutput
-              result={executionResult}
-              isDark={isDark}
-              onClear={() => setExecutionResult(null)}
-              onRun={handleExecute}
-              fix={compileFix ? { label: compileFix.label, onApply: () => { soundFX.playClick(); editorRef.current?.replaceCode(compileFix.code, compileFix.caret); } } : null}
-            />
-          ) : undefined
-        }
         bottomOverlay={
-          !tryItMode && compileErrorSpan && executionResult?.error ? (
+          compileErrorSpan && executionResult?.error ? (
             <CompileErrorBar
               line={executionResult.error.line}
               message={executionResult.error.message}
               isDark={isDark}
-              fix={compileFix ? { label: compileFix.label, onApply: () => { soundFX.playClick(); editorRef.current?.replaceCode(compileFix.code, compileFix.caret); } } : null}
             />
           ) : undefined
         }
       />
+
+      {tryItMode && tryItSheetOpen && executionResult && !compileErrorSpan && (
+        <TryItOutputSheet
+          result={executionResult}
+          isDark={isDark}
+          onClose={() => setTryItSheetOpen(false)}
+        />
+      )}
 
       {/* ================= BEGIN: Preparing Exercise Progress Animation ================= */}
       {isPreparing && !showTaskModal && (
@@ -1171,6 +1165,14 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
                 <span className={`font-mono text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {executionResult.executionTimeMs || 12}ms
                 </span>
+                {executionResult.engine === 'online-kotlin' && (
+                  <span
+                    title="The editor could not run this program, so it was checked by real Kotlin online."
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${isDark ? 'border-sky-700/50 text-sky-300 bg-sky-950/60' : 'border-sky-300 text-sky-700 bg-sky-50'}`}
+                  >
+                    Real Kotlin (online)
+                  </span>
+                )}
               </div>
             </div>
 
