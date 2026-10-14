@@ -305,7 +305,7 @@ const direct: QuizQuestion[] = [
     ms('hard', 'supervisorScope facts', 'Select the 2 true statements about `supervisorScope`.', ['A failed child does not cancel its siblings.', 'Cancelling the supervisor scope still cancels all of its children.'], ['A failed `async` child hides its exception from `await()`.', 'Its children keep running after the scope has returned.'],
       'Supervision isolates siblings but keeps ownership: cancellation still flows down, `await()` still throws, and the scope still waits for its children.',
       'Only the sideways direction changes.'),
-    er('hard', 'scope value type', ['fun main() = runBlocking {', '  val n: Int = supervisorScope {', '    launch { println("x") }', '  }', '}'], 1,
+    er('hard', 'scope value type', ['fun main() = runBlocking {', '  val n: Int = supervisorScope {', '    launch { println("x") }', '  }', '}'], 2,
       'The last expression of the block is `launch { }`, a `Job`, so the scope value is a `Job` and cannot be stored in an `Int`.',
       'What is the last expression of the block?'),
   ]),

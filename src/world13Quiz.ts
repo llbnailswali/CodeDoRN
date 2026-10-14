@@ -365,7 +365,7 @@ export const WORLD_13_QUIZ: QuizQuestion[] = [
    "}"
   ],
   "answer": 1,
-  "explanation": "`apply` returns the list. `run` returns its block result, and `add(2)` returns `true`, so the second program prints `true`.",
+  "explanation": "`apply` returns the list. `run` returns its block result, and `add(2)` returns `true`, so the `run` program prints `true`.",
   "hint": "Same block, different return family.",
   "id": "w13q-apply-6",
   "worldId": "world-13",
@@ -1768,7 +1768,7 @@ export const WORLD_13_QUIZ: QuizQuestion[] = [
    "}"
   ],
   "answer": 1,
-  "explanation": "`let` returns the String it builds. `also` throws the String away and returns the list, so the second chain prints `[1, 2]`.",
+  "explanation": "`let` returns the String it builds. `also` throws the String away and returns the list, so the `also` chain prints `[1, 2]`.",
   "hint": "Which last link returns its block result?",
   "id": "w13q-scope-function-chaining-7",
   "worldId": "world-13",
@@ -2368,7 +2368,7 @@ export const WORLD_13_QUIZ: QuizQuestion[] = [
    "}"
   ],
   "answer": 1,
-  "explanation": "In the first chain `also` logs the list before `let` prints its size. In the second, `let` turns the list into 2 before logging, so it prints `log: 2` only.",
+  "explanation": "In the `apply` chain, `also` logs the list before `let` prints its size. In the `also`-then-`let` chain, `let` turns the list into 2 before the last `also` logs, so it prints `log: 2` only.",
   "hint": "Where does the value become a number?",
   "id": "w13q-set-3-3",
   "worldId": "world-13",
@@ -2424,7 +2424,7 @@ export const WORLD_13_BOSS_QUIZ: QuizQuestion[] = [
    "with(ServerConfig()) { port = 8080 }"
   ],
   "answer": 0,
-  "explanation": "Only `apply` both makes `port` reachable without a prefix and returns the config. `run` and `with` return the assignment result, and `let` has no receiver for `port`.",
+  "explanation": "Only `apply` both makes `port` reachable without a prefix and returns the config. `run` and `with` return `Unit` (an assignment has no value), and `let` has no receiver for `port`.",
   "hint": "Receiver-style and returns the object.",
   "monoOptions": true,
   "id": "w13q-boss-1",

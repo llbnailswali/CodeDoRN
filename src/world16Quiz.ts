@@ -2146,7 +2146,7 @@ export const WORLD_16_QUIZ: QuizQuestion[] = [
    "  }",
    "}"
   ],
-  "errorLine": 1,
+  "errorLine": 2,
   "errorNote": "The last expression of the block is `launch { }`, a `Job`, so the scope value is a `Job` and cannot be stored in an `Int`.",
   "explanation": "The last expression of the block is `launch { }`, a `Job`, so the scope value is a `Job` and cannot be stored in an `Int`.",
   "hint": "What is the last expression of the block?",
