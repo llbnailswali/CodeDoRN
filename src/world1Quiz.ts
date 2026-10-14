@@ -3,8 +3,7 @@ import { formatQuizCodeQuestion, QuizQuestion } from './quizQuestions';
 import { WORLD_1_QUIZ_SETS } from './quizSets';
 
 /**
- * World 1 (Kotlin Awakening) quiz bank. Work in progress: Int & Long, Strings and String Templates are expanded (see
- * QUIZ_WORLD_1_CONCEPT_MAP.md); the other lessons still have 2-4 questions each.
+ * World 1 (Kotlin Awakening) quiz bank. Content audit complete (status: QUIZ_AND_COVERAGE_STATUS.xlsx).
  * `lessonId` and `concept` are internal tags (analytics, spreading a session across lessons); `topic` is the lesson's name, shown to
  * the learner as the question's concept tag. Program snippets use readable multiline Kotlin. Every predict_output / fill_blank answer is run through the real engine by
  * `npm run test:quiz-bank`, and the answer positions are spread so no option position dominates.

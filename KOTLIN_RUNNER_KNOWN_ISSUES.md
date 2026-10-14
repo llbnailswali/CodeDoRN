@@ -69,4 +69,4 @@ simulator output. For each runner issue, compare behavior with real `kotlinc` an
 ## Related notes
 
 - Historical discovery and surrounding context: `PITFALLS.md`.
-- World 4 quiz coverage and test caveat: `QUIZ_WORLD_4_CONCEPT_MAP.md`.
+- World 4 quiz coverage and test caveat: `QUIZ_AND_COVERAGE_STATUS.xlsx` (the old World 4 concept map is in git history).
