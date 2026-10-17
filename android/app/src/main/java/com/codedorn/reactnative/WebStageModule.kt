@@ -81,7 +81,7 @@ class WebStageModule(private val reactContext: ReactApplicationContext) : ReactC
     }
 
     @ReactMethod
-    fun open(lessonKey: String, stage: String, dark: Boolean, practice: Boolean, tryIt: Boolean, prefillCode: String?, promise: Promise) {
+    fun open(lessonKey: String, stage: String, dark: Boolean, practice: Boolean, tryIt: Boolean, prefillCode: String?, practiceHelpLevel: String?, promise: Promise) {
         val activity = reactContext.currentActivity
         if (activity == null) {
             promise.reject("no_activity", "No activity is available to open the stage.")
@@ -98,7 +98,8 @@ class WebStageModule(private val reactContext: ReactApplicationContext) : ReactC
                 .putExtra("dark", dark)
                 .putExtra("practice", practice)
                 .putExtra("tryIt", tryIt)
-                .putExtra("prefillCode", prefillCode),
+                .putExtra("prefillCode", prefillCode)
+                .putExtra("practiceHelpLevel", practiceHelpLevel),
             REQUEST,
         )
         // The stage's own WebView now keeps the engine alive; release the warm-up one shortly after it has started.

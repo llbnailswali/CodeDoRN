@@ -17,6 +17,7 @@
     "test:world14-content": "tsx scripts/test-world14-content.ts",
     "test:world15-content": "tsx scripts/test-world15-content.ts",
     "test:practice-bank": "tsx scripts/test-practice-bank.ts",
+    "test:lesson-visual": "tsx scripts/test-lesson-visual.tsx",
     "test:numeric-semantics": "tsx scripts/test-numeric-semantics.ts",
     "test:program-gaps": "tsx scripts/test-program-gaps.ts",
     "audit:topic-coverage": "tsx scripts/audit-topic-coverage.ts",
@@ -83,7 +84,8 @@
     "generate:stage-keys": "tsx scripts/generate-stage-lesson-keys.ts",
     "check:stage-keys": "tsx scripts/generate-stage-lesson-keys.ts --check",
     "audit:quiz-bank": "tsx scripts/audit-quiz-bank.ts",
-    "audit:quiz-standard": "tsx scripts/audit-quiz-standard.ts"
+    "audit:quiz-standard": "tsx scripts/audit-quiz-standard.ts",
+    "check:quiz-prompt-wording": "tsx scripts/check-quiz-prompt-wording.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",

@@ -3242,3 +3242,71 @@ access, not reflection support.
 The output audit wrapped a declaration-only Delegates example's import inside `fun main`, producing `Unexpected import`, while the
 actual Try it path ran correctly. It now uses the same `makeKotlinExampleRunnable` helper as Try it, preserving file-scope directives.
 No lesson, quiz, stored card output, or generated native copy was changed to satisfy the audit.
+
+## World 9 practice bank: two runner gaps the tasks route around (not fixed)
+
+Found while authoring the World 9 Practice bank (2026-10-15). Real kotlinc agrees with every World 9 practice program; the simulator did not in these two cases, so the tasks avoid them:
+
+- **`"text" + list` (also Set and Map) prints the raw JS value** (`"Big: " + list` gives `Big: 15,21,12`, a Set gives `[object Set]`). String templates (`"Big: $big"`) and `println(list)` print correctly. The World 9 tasks that print a collection use a string template, and their steps say so. A learner who writes `+` on a collection gets wrong output in the app although real Kotlin prints `[15, 21, 12]`.
+- **`String::length` through a variable fails** (`val words = listOf(...)` then `words.map(String::length)` gives `Unresolved reference: length`). The fix described above only covers the inline form `println(listOf(...).map(String::length))` (`topic-coverage/cases.ts`). `String::uppercase` works through a variable, so the bound-counter task uses it.
+- Two compile errors that real kotlinc reports are accepted by the simulator and print wrong output instead: a lambda ending in a bare declaration for an `Int` result prints `kotlin.Unit`, and `listOf(1, 2).map(::label)` where `label` takes two parameters prints `undefined`. The Debug tasks use variants the simulator rejects (`println` as last line, assigning `::label` to a one-parameter function type).
+
+## World 10 practice bank: runner gaps the tasks route around (not fixed)
+
+Found while authoring the World 10 Practice bank (2026-10-15); real kotlinc agrees with every program, the simulator did not:
+
+- `filterIsInstance<Int>()` is rejected ("primitive numeric distinctions are not supported"); `String`, `Boolean`, `Number` and declared classes work. The mixed-bag task filters `String` and `Boolean`.
+- `val hot = list.find { ... }` followed by `hot + 1` (a nullable `Int?` in arithmetic) is accepted instead of reported as a compile error. The find-null Debug task shows the `null` result instead.
+- `"text" + list` still prints a raw JS value (see the World 9 entry above), so every World 10 task that prints a collection uses a string template.
+
+## World 11 practice bank: runner gaps the tasks route around (not fixed)
+
+Found while authoring the World 11 Practice bank (2026-10-15); real kotlinc agrees with every program, the simulator did not:
+
+- **An interface default method with a block body is not found** (`fun twice(): String { return speak() + " " + speak() }` gives `Unresolved reference: twice`, even on `Dog().twice()`). The expression-body form `fun twice(): String = speak() + " " + speak()` works. The animal-sounds task uses the expression form.
+- **Local delegated properties fail** (`val total: Int by lazy { ... }` or `var x by Delegates.observable(...)` inside `main` gives `Unexpected token '{'`). The same declarations as class properties work, so the lazy-and-watch and age-guard tasks put them in a class.
+- **A `Delegates.vetoable` lambda with more than one statement fails** (`Unexpected identifier '__kt_line'`). A single-expression lambda works.
+- Two compile errors that real kotlinc reports are not reported: `Bank.Account(200)` on an `inner class` prints `NaN`, and `Scorer by Plain()` (a delegate that is not a constructor parameter or property) stops with an error instead of running. The Debug tasks use logic bugs that both engines run the same way.
+
+## World 12 practice bank: runner gaps the tasks route around (not fixed)
+
+Found while authoring the World 12 Practice bank (2026-10-15); real kotlinc agrees with every program, the simulator did not:
+
+- **Variance and bound violations are not reported.** `MutableList<Int>` passed as `MutableList<Number>`, `out` in a parameter position, `in` in a return position, `fun <T : Number> f(x: T)` called with a String, a call that breaks a `where` bound, and a missing `Comparable` bound on `a > b` all run. Only an invariant user-written class is checked (`Cell<Int>` passed as `Cell<Any>`, `Box<String> = Box(5)`). So the in-variance, out-variance, declaration-site and use-site Debug tasks use logic bugs (a second object instead of the shared one, a copied list) instead of compile errors.
+- **`class Cell<out T>` and `Cell<out Any>` are mis-read** (`Type mismatch: expected Cell, got Cell<Int>`), while `interface Source<out T>` and `interface Sink<in T>` work. The tasks use interfaces.
+- **An explicit type argument on a call to a user-written generic function breaks** (`twoOf<Int>(a, b)` prints `false`), and so does a nested one (`Box<List<Int>>(nums)` crashes). `listOf<Int>(...)`, `mutableListOf<String>()`, `Box<Int>(...)` work.
+- **`val x: String = pick("a", "b")`** is rejected (`expected String, got T`) while `val x = pick("a", "b")` works.
+- **An `Int` passed to a `Number` parameter of a method is rejected** (`Type mismatch: expected Number, got Int`). A checker for `Any` used as a checker for `String` works.
+- **`typealias Scores = Map<String, Int>` (two type arguments) and `inline fun <reified T>` with a loop body or `filterIsInstance<T>()` fail.** One-argument aliases and expression-body reified functions with `it is T` work.
+
+## World 13 practice bank: runner gaps the tasks route around (not fixed)
+
+Found while authoring the World 13 Practice bank (2026-10-15); real kotlinc agrees with every program, the simulator did not:
+
+- **A labelled `this` (`this@Outer.tag` inside `apply`) fails** with `Invalid or unexpected token`. No task uses it.
+- **`val len: Int = "hi".let { it.length }` is rejected** (`Type mismatch: Inferred type is not Int`) while the untyped `val len = "hi".let { it.length }` works. The also-result Debug task keeps the typed declaration only in the broken code (where real Kotlin also rejects it).
+- **Not reported as compile errors:** `with(s) { length }` on a `String?`, `val r: Int = Profile().apply { ... }` (prints `Profile@...`), `x.length` on the `Unit` result of `let { println(it) }`, and `n.let { it.length }` on a `String?` (it prints the length). `n.run { length }` on `null` fails at run time instead of compiling. The Debug tasks use the errors both engines report (`it` inside `apply`, a plain name inside `let`, `p.with { }`, a parameter hiding a property, `run` returning Unit).
+- `println(profile)` prints `Profile@<hash>`, which changes each run, so no task prints an object without a `toString`.
+
+## World 14 practice bank: runner gaps the tasks route around (not fixed)
+
+Found while authoring the World 14 Practice bank (2026-10-15); real kotlinc agrees with every program, the simulator did not:
+
+- **These Sequence operations are missing** (`Unresolved reference`): `distinct()`, `joinToString()`, `mapIndexed`, `max()` and `last()`. `filter`, `map`, `take`, `takeWhile`, `drop`, `first`, `first { }`, `find`, `any`, `count`, `count { }`, `sum`, `sorted`, `toList`, `forEach` and `generateSequence`/`sequence { yield }` work, and their evaluation order matches Kotlin (checked with println inside the lambdas).
+- The tasks print lists with string templates (see the World 9 entry) and use counters or println inside lambdas to make the evaluation order visible. None of the Debug tasks is a compile error: every bug is a logic bug with different output in both engines.
+
+## World 15 practice bank: runner gaps and a test-harness limit (not fixed)
+
+Found while authoring the World 15 Practice bank (2026-10-15); real kotlinc agrees with every program:
+
+- **No compile errors for exception code.** `throw "oops"` and `throw Oops(1)` (a class that is not a Throwable) stop at run time instead of failing to compile, `catch (e: String)` is accepted, `e.message.length` on a `String?` runs, and `val n: Int = try { ... } catch (...) { "none" }` runs. `val x: Int = runCatching { 5 }` prints `Success(5)`. So every World 15 Debug task is a logic or runtime bug (an uncaught exception, a wrong catch type, a swallowed error), not a compile error.
+- **`test-practice-bank.ts` cannot use a negative literal as the hardcode-swap value.** Its "laundered cheat" step copies only declarations whose value has no `-` before a digit, so `val total = -5` is dropped and the cheat is not caught (`laundered cheat was NOT caught`). Use a positive literal for the swapped variable.
+
+## World 16 practice bank: coroutine behaviours the simulator does not match (not fixed)
+
+Found while authoring the World 16 Practice bank (2026-10-15) by running the same programs through the simulator and through real kotlinc with kotlinx-coroutines. The simulator runs coroutines in a deterministic single-threaded queue with no timing. It matches real Kotlin for `launch`/`join`, `async`/`await`, `awaitAll`/`joinAll`, `runBlocking` return values, `suspend` functions with `delay`, `coroutineScope`, `supervisorScope`, `withContext(Dispatchers.Default/IO)`, a lazy `async`, cancelling a job before it runs, `finally` on cancel, `Job` state flags and try/catch around `await` inside `supervisorScope`. It differs in these cases, so no World 16 task relies on them:
+
+- **`delay()` timing is ignored.** Three launches with different delays print in the wrong order (`start b a c` instead of `start a b c`), and a loop that is cancelled after `delay(250)` runs all its ticks and `isCancelled` is false. Cancelling a child with `delay` inside a parent does not stop it.
+- **Not supported:** `yield()` interleaving (`a1 b1 b2 a2`, real Kotlin differs), `isActive` inside a coroutine, `withTimeoutOrNull`, `launch(start = CoroutineStart.LAZY)` (named argument rejected), and `CoroutineExceptionHandler` (the handler never prints).
+- **Exceptions:** `try { d.await() } catch` directly inside `runBlocking` prints `caught`, but real Kotlin fails the scope first. `coroutineScope` with a failing child and a sibling that prints behaves differently. `GlobalScope.launch` output and `job.cancel()` without `join()` also differ.
+- Compile error for a suspend call from a normal `main` is reported by both.

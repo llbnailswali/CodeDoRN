@@ -764,7 +764,7 @@ function ReviewChoices({ q, answer, dark }: { q: QuizQuestion; answer: QuizAnswe
   return null;
 }
 
-function ReviewMistakesScreen({ p, world, questions, answers, topInset, onTryAgain, onDone }: { p: Palette; world?: { order: number; title: string }; questions: QuizQuestion[]; /** What the learner chose for each of these questions, in the same order. */ answers: QuizAnswer[]; topInset: number; onTryAgain: () => void; onDone: () => void }) {
+function ReviewMistakesScreen({ p, world, questions, answers, topInset, bottomInset, onTryAgain, onDone }: { p: Palette; world?: { order: number; title: string }; questions: QuizQuestion[]; /** What the learner chose for each of these questions, in the same order. */ answers: QuizAnswer[]; topInset: number; bottomInset: number; onTryAgain: () => void; onDone: () => void }) {
   const dark = p.isDark;
   const [openId, setOpenId] = React.useState<string | null>(questions[0]?.id ?? null);
   const bg = dark ? '#0B0F19' : '#F3F4F8';
@@ -776,7 +776,7 @@ function ReviewMistakesScreen({ p, world, questions, answers, topInset, onTryAga
       <View style={{ flex: 1 }}><Text style={[s.worldTag, { color: dark ? '#A5B4FC' : '#4F46E5' }]}>{world ? `W${world.order} · ${world.title}` : 'QUIZ'}</Text><Text style={[s.reviewTitle, { color: title }]}>Review mistakes</Text></View>
       <Text style={[s.count, { color: title }]}>{questions.length}<Text style={{ color: muted }}> missed</Text></Text>
     </View>
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 120 }}>
+    <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 120 + bottomInset }}>
       {questions.map((q, i) => { const open = openId === q.id; return <View key={q.id} style={[s.reviewCard, { backgroundColor: dark ? '#121826' : '#FFFFFF', borderColor: open ? (dark ? '#818CF8' : '#A5B4FC') : (dark ? 'rgba(255,255,255,0.10)' : '#E2E8F0') }]}>
         <Pressable onPress={() => setOpenId(open ? null : q.id)} style={s.reviewRow}><View style={[s.reviewNumber, { backgroundColor: dark ? 'rgba(251,113,133,0.18)' : '#FFE4E6' }]}><Text style={{ color: dark ? '#FDA4AF' : '#BE123C', fontFamily: FONT.mono.b }}>{i + 1}</Text></View><RichText text={q.question} numberOfLines={open ? undefined : 2} style={[s.reviewQuestion, { color: title }]} dark={dark} /><Icon name={open ? 'expand_less' : 'expand_more'} size={20} color={muted} /></Pressable>
         {open && (
@@ -796,11 +796,11 @@ function ReviewMistakesScreen({ p, world, questions, answers, topInset, onTryAga
         )}
       </View>; })}
     </ScrollView>
-    <View style={[s.reviewFooter, { backgroundColor: bg }]}><Pressable onPress={onTryAgain} style={[s.mainBtn, { backgroundColor: '#6366F1' }]}><Icon name="replay" size={20} exact color="#FFFFFF" /><Text style={s.mainBtnText}>Try these again ({questions.length})</Text></Pressable><Pressable onPress={onDone} style={s.doneBtn}><Text style={[s.body13, { color: muted, fontFamily: FONT.outfit.b }]}>Done for now</Text></Pressable></View>
+    <View style={[s.reviewFooter, { backgroundColor: bg, paddingBottom: 24 + bottomInset }]}><Pressable onPress={onTryAgain} style={[s.mainBtn, { backgroundColor: '#6366F1' }]}><Icon name="replay" size={20} exact color="#FFFFFF" /><Text style={s.mainBtnText}>Try these again ({questions.length})</Text></Pressable><Pressable onPress={onDone} style={s.doneBtn}><Text style={[s.body13, { color: muted, fontFamily: FONT.outfit.b }]}>Done for now</Text></Pressable></View>
   </View>;
 }
 
-function CompleteScreen({ p, results, xp, topInset, onDone, onReview, nextLabel, onNext }: { p: Palette; results: Result[]; xp: number; topInset: number; onDone: () => void; onReview: () => void; nextLabel?: string; onNext?: () => void }) {
+function CompleteScreen({ p, results, xp, topInset, bottomInset, onDone, onReview, nextLabel, onNext }: { p: Palette; results: Result[]; xp: number; topInset: number; bottomInset: number; onDone: () => void; onReview: () => void; nextLabel?: string; onNext?: () => void }) {
   const dark = p.isDark;
   const total = results.length;
   const right = results.filter((r) => r === 'correct').length;
@@ -851,7 +851,7 @@ function CompleteScreen({ p, results, xp, topInset, onDone, onReview, nextLabel,
           </Text>
         )}
       </ScrollView>
-      <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 10 }}>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 24 + bottomInset, gap: 10 }}>
         {wrong > 0 && (
           <Pressable onPress={onReview} style={[s.reviewBtn, { borderColor: dark ? 'rgba(129,140,248,0.6)' : '#6366F1' }]}>
             <Icon name="replay" size={20} exact color={dark ? '#C7D2FE' : '#4338CA'} />
@@ -892,7 +892,7 @@ function getCorrectQuizAnswer(question: QuizQuestion): QuizAnswer {
   return question.answer;
 }
 
-export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, topInset, stepOffset = 0, startIndex = 0, lockedQuestionIds = [], totalOverride, onExit, onComplete, onAnswer, nextLabel, onNext }: { p: Palette; world?: { order: number; title: string }; label?: string; /** Position of a resumed quiz: questions already answered before this session. */ stepOffset?: number; /** First page to show when resuming. */ startIndex?: number; /** Previously passed pages, shown correct and kept read-only. */ lockedQuestionIds?: string[]; /** The whole quiz's length. */ totalOverride?: number; /** What to offer after the last question: the next set (label and action). */ nextLabel?: string; onNext?: () => void; /** Called as each answer is committed, so progress survives quitting midway. */ onAnswer?: (question: QuizQuestion, correct: boolean) => void; questions?: QuizQuestion[]; topInset: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
+export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, topInset, bottomInset = 0, stepOffset = 0, startIndex = 0, lockedQuestionIds = [], totalOverride, onExit, onComplete, onAnswer, nextLabel, onNext }: { p: Palette; world?: { order: number; title: string }; label?: string; /** Position of a resumed quiz: questions already answered before this session. */ stepOffset?: number; /** First page to show when resuming. */ startIndex?: number; /** Previously passed pages, shown correct and kept read-only. */ lockedQuestionIds?: string[]; /** The whole quiz's length. */ totalOverride?: number; /** What to offer after the last question: the next set (label and action). */ nextLabel?: string; onNext?: () => void; /** Called as each answer is committed, so progress survives quitting midway. */ onAnswer?: (question: QuizQuestion, correct: boolean) => void; questions?: QuizQuestion[]; topInset: number; /** Device bottom safe-area inset. */ bottomInset?: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
   const lockedIds = React.useMemo(() => new Set(lockedQuestionIds), [lockedQuestionIds]);
   const initialResults = React.useMemo(() => questions.map((question) => lockedIds.has(question.id) ? 'correct' as Result : undefined) as Result[], [questions, lockedIds]);
   const initialAnswers = React.useMemo(() => questions.map((question) => lockedIds.has(question.id) ? getCorrectQuizAnswer(question) : null), [questions, lockedIds]);
@@ -932,11 +932,11 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
     return () => subscription.remove();
   }, [reviewOpen, index, sessionQuestions.length, confirmLeave, requestClose]);
 
-  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} answers={missedAnswers} topInset={topInset} onTryAgain={() => { setSessionQuestions(missed); setPosition({ offset: 0, total: undefined }); setReviewOpen(false); setIndex(0); activeIndexRef.current = 0; setResults([]); resultsRef.current = []; setAnswers([]); answersRef.current = []; setDrafts([]); draftsRef.current = []; }} onDone={onExit} />;
+  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} answers={missedAnswers} topInset={topInset} bottomInset={bottomInset} onTryAgain={() => { setSessionQuestions(missed); setPosition({ offset: 0, total: undefined }); setReviewOpen(false); setIndex(0); activeIndexRef.current = 0; setResults([]); resultsRef.current = []; setAnswers([]); answersRef.current = []; setDrafts([]); draftsRef.current = []; }} onDone={onExit} />;
 
   if (index >= sessionQuestions.length) {
     const xp = sessionQuestions.reduce((sum, q, i) => sum + (!lockedIds.has(q.id) && results[i] === 'correct' ? q.xp : 0), 0);
-    return <CompleteScreen p={p} results={results} xp={xp} topInset={topInset} onReview={() => setReviewOpen(true)} nextLabel={nextLabel} onNext={onNext} onDone={() => { onComplete?.(sessionQuestions, results); onExit(); }} />;
+    return <CompleteScreen p={p} results={results} xp={xp} topInset={topInset} bottomInset={bottomInset} onReview={() => setReviewOpen(true)} nextLabel={nextLabel} onNext={onNext} onDone={() => { onComplete?.(sessionQuestions, results); onExit(); }} />;
   }
   const saveDraft = (questionIndex: number, answer: QuizAnswer, checked: boolean) => {
     const next = [...draftsRef.current];
@@ -1042,7 +1042,7 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#fadeUp)" />
         </Svg>
-        <View style={{ paddingHorizontal: 0, paddingTop: 12, paddingBottom: 20 }}>
+        <View style={{ paddingHorizontal: 0, paddingTop: 12, paddingBottom: 20 + bottomInset }}>
           {/* TEMPORARY: Pass / Fail test shortcut, shown in release builds too. Remove before public release. */}
           <View style={s.debugRow}>
             <Text style={[s.debugLabel, { color: dark ? '#94A3B8' : '#64748B' }]}>DEBUG</Text>
@@ -1086,7 +1086,7 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
         </View>
       </View>
       {confirmLeave && (
-        <Pressable style={s.leaveOverlay} onPress={() => setConfirmLeave(false)}>
+        <Pressable style={[s.leaveOverlay, { paddingBottom: 16 + bottomInset }]} onPress={() => setConfirmLeave(false)}>
           <Pressable style={[s.leaveCard, dark ? { backgroundColor: '#121826', borderColor: 'rgba(255,255,255,0.10)', borderWidth: BW } : { backgroundColor: '#FFFFFF' }]} onPress={() => {}}>
             <Text style={[s.leaveTitle, { color: dark ? '#F8FAFC' : '#1C2033' }]}>Leave this quiz?</Text>
             <Text style={[s.body13, { color: dark ? '#94A3B8' : '#64748B' }]}>Your answers in this session will not be saved.</Text>

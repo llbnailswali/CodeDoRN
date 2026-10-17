@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BW, Header, fz } from './shell';
 import { FONT, Palette } from './theme';
 import { CONTENT_STATS as C } from './contentStats';
@@ -8,6 +9,7 @@ import { QuizProgress, quizProgressStats } from './quizData';
 // Totals of what the app contains: worlds, lessons, the five lesson stages, the Quiz tab and the Practice tab.
 // The numbers are generated from the web lesson data (web-editor: npm run generate:native-data), so they follow the content.
 export function StatsScreen({ p, topInset, onBack, onToggleTheme, quizProgress }: { p: Palette; topInset: number; onBack: () => void; onToggleTheme: () => void; quizProgress: QuizProgress }) {
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const dark = p.isDark;
   const title = dark ? '#F1F5F9' : '#2E3040';
   const muted = dark ? '#94A3B8' : '#64748B';
@@ -16,7 +18,7 @@ export function StatsScreen({ p, topInset, onBack, onToggleTheme, quizProgress }
   const stats = React.useMemo(() => quizProgressStats(quizProgress), [quizProgress]);
   return <View style={{ flex: 1, backgroundColor: p.page }}>
     <Header p={p} title="Stats" onBack={onBack} onToggleTheme={onToggleTheme} topInset={topInset} showGap={false} />
-    <ScrollView contentContainerStyle={s.content}>
+    <ScrollView contentContainerStyle={[s.content, { paddingBottom: 40 + bottomInset }]}>
       <Group label="Your quiz progress" muted={muted}>
         <View style={s.grid}>
           <BigStat value={`${stats.answeredQuestions} / ${stats.totalQuestions}`} label="Questions answered" row={row} {...total} />

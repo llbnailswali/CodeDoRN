@@ -1,11 +1,13 @@
 import React from 'react';
 import { Animated, BackHandler, LayoutChangeEvent, Modal, NativeModules, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BW, Icon, MAIN, fz, raisedShadows } from './shell';
 import { KotlinLines } from './kotlinCode';
 import { HorizontalCodeScroll } from './HorizontalCodeScroll';
 import { makeKotlinExampleRunnable } from './utils/kotlinExample';
 import { LESSONS, LessonData } from './lessonData';
+import { LessonVisual } from './LessonVisual';
 import { CURRICULUM_WORLDS } from './curriculumData';
 import { lh } from './parts';
 import { ShadowStack } from './shadows';
@@ -24,7 +26,7 @@ const CONTINUE_LABELS: Record<StageKey, string> = {
   learn: 'Learn', explore: 'Explore', predict: 'Predict', writeRun: 'Write & Run', debug: 'Debug', mastered: 'Mastered',
 };
 
-type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: string, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null) => Promise<'continue' | 'continue_debug' | 'back'> };
+type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: string, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null, practiceHelpLevel: null) => Promise<'continue' | 'continue_debug' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
 const px = (n: number) => fz(n * MAIN);
@@ -248,6 +250,8 @@ const ExploreExampleCard = React.memo(function ExploreExampleCard({ card, dark, 
 const TOOLBAR_H = 57;
 /** Space the bottom button bar covers at the bottom of Explore and Predict. */
 const BOTTOM_BAR_H = 90;
+/** The device's bottom safe area (gesture bar, home indicator). The bottom bar, its tap strip and the scroll content all add it. */
+const BottomInsetContext = React.createContext(0);
 
 function LessonHeader({ dark, title, topInset, onBack, onToggleTheme, showBook }: { dark: boolean; title: string; topInset: number; onBack: () => void; onToggleTheme: () => void; showBook: boolean }) {
   const t = tk(dark);
@@ -319,8 +323,9 @@ function ProgressStrip({ dark, topic, stages, index, onJump }: { dark: boolean; 
 
 function BottomBar({ dark, children }: { dark: boolean; children: React.ReactNode }) {
   const page = dark ? '#0F131D' : '#F1F4F9';
+  const inset = React.useContext(BottomInsetContext);
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 6, paddingBottom: 20, paddingHorizontal: 8 }}>
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 6, paddingBottom: 20 + inset, paddingHorizontal: 8 }}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <Svg width="100%" height="100%" preserveAspectRatio="none">
           <Defs>
@@ -360,9 +365,10 @@ function PrimaryButton({ label, icon = 'arrow_forward', onPress, disabled, dark,
 
 function TapHint({ dark, enabled = true, label = 'Tap to continue', onPress, extra }: { dark: boolean; enabled?: boolean; label?: string; onPress: () => void; extra?: React.ReactNode }) {
   // The whole strip is the tap target: a little above the button, and everything to its left, right and below it (down to the screen
-  // edge). The negative margins cancel the BottomBar's own padding so the layout is unchanged; the content itself never advances.
+  // edge, including the safe area). The negative margins cancel the BottomBar's own padding so the layout is unchanged; the content itself never advances.
+  const inset = React.useContext(BottomInsetContext);
   return (
-    <Pressable onPress={onPress} style={{ marginHorizontal: -8, marginTop: -6, marginBottom: -20, paddingHorizontal: 8, paddingTop: 6, paddingBottom: 20 }}>
+    <Pressable onPress={onPress} style={{ marginHorizontal: -8, marginTop: -6, marginBottom: -(20 + inset), paddingHorizontal: 8, paddingTop: 6, paddingBottom: 20 + inset }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12 }}>
       <View>
         <ShadowStack r={999} shadows={[{ dy: 4, blur: 6, rgb: '0,0,0', alpha: dark ? 0.4 : 0.1 }]} />
@@ -522,6 +528,7 @@ export function LessonScreenPersistent({
   onToggleTheme: () => void;
 }) {
   const t = tk(dark);
+  const bottomInset = useSafeAreaInsets().bottom;
   const lesson: LessonData | undefined = LESSONS[`${worldOrder}:${lessonTitle}`];
 
   // "W2L1": world number and the lesson's position in that world (the boss counts as the last lesson).
@@ -555,6 +562,9 @@ export function LessonScreenPersistent({
   const [predictIdx, setPredictIdx] = React.useState(0);
   const [answers, setAnswers] = React.useState<Record<number, string>>({});
   const [skipOpen, setSkipOpen] = React.useState(false);
+  const [visualAuthor, setVisualAuthor] = React.useState<'claude' | 'codex'>('claude');
+
+  React.useEffect(() => setVisualAuthor('claude'), [lesson?.id]);
 
   const scrollRef = React.useRef<any>(null);
   const stageOpacity = React.useRef(new Animated.Value(1)).current;
@@ -734,7 +744,7 @@ export function LessonScreenPersistent({
     setWebOpen(true);
     const stage = requestedStage;
     const isTryIt = tryItCode !== undefined;
-    WebStage.open(lesson.key, stage, dark, false, isTryIt, tryItCode ?? null)
+    WebStage.open(lesson.key, stage, dark, false, isTryIt, tryItCode ?? null, null)
       .then((action) => {
         launching.current = false;
         setWebOpen(false);
@@ -889,7 +899,7 @@ export function LessonScreenPersistent({
     if (y <= 4) return set(0);
     if (remaining <= 4) return set(visible - 1);
     const viewTop = y + barH.current;
-    const viewBottom = y + layoutMeasurement.height - BOTTOM_BAR_H;
+    const viewBottom = y + layoutMeasurement.height - BOTTOM_BAR_H - bottomInset;
     let match = 0;
     let best = -1;
     for (let i = 0; i < visible; i++) {
@@ -920,7 +930,9 @@ export function LessonScreenPersistent({
   // ---- Learn ----
   const learn = lesson.learn;
   const learnHighlightTerms = worldOrder === 1 ? WORLD_1_LEARN_TITLE_HIGHLIGHTS[lessonTitle] : undefined;
-  const learnMax = 3 + learn.keyIdeas.length;
+  // A lesson with a "How it works" visual has one more step: subtitle (1), visual (2), code example (2 + V), key ideas, takeaway.
+  const learnV = learn.visual ? 1 : 0;
+  const learnMax = 3 + learnV + learn.keyIdeas.length;
   const learnFull = learnReveal >= learnMax;
   const revealLearn = () => {
     if (learnReveal < learnMax) {
@@ -1026,8 +1038,34 @@ export function LessonScreenPersistent({
               <HighlightedLearnText text={learn.subtitle} terms={learnHighlightTerms} dark={dark} style={{ fontFamily: FONT.body, fontSize: px(13), lineHeight: lh(13, 1.55), color: t.body, marginTop: 4, marginBottom: 12, paddingHorizontal: 10, includeFontPadding: false }} />
             </RevealedItem>
           )}
-          {learnReveal >= 2 && (
+          {learn.visual && learnReveal >= 2 && (
             <RevealedItem animate={learnReveal === 2} onLayout={() => onLearnItemLayout(2)}>
+              <View style={{ marginTop: 4, marginBottom: 16 }}>
+                {learn.visualVariants && (
+                  <View style={{ flexDirection: 'row', alignSelf: 'flex-start', marginBottom: 8, borderRadius: 10, padding: 3, backgroundColor: dark ? '#171B26' : '#E8EDF6', borderWidth: BW, borderColor: dark ? '#262C3D' : '#DCE3EF' }}>
+                    {(['claude', 'codex'] as const).map((author) => {
+                      const active = visualAuthor === author;
+                      return (
+                        <Pressable
+                          key={author}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          accessibilityLabel={`Show ${author} visual`}
+                          onPress={() => setVisualAuthor(author)}
+                          style={({ pressed }) => ({ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 7, backgroundColor: active ? (dark ? '#4338CA' : '#4F46E5') : 'transparent', opacity: pressed ? 0.8 : 1 })}
+                        >
+                          <Text style={{ fontFamily: FONT.outfit.sb, fontSize: px(11), lineHeight: lh(11, 1.3), color: active ? '#FFFFFF' : (dark ? '#CBD5E1' : '#475569'), includeFontPadding: false }}>{author === 'claude' ? 'Claude' : 'Codex'}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+                <LessonVisual visual={learn.visualVariants?.[visualAuthor] ?? learn.visual} dark={dark} />
+              </View>
+            </RevealedItem>
+          )}
+          {learnReveal >= 2 + learnV && (
+            <RevealedItem animate={learnReveal === 2 + learnV} onLayout={() => onLearnItemLayout(2 + learnV)}>
               <View style={{ marginTop: 4, marginBottom: 16 }}>
               <Card dark={dark} shadow={false}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 10 }}>
@@ -1049,13 +1087,13 @@ export function LessonScreenPersistent({
               </View>
             </RevealedItem>
           )}
-          {learnReveal >= 3 && (
+          {learnReveal >= 3 + learnV && (
             <View style={{ marginBottom: 16 }}>
               <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(12), lineHeight: lh(12, 1.3333), letterSpacing: 0.05 * 12 * MAIN, color: '#94A3B8', marginBottom: 10, paddingHorizontal: 4, includeFontPadding: false }}>KEY IDEAS</Text>
               <View style={{ gap: 8 }}>
                 {learn.keyIdeas.map((idea, i) =>
-                  learnReveal < 3 + i ? null : (
-                    <RevealedItem key={idea.number} animate={learnReveal === 3 + i} onLayout={() => onLearnItemLayout(3 + i)}>
+                  learnReveal < 3 + learnV + i ? null : (
+                    <RevealedItem key={idea.number} animate={learnReveal === 3 + learnV + i} onLayout={() => onLearnItemLayout(3 + learnV + i)}>
                       <Card dark={dark} shadow={false} style={{ padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 12 }}>
                       <View style={{ width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 2, backgroundColor: dark ? 'rgba(30,27,75,0.8)' : '#EEF2FF', borderWidth: BW, borderColor: dark ? 'rgba(67,56,202,0.5)' : '#E0E7FF' }}>
                         <Text style={{ fontFamily: FONT.outfit.b, fontSize: px(12), lineHeight: lh(12, 1.3333), color: dark ? '#818CF8' : '#4F46E5', includeFontPadding: false }}>{idea.number}</Text>
@@ -1071,8 +1109,8 @@ export function LessonScreenPersistent({
               </View>
             </View>
           )}
-          {learnReveal >= 3 + learn.keyIdeas.length && (
-            <RevealedItem animate={learnReveal === 3 + learn.keyIdeas.length} onLayout={() => onLearnItemLayout(3 + learn.keyIdeas.length)}>
+          {learnReveal >= 3 + learnV + learn.keyIdeas.length && (
+            <RevealedItem animate={learnReveal === 3 + learnV + learn.keyIdeas.length} onLayout={() => onLearnItemLayout(3 + learnV + learn.keyIdeas.length)}>
               <View
               style={{
                 flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: BW, marginBottom: 20,
@@ -1371,7 +1409,7 @@ export function LessonScreenPersistent({
         nestedScrollEnabled
         directionalLockEnabled
         style={[{ flex: 1 }, { opacity: stageOpacity }]}
-        contentContainerStyle={{ paddingHorizontal: 6, paddingTop: stickyStage ? TOOLBAR_H : 0, paddingBottom: current === 'predict' || current === 'explore' ? 84 : 110 }}
+        contentContainerStyle={{ paddingHorizontal: 6, paddingTop: stickyStage ? TOOLBAR_H : 0, paddingBottom: (current === 'predict' || current === 'explore' ? 84 : 110) + bottomInset }}
         onScroll={onStickyScroll}
         scrollEventThrottle={16}
         onLayout={(e) => { viewH.current = e.nativeEvent.layout.height; }}
@@ -1398,11 +1436,13 @@ export function LessonScreenPersistent({
         </Animated.View>
       )}
       </View>
-      <BottomBar dark={dark}>{bottom}</BottomBar>
+      <BottomInsetContext.Provider value={bottomInset}>
+        <BottomBar dark={dark}>{bottom}</BottomBar>
+      </BottomInsetContext.Provider>
 
       <Modal transparent visible={skipOpen} animationType="fade" onRequestClose={() => setSkipOpen(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }} onPress={() => setSkipOpen(false)}>
-          <Pressable style={{ backgroundColor: dark ? '#171B26' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 28, gap: 8 }}>
+          <Pressable style={{ backgroundColor: dark ? '#171B26' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 28 + bottomInset, gap: 8 }}>
             <Text style={heading(dark, 16, { fontFamily: FONT.outfit.b, marginBottom: 6 })}>Skip to a stage</Text>
             {stages.map((key, i) =>
               i <= index ? null : (
@@ -1410,7 +1450,7 @@ export function LessonScreenPersistent({
                   key={key}
                   onPress={() => {
                     setSkipOpen(false);
-                    setLearnReveal(10);
+                    setLearnReveal(99);
                     // Stage 4 and 5 are hosted by the same WebStageActivity as
                     // the normal Continue button. Do not put them on the RN
                     // stage stack, otherwise the skip action opens a blank

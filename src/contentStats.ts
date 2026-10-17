@@ -26,7 +26,7 @@ export const CONTENT_STATS = {
  },
  "quizQuestions": 2135,
  "practice": {
-  "writeRun": 144,
-  "debug": 81
+  "writeRun": 326,
+  "debug": 178
  }
 } as const;

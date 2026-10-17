@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlatList, NativeModules, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BW, Icon, MAIN, fz } from './shell';
 import { accentFor, hexAlpha, lh } from './parts';
 import { HelpLevel } from './HelpSheet';
@@ -12,7 +13,7 @@ import { FONT, Palette } from './theme';
 
 type Mode = 'writeRun' | 'debug';
 type Status = 'not_started' | 'in_progress' | 'completed';
-type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: Mode, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null) => Promise<'continue' | 'back'> };
+type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: Mode, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null, practiceHelpLevel: HelpLevel | null) => Promise<'continue' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
 
@@ -93,7 +94,7 @@ function Details({ task, mode, dark, helpLevel }: { task: PracticeTask; mode: Mo
       )}
       {mode === 'writeRun' && (
         <Text style={[s.mono11, { color: muted }]}>
-          {helpLevel === 'beginner' ? '// the full steps are shown when you open the task' : '// the steps appear as hints while you code'}
+          {helpLevel === 'beginner' ? '// detailed steps stay hidden until you open them' : '// hints stay hidden until you request one'}
         </Text>
       )}
       {!!task.expected && (
@@ -125,6 +126,7 @@ export function TaskListScreen({
   onBack: () => void;
   onToggleTheme: () => void;
 }) {
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const dark = p.isDark;
   const [mode, setMode] = React.useState<Mode>(startMode);
   const [expanded, setExpanded] = React.useState<number | null>(null);
@@ -192,7 +194,7 @@ export function TaskListScreen({
             return (
               <View key={m} style={{ flex: 1 }}>
                 {selected && <ShadowStack r={8} shadows={[{ dy: 2, blur: 8, rgb: '99,102,241', alpha: 0.45 }]} />}
-                <Pressable onPress={() => switchMode(m)} style={[s.tab, selected && { backgroundColor: '#6366F1' }]}>
+                <Pressable onPress={() => switchMode(m)} android_ripple={{ color: selected ? 'rgba(255,255,255,0.3)' : 'rgba(99,102,241,0.25)', borderless: false, foreground: true }} style={[s.tab, selected && { backgroundColor: '#6366F1' }]}>
                   <Icon name={MODE_COLORS[m].icon} size={19} exact color={selected ? '#FFFFFF' : muted} />
                   <Text style={[s.tabText, { color: selected ? '#FFFFFF' : muted }]}>{MODE_COLORS[m].label}</Text>
                 </Pressable>
@@ -202,6 +204,7 @@ export function TaskListScreen({
         </View>
       </View>}
 
+      <View style={{ flex: 1, paddingBottom: bottomInset }}>
       <FlatList
         data={tasks}
         keyExtractor={(_, index) => `${mode}-${index}`}
@@ -256,7 +259,7 @@ export function TaskListScreen({
                     <View style={s.taskShadow}>
                       <Pressable
                         onPress={() => setExpanded(isOpen ? null : idx)}
-                        android_ripple={{ color: dark ? 'rgba(129,140,248,0.55)' : 'rgba(79,70,229,0.45)', borderless: false, foreground: true }}
+                        android_ripple={{ color: `${modeColor}33`, borderless: false, foreground: true }}
                         style={[
                           s.task,
                           panel,
@@ -289,7 +292,7 @@ export function TaskListScreen({
                           onPress={(event) => {
                             event.stopPropagation();
                             if (!WebStage) return;
-                            WebStage.open(task.id, mode, dark, true, false, null).catch(() => {});
+                            WebStage.open(task.id, mode, dark, true, false, null, helpLevel).catch(() => {});
                           }}
                           style={[s.action, actionStyle]}
                           accessibilityRole="button"
@@ -305,6 +308,7 @@ export function TaskListScreen({
                 );
               }}
       />
+      </View>
     </View>
   );
 }
@@ -321,7 +325,7 @@ const s = StyleSheet.create({
   topSub: { fontFamily: FONT.mono.r, fontSize: fz(10 * MAIN), lineHeight: 10 * MAIN, marginTop: 4, includeFontPadding: false },
   tabsWrap: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
   track: { flexDirection: 'row', borderRadius: 12, borderWidth: BW, padding: 4, gap: 4, overflow: 'hidden' },
-  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 8 },
   tabText: { fontFamily: FONT.outfit.sb, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
   progressCard: { padding: 14, borderRadius: 12, borderWidth: BW, borderLeftWidth: 2.91 },
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

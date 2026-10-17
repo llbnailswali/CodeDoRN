@@ -4,7 +4,7 @@ import { BW, Icon, MAIN, fz } from './shell';
 import { ShadowStack } from './shadows';
 import { FONT, Palette } from './theme';
 
-// Pieces the Quiz and Practice tabs have in common (web: the dark editor-style panel, the "// worlds" divider, the editor accents).
+// Pieces the Quiz and Practice tabs have in common (web: the dark editor-style panel, the "ALL WORLDS" divider, the editor accents).
 
 /** Editor-style accents, one per World, cycling (src/utils/worldAccents.ts): [dark-mode colour, light-mode text colour]. */
 const ACCENTS: Array<[string, string]> = [
@@ -67,14 +67,22 @@ export function EditorPanel({
   );
 }
 
-/** The "// worlds" divider between a tab's call-to-action and its per-World list. */
+/** The "ALL WORLDS" divider between a tab's call-to-action and its per-World list. */
 export function WorldsDivider({ p }: { p: Palette }) {
-  const line = p.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(148,163,184,0.4)';
+  const rgb = p.isDark ? '148,163,184' : '100,116,139';
+  // The rules fade out toward the card edges and are brightest next to the label.
+  const rule = (reverse: boolean) => (
+    <View style={[s.dividerRule, reverse && { flexDirection: 'row-reverse' }]}>
+      {[0.1, 0.2, 0.32, 0.45].map((a) => <View key={a} style={[s.dividerSeg, { backgroundColor: `rgba(${rgb},${a})` }]} />)}
+    </View>
+  );
   return (
     <View style={s.divider}>
-      <View style={[s.dividerLine, { backgroundColor: line }]} />
-      <Text style={[s.dividerLabel, { color: p.isDark ? '#64748B' : '#94A3B8' }]}>{'// worlds'}</Text>
-      <View style={[s.dividerLine, { backgroundColor: line }]} />
+      {rule(false)}
+      <View style={[s.dividerChip, { borderColor: `rgba(${rgb},0.4)`, backgroundColor: p.isDark ? 'rgba(148,163,184,0.08)' : 'rgba(100,116,139,0.06)' }]}>
+        <Text style={[s.dividerLabel, { color: p.isDark ? '#94A3B8' : '#64748B' }]}>ALL WORLDS</Text>
+      </View>
+      {rule(true)}
     </View>
   );
 }
@@ -96,6 +104,8 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   divider: { paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dividerLine: { height: 1, flex: 1 },
-  dividerLabel: { fontFamily: FONT.mono.r, fontSize: fz(10 * MAIN), lineHeight: lh(10, 1.5), letterSpacing: 0.05 * 10 * MAIN, includeFontPadding: false },
+  dividerRule: { flex: 1, flexDirection: 'row', height: 1 },
+  dividerSeg: { flex: 1, height: 1 },
+  dividerChip: { borderWidth: BW, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  dividerLabel: { fontFamily: FONT.mono.b, fontSize: fz(10 * MAIN), lineHeight: lh(10, 1.5), letterSpacing: 0.05 * 10 * MAIN, includeFontPadding: false },
 });

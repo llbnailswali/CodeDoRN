@@ -118,15 +118,16 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
   // Auto-open Task dialog with 1 second delay
   const [showTaskModal, setShowTaskModal] = useState<boolean>(false);
   // Practice mode only: how much guidance the learner asked for (Practice tab
-  // "Practice help"). Beginner shows the Steps open, Intermediate keeps them
-  // behind a "Need help? View Steps" row, Experienced reveals one step at a
-  // time on request. Read once per task; it only changes from the Practice tab.
+  // "Practice help"). Every level keeps guidance closed initially. Beginner
+  // can open all detailed steps, while Intermediate and Experienced reveal
+  // their progressive hints on request. Read once per task; it only changes
+  // from the Practice tab.
   const helpLevel = React.useMemo(
     () => (isPracticeMode ? StorageManager.getPracticeHelpLevel() ?? 'beginner' : 'beginner'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isPracticeMode, data.title]
   );
-  const [stepsOpen, setStepsOpen] = useState<boolean>(isPracticeMode && helpLevel === 'beginner');
+  const [stepsOpen, setStepsOpen] = useState<boolean>(false);
   const [hintsShown, setHintsShown] = useState<number>(0);
   // Index of the hint just revealed; highlighted in the task dialog for a few seconds.
   const [highlightedHint, setHighlightedHint] = useState<number | null>(null);
@@ -140,7 +141,7 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
   }, []);
   useEffect(() => {
-    setStepsOpen(isPracticeMode && helpLevel === 'beginner');
+    setStepsOpen(false);
     setHintsShown(0);
     setHighlightedHint(null);
   }, [isPracticeMode, helpLevel, data.title]);
@@ -170,23 +171,19 @@ export const WriteRun: React.FC<WriteRunStageProps> = ({
     highlightHint(n - 1);
   };
   // Unlocking a hint also drops its step comment into the editor, so it stays in
-  // view while typing (the editor folds it to a tappable `// 1.` marker). The
-  // first one goes right under the starting values; each later one goes under
-  // the previous hint comment. Falls back to just above main's closing brace.
+  // view while typing. The first one goes right under the starting values; each
+  // later one goes under the previous hint comment. Falls back to just above
+  // main's closing brace.
   const insertedHintCommentsRef = useRef<string[]>([]);
   useEffect(() => {
     insertedHintCommentsRef.current = [];
   }, [data.title]);
   const insertHintComment = (index: number, keepResultPanel = false) => {
-    // With level hints the numbered comments are already in the editor (collapsed); unlocking only has to open them.
-    if (levelHints) return;
     const paragraph = stepParagraphs[index];
     if (!paragraph) return;
-    const prepared = levelHints
-      ? levelHints.comments[index]
-      : data.helperComments && data.helperComments.length === stepParagraphs.length
-        ? data.helperComments[index]
-        : '// ' + stripTaskMarkup(paragraph.split('\n')[0]).trim();
+    const prepared = data.helperComments && data.helperComments.length === stepParagraphs.length
+      ? data.helperComments[index]
+      : levelHints?.comments[index] ?? '// ' + stripTaskMarkup(paragraph.split('\n')[0]).trim();
     const lines = userCode.split('\n');
     const given = extractGivenLines(data.initialCode);
     const prevComment = insertedHintCommentsRef.current[index - 1];

@@ -19,6 +19,14 @@ or change IDs, order, difficulty or tags. Only the wording changes.
 | 6 | 20 | 9 | done (no rendered-screen check yet) |
 | 7 | 21 | 11 | done (no rendered-screen check yet) |
 | 8 | 23 | 13 | authored and worded (no rendered-screen check yet) |
+| 9 | 22 | 12 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `scripts/practice-content-pass/world9.spec.ts`, wording in `world9.data.ts`, real kotlinc check `world9.real.ts` |
+| 10 | 18 | 12 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `world10.spec.ts`, wording in `world10.data.ts`, real kotlinc check `world10.real.ts` |
+| 11 | 22 | 13 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `world11.spec.ts`, wording in `world11.data.ts`, real kotlinc check `world11.real.ts` |
+| 12 | 28 | 13 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `world12.spec.ts`, wording in `world12.data.ts`, real kotlinc check `world12.real.ts` |
+| 13 | 18 | 10 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `world13.spec.ts`, wording in `world13.data.ts`, real kotlinc check `world13.real.ts` |
+| 14 | 24 | 12 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `world14.spec.ts`, wording in `world14.data.ts`, real kotlinc check `world14.real.ts` |
+| 15 | 28 | 14 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `world15.spec.ts`, wording in `world15.data.ts`, real kotlinc check `world15.real.ts` |
+| 16 | 22 | 11 | authored and worded 2026-10-15 (no rendered-screen check yet); code in `world16.spec.ts`, wording in `world16.data.ts`, real kotlinc check `world16.real.ts` (with kotlinx-coroutines) |
 
 `npx tsx scripts/practice-content-pass/run.ts lint` lists exactly what is left. Any task reported as
 "no levelHints" still has the old wording.
@@ -291,7 +299,7 @@ still in the older wording):
 Never `git checkout` or `git restore` a practice-bank file to undo a bad write. The working copies of the banks are
 uncommitted rewrites (the committed World 1 file is an older, different bank). Copy the file to the scratchpad first.
 
-## 8c. Authoring a brand-new bank (World 8 onward)
+## 8c. Authoring a brand-new bank (World 8 onward; World 9 followed this path)
 
 No other file describes this. Steps: plan a concept coverage map first (LESSON_QUALITY_STANDARD.md), then create
 `src/data/practiceBank/worldNPracticeProblems.ts` (same shape as World 7), register it in `practiceBank/index.ts` and add

@@ -21,14 +21,14 @@ final class WebStageModule: NSObject, WKScriptMessageHandler {
   @objc(warmUp)
   func warmUp() {}
 
-  @objc(open:stage:dark:practice:tryIt:prefillCode:resolver:rejecter:)
-  func open(_ lessonKey: String, stage: String, dark: Bool, practice: Bool, tryIt: Bool, prefillCode: String?, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+  @objc(open:stage:dark:practice:tryIt:prefillCode:practiceHelpLevel:resolver:rejecter:)
+  func open(_ lessonKey: String, stage: String, dark: Bool, practice: Bool, tryIt: Bool, prefillCode: String?, practiceHelpLevel: String?, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
       guard let host = RCTPresentedViewController() else {
         rejecter("no_view_controller", "No view controller is available to open the editor.", nil)
         return
       }
-      let vc = WebStageViewController(lessonKey: lessonKey, stage: stage, dark: dark, practice: practice, tryIt: tryIt, prefillCode: prefillCode) { [weak self] action in
+      let vc = WebStageViewController(lessonKey: lessonKey, stage: stage, dark: dark, practice: practice, tryIt: tryIt, prefillCode: prefillCode, practiceHelpLevel: practiceHelpLevel) { [weak self] action in
         self?.pending?(action)
         self?.pending = nil
       }
@@ -56,7 +56,7 @@ final class WebStageModule: NSObject, WKScriptMessageHandler {
   private let onClose: (String) -> Void
   private let dark: Bool
 
-  init(lessonKey: String, stage: String, dark: Bool, practice: Bool, tryIt: Bool, prefillCode: String?, onClose: @escaping (String) -> Void) {
+  init(lessonKey: String, stage: String, dark: Bool, practice: Bool, tryIt: Bool, prefillCode: String?, practiceHelpLevel: String?, onClose: @escaping (String) -> Void) {
     self.dark = dark
     self.onClose = onClose
     let content = WKUserContentController()
@@ -69,6 +69,9 @@ final class WebStageModule: NSObject, WKScriptMessageHandler {
     ]
     if let prefillCode {
       launchPayload["prefillCode"] = prefillCode
+    }
+    if let practiceHelpLevel {
+      launchPayload["practiceHelpLevel"] = practiceHelpLevel
     }
     if let payloadData = try? JSONSerialization.data(withJSONObject: launchPayload),
        let payloadJSON = String(data: payloadData, encoding: .utf8) {
@@ -99,6 +102,7 @@ final class WebStageModule: NSObject, WKScriptMessageHandler {
       URLQueryItem(name: "dark", value: String(dark)), URLQueryItem(name: "practice", value: String(practice)),
       URLQueryItem(name: "tryIt", value: String(tryIt)),
       URLQueryItem(name: "prefillCodeBase64", value: prefillCode?.data(using: .utf8)?.base64EncodedString()),
+      URLQueryItem(name: "practiceHelpLevel", value: practiceHelpLevel),
     ]
     components.scheme = "codedo"
     components.host = "app"

@@ -1,0 +1,426 @@
+/**
+ * World 11 (OOP Evolution) practice-bank wording. Format: see world2.data.ts and PRACTICE_CONTENT_PASS.md.
+ * Simple English: short everyday words, one idea per sentence. The code lives in world11.spec.ts.
+ */
+import type { WR, DBG } from './world2.data';
+
+export const WR_DATA: Record<string, WR> = {
+  'pay-grades': {
+    summary: 'Write a subclass that overrides a function, then total the pay of a mixed list.',
+    goal: 'A company has employees and managers. A manager gets a bonus on top of the base pay. Print each pay and the total.',
+    setup: 'The open class `Employee` is in the starter code. Its `pay()` returns `base`.',
+    steps: [
+      '**Write the subclass.** Above `main`, write `class Manager` with `name`, `base` and `val bonus: Int`. It extends `Employee(name, base)`. Override `pay()` to return `base + bonus`.',
+      '**Make the staff list.** Create `val staff` with `listOf(...)`: `Employee("Ana", 300)`, `Manager("Bo", 400, bonus)` and `Employee("Cy", 250)`.',
+      '**Print each pay.** Create `var total = 0`. Loop over `staff`. Print `s.name`, a colon and `s.pay()`. Add `s.pay()` to `total`.',
+      '**Print the total.** Join the text with `+`:\n"Ana: 300"\n"Bo: 450"\n"Cy: 250"\n"Total: 1000"',
+    ],
+    i: ['**Write the subclass.** Extend `Employee` and override `pay()`.', '**Make the staff list.** Mix employees and one manager.', '**Print each pay.** Loop and keep a total.', '**Print the total.** Show the last line.'],
+    e: ['**Write the subclass.**', '**Make the staff list.**', '**Print each pay.**', '**Print the total.**'],
+  },
+  'shape-areas': {
+    summary: 'Write two subclasses of an abstract class and find the shape with the biggest area.',
+    goal: 'Make two kinds of shapes. Print each shape with its area, then print the name of the largest shape.',
+    setup: 'The abstract class `Shape` is in the starter code. It has `name`, an abstract `area()` and a `describe()` function.',
+    steps: [
+      '**Write the rectangle.** Above `main`, write `class Rect(val w: Int, val h: Int)`. It extends `Shape("Rect")`. Override `area()` to return `w * h`.',
+      '**Write the square.** Write `class Square(val side: Int)`. It extends `Shape("Square")`. Override `area()` to return `side * side`.',
+      '**Make the list.** Create `val shapes` with `Rect(4, 5)` and `Square(side)`.',
+      '**Find the largest.** Create `var biggest = shapes[0]`. Loop over `shapes`. Print `s.describe()`. When `s.area()` is bigger than `biggest.area()`, set `biggest` to `s`.',
+      '**Print the winner.** Join the text with `+`:\n"Rect area 20"\n"Square area 9"\n"Largest: Rect"',
+    ],
+    i: ['**Write the rectangle.** Extend `Shape` and override `area()`.', '**Write the square.** Extend `Shape` and override `area()`.', '**Make the list.** Use `Rect(4, 5)` and `Square(side)`.', '**Find the largest.** Loop, print, and keep the best.', '**Print the winner.** Show the largest name.'],
+    e: ['**Write the rectangle.**', '**Write the square.**', '**Make the list.**', '**Find the largest.**', '**Print the winner.**'],
+  },
+  'animal-sounds': {
+    summary: 'Write two classes that implement an interface, and use its default function.',
+    goal: 'Animals make sounds. Each animal repeats its sound twice. Print what each animal says.',
+    setup: 'The interface `Speaker` is in the starter code. `twice()` already repeats `speak()`.',
+    steps: [
+      '**Write the dog.** Above `main`, write `class Dog : Speaker`. Override `speak()` to return `"Woof"`.',
+      '**Write the cat.** Write `class Cat(val happy: Boolean) : Speaker`. Override `speak()`. Return `"Purr"` when `happy` is true, otherwise `"Hiss"`.',
+      '**Make the list.** Create `val speakers: List<Speaker>` with `Dog()` and `Cat(happy)`.',
+      '**Print the sounds.** Loop over `speakers` and print `s.twice()`:\n"Woof Woof"\n"Purr Purr"',
+    ],
+    i: ['**Write the dog.** Implement `speak()`.', '**Write the cat.** Use `happy` to choose the sound.', '**Make the list.** Use the type `List<Speaker>`.', '**Print the sounds.** Print `twice()` for each.'],
+    e: ['**Write the dog.**', '**Write the cat.**', '**Make the list.**', '**Print the sounds.**'],
+  },
+  'duck-powers': {
+    summary: 'Write one class that implements two interfaces, and check its type with is.',
+    goal: 'A duck can fly and swim. Write the duck. Print its powers, their total, and whether it can fly.',
+    setup: 'The interfaces `Flyer` and `Swimmer` and the function `total(f, s)` are in the starter code.',
+    steps: [
+      '**Write the duck.** Above `main`, write `class Duck(val power: Int)`. It implements `Flyer` and `Swimmer`. Override `fly()` to return `power * 3`, and `swim()` to return `power * 2`.',
+      '**Create the duck.** Create `val duck` with `Duck(power)`.',
+      '**Print three lines.** Print `duck.fly()`, `duck.swim()` and `total(duck, duck)`:\n"Fly: 12"\n"Swim: 8"\n"Total: 20"',
+      '**Check the type.** Print whether `duck is Flyer`:\n"Duck can fly: true"',
+    ],
+    i: ['**Write the duck.** Implement both interfaces.', '**Create the duck.** Use `power`.', '**Print three lines.** Show fly, swim and total.', '**Check the type.** Use `is Flyer`.'],
+    e: ['**Write the duck.**', '**Create the duck.**', '**Print three lines.**', '**Check the type.**'],
+  },
+  'payment-states': {
+    summary: 'Write a when over a sealed class with no else, and total only the paid amounts.',
+    goal: 'A payment can be paid, failed or pending. Print a line for each payment, then the total of the paid amounts.',
+    setup: 'The sealed class `Payment` and its three cases are in the starter code.',
+    steps: [
+      '**Write describe.** Above `main`, write `describe(p: Payment): String`. Use `when (p)` with no `else`. Return "Paid " plus the amount, "Failed: " plus the reason, or "Pending".',
+      '**Make the list.** Create `val payments` with `Paid(first)`, `Failed("card")`, `Pending` and `Paid(25)`.',
+      '**Print and add.** Create `var total = 0`. Loop over `payments` and print `describe(p)`. When `p is Paid`, add `p.amount` to `total`.',
+      '**Print the total.** Join the text with `+`:\n"Paid 40"\n"Failed: card"\n"Pending"\n"Paid 25"\n"Total paid: 65"',
+    ],
+    i: ['**Write describe.** Use an exhaustive `when` without `else`.', '**Make the list.** Mix all three cases.', '**Print and add.** Add the amount of paid ones.', '**Print the total.** Show the last line.'],
+    e: ['**Write describe.**', '**Make the list.**', '**Print and add.**', '**Print the total.**'],
+  },
+  'safe-divide': {
+    summary: 'Return a sealed result from a function and unwrap it with a when.',
+    goal: 'A division can fail when the divisor is zero. Divide three pairs of numbers. Print the sum of the answers and the number of failures.',
+    setup: 'The sealed interface `Outcome` with `Success(value)` and `Failure(code)` is in the starter code.',
+    steps: [
+      '**Write safeDivide.** Above `main`, write `safeDivide(a: Int, b: Int): Outcome`. When `b` is `0`, return `Failure(1)`. Otherwise return `Success(a / b)`.',
+      '**Make the results.** Create `val results` with `safeDivide(20, 4)`, `safeDivide(7, zero)` and `safeDivide(9, 2)`.',
+      '**Unwrap each result.** Create `var sum = 0` and `var failures = 0`. Loop over `results`. Use `when (r)`. For `is Success`, add `r.value` to `sum`. For `is Failure`, add `1` to `failures`.',
+      '**Print two lines.** Join the text with `+`:\n"Sum: 9"\n"Failures: 1"',
+    ],
+    i: ['**Write safeDivide.** Return `Failure` or `Success`.', '**Make the results.** Divide three pairs.', '**Unwrap each result.** Use `when` with `is`.', '**Print two lines.** Show the sum and the failures.'],
+    e: ['**Write safeDivide.**', '**Make the results.**', '**Unwrap each result.**', '**Print two lines.**'],
+  },
+  'point-copy': {
+    summary: 'Use a data class: print it, copy it with one change, compare, and destructure.',
+    goal: 'A point has an x and a y. Make a copy that moves the point up. Compare the points and add the new x and y.',
+    steps: [
+      '**Write the data class.** Above `main`, write `data class Point(val x: Int, val y: Int)`.',
+      '**Make two points.** Create `val p` as `Point(2, 5)`. Create `val q` with `p.copy(y = p.y + shift)`.',
+      '**Print both points.** Use `println` on each point:\n"Point(x=2, y=5)"\n"Point(x=2, y=8)"',
+      '**Compare.** Print `p == Point(2, 5)`, then `p == q`:\n"true"\n"false"',
+      '**Destructure.** Write `val (x, y) = q`. Print the sum of `x` and `y`:\n"Sum: 10"',
+    ],
+    i: ['**Write the data class.** Two `Int` properties.', '**Make two points.** Use `copy` for `q`.', '**Print both points.** Print each one.', '**Compare.** Use `==` twice.', '**Destructure.** Add `x` and `y`.'],
+    e: ['**Write the data class.**', '**Make two points.**', '**Print both points.**', '**Compare.**', '**Destructure.**'],
+  },
+  'level-enum': {
+    summary: 'Write an enum with a property, pick a level with when, and read name and ordinal.',
+    goal: 'Scores map to levels. Each level is worth points. Print the level and points of each score, the total points, and a position.',
+    steps: [
+      '**Write the enum.** Above `main`, write `enum class Level(val points: Int)`. Its constants are `LOW(1)`, `MEDIUM(5)` and `HIGH(10)`.',
+      '**Write levelFor.** Write `levelFor(score: Int, highFrom: Int): Level`. Use `when` with no subject. A score of at least `highFrom` is `HIGH`. A score of at least `40` is `MEDIUM`. Otherwise it is `LOW`.',
+      '**Go through the scores.** Create `var total = 0`. Loop over `scores`. Print the score, " -> ", `level.name`, and the points in brackets. Add the points to `total`.',
+      '**Print the last two lines.** Print `total` and `Level.HIGH.ordinal`:\n"3 -> LOW (1)"\n"55 -> MEDIUM (5)"\n"80 -> HIGH (10)"\n"20 -> LOW (1)"\n"Total: 17"\n"Index of HIGH: 2"',
+    ],
+    i: ['**Write the enum.** Three constants with points.', '**Write levelFor.** Use `when` and `highFrom`.', '**Go through the scores.** Print and add the points.', '**Print the last two lines.** Show the total and the ordinal.'],
+    e: ['**Write the enum.**', '**Write levelFor.**', '**Go through the scores.**', '**Print the last two lines.**'],
+  },
+  'order-lines': {
+    summary: 'Write a nested class inside another class and create it with the outer name.',
+    goal: 'An order has lines. Each line has an item and a quantity. Print the cost of each line and the total quantity cost.',
+    setup: 'The class `Order` is in the starter code. The nested class goes inside it.',
+    steps: [
+      '**Write the nested class.** Inside `Order`, write `class Line(val item: String, val qty: Int)`. Add `label(unit: Int): String`. It returns the item, " x", the quantity, " = " and `qty * unit`.',
+      '**Make the first line.** Create `val first` with `Order.Line("pen", 3)`.',
+      '**Make the second line.** Create `val second` with `Order.Line("cap", 2)`.',
+      '**Print three lines.** The total is `(first.qty + second.qty) * unit`:\n"pen x3 = 12"\n"cap x2 = 8"\n"Total: 20"',
+    ],
+    i: ['**Write the nested class.** Add `Line` and `label()`.', '**Make the first line.** Use `Order.Line`.', '**Make the second line.** Use `Order.Line`.', '**Print three lines.** Show both labels and the total.'],
+    e: ['**Write the nested class.**', '**Make the first line.**', '**Make the second line.**', '**Print three lines.**'],
+  },
+  'counter-view': {
+    summary: 'Write an inner class that reads its outer object, and see that each outer object has its own view.',
+    goal: 'A counter has a view that shows the count. Change the counter and see the view change. A second counter has its own view.',
+    setup: 'The class header `Counter(var count: Int)` is in the starter code.',
+    steps: [
+      '**Write the class body.** Inside `Counter`, write `fun inc()` that adds `1` to `count`. Also write `inner class View` with `show()`. It returns "Count: " plus `count`.',
+      '**Make the counter and view.** Create `val c` with `Counter(start)`. Create `val v` with `c.View()`.',
+      '**Change the counter.** Call `c.inc()` two times.',
+      '**Show the first view.** Print `v.show()`:\n"Count: 12"',
+      '**Show a second counter.** Create `val other` with `Counter(0)`. Print `other.View().show()`:\n"Count: 0"',
+    ],
+    i: ['**Write the class body.** Add `inc()` and the inner `View`.', '**Make the counter and view.** Use `c.View()`.', '**Change the counter.** Call `inc()` twice.', '**Show the first view.** Print `show()`.', '**Show a second counter.** Use a new `Counter`.'],
+    e: ['**Write the class body.**', '**Make the counter and view.**', '**Change the counter.**', '**Show the first view.**', '**Show a second counter.**'],
+  },
+  'id-maker': {
+    summary: 'Write an object that keeps one shared counter and call it by name.',
+    goal: 'A program makes ids. Every id is a step bigger than the last one. Print three ids and the last one.',
+    steps: [
+      '**Write the object.** Above `main`, write `object IdMaker`. Give it `var last = 100`. Add `next(step: Int): Int`. It adds `step` to `last` and returns `last`.',
+      '**Make the first id.** Print `IdMaker.next(step)`:\n"105"',
+      '**Make the second id.** Print `IdMaker.next(step)` again:\n"110"',
+      '**Make the third id.** Print `IdMaker.next(step)` once more:\n"115"',
+      '**Print the last id.** Print `IdMaker.last`:\n"Last: 115"',
+    ],
+    i: ['**Write the object.** Add `last` and `next()`.', '**Make the first id.** Call `IdMaker.next(step)`.', '**Make the second id.** Call it again.', '**Make the third id.** Call it again.', '**Print the last id.** Use `IdMaker.last`.'],
+    e: ['**Write the object.**', '**Make the first id.**', '**Make the second id.**', '**Make the third id.**', '**Print the last id.**'],
+  },
+  'shared-stats': {
+    summary: 'Write an object that collects numbers from a loop and work out an average.',
+    goal: 'An object collects numbers and counts them. Add four numbers. Print the total, the count and the average.',
+    steps: [
+      '**Write the object.** Above `main`, write `object Stats`. Give it `var total = 0` and `var calls = 0`. Add `add(n: Int)`. It adds `n` to `total` and `1` to `calls`.',
+      '**Add the numbers.** Loop `i` from `1` to `rounds`. Each time, call `Stats.add(i * 10)`.',
+      '**Print the totals.** Print `Stats.total` and `Stats.calls`:\n"Total: 100"\n"Calls: 4"',
+      '**Print the average.** Divide `Stats.total` by `Stats.calls`. Int division drops the fraction:\n"Average: 25"',
+    ],
+    i: ['**Write the object.** Two counters and `add()`.', '**Add the numbers.** Add `i * 10` each round.', '**Print the totals.** Show the total and the calls.', '**Print the average.** Divide the two.'],
+    e: ['**Write the object.**', '**Add the numbers.**', '**Print the totals.**', '**Print the average.**'],
+  },
+  'user-factory': {
+    summary: 'Write a companion object with a constant and factory functions.',
+    goal: 'Users have a level, and no level may go above a maximum. Make a user with a capped level and a guest. Print them.',
+    setup: 'The class header `User(val name: String, val level: Int)` is in the starter code.',
+    steps: [
+      '**Write the companion.** Inside `User`, write `companion object`. Add `const val MAX = 5`. Add `create(name: String, level: Int): User`. When `level` is above `MAX`, use `MAX` as the level. Add `guest()`. It returns a user named "guest" with level `0`.',
+      '**Create Ana.** Create `val ana` with `User.create("Ana", wanted)`.',
+      '**Create the guest.** Create `val guest` with `User.guest()`.',
+      '**Print three lines.** Use `User.MAX` for the last line:\n"Ana level 5"\n"guest level 0"\n"Max: 5"',
+    ],
+    i: ['**Write the companion.** Add `MAX`, `create()` and `guest()`.', '**Create Ana.** Call `User.create`.', '**Create the guest.** Call `User.guest()`.', '**Print three lines.** Show both users and `MAX`.'],
+    e: ['**Write the companion.**', '**Create Ana.**', '**Create the guest.**', '**Print three lines.**'],
+  },
+  'ticket-counter': {
+    summary: 'Use a companion object to count how many objects the class has made.',
+    goal: 'A class makes numbered tickets. Count how many tickets it has made. Print each ticket number and the count.',
+    setup: 'The class header `Ticket(val number: Int)` is in the starter code.',
+    steps: [
+      '**Write the companion.** Inside `Ticket`, write `companion object`. Add `var issued = 0`. Add `issue(): Ticket`. It adds `1` to `issued` and returns `Ticket(issued)`.',
+      '**Issue the tickets.** Loop `i` from `1` to `count`. Each time, create `val t` with `Ticket.issue()` and print "Ticket " plus `t.number`.',
+      '**Print the count.** Print `Ticket.issued`:\n"Ticket 1"\n"Ticket 2"\n"Ticket 3"\n"Issued: 3"',
+    ],
+    i: ['**Write the companion.** Add `issued` and `issue()`.', '**Issue the tickets.** Loop and print each number.', '**Print the count.** Use `Ticket.issued`.'],
+    e: ['**Write the companion.**', '**Issue the tickets.**', '**Print the count.**'],
+  },
+  'text-helpers': {
+    summary: 'Write three extension functions on String and Int and call them like members.',
+    goal: 'Add new helpers to String and Int. Shout a word, square a number and check if it is even. Print the results.',
+    steps: [
+      '**Write shout.** Above `main`, write `fun String.shout(): String`. It returns `this.uppercase()` plus an exclamation mark.',
+      '**Write squared.** Write `fun Int.squared(): Int`. It returns `this * this`.',
+      '**Write isEven.** Write `fun Int.isEven(): Boolean`. It returns `this % 2 == 0`.',
+      '**Print three lines.** Call `"hello".shout()`, then `n.squared()`, then `n.isEven()`:\n"HELLO!"\n"49"\n"false"',
+    ],
+    i: ['**Write shout.** Upper case plus an exclamation mark.', '**Write squared.** Multiply `this` by itself.', '**Write isEven.** Use `%`.', '**Print three lines.** Call each helper.'],
+    e: ['**Write shout.**', '**Write squared.**', '**Write isEven.**', '**Print three lines.**'],
+  },
+  'list-helpers': {
+    summary: 'Write extension functions on a list that add things up and filter with a loop.',
+    goal: 'Add two helpers to lists of numbers. One adds up the squares. One keeps the numbers above a limit. Print the results.',
+    steps: [
+      '**Write sumOfSquares.** Above `main`, write `fun List<Int>.sumOfSquares(): Int`. Loop over `this` and add each `n * n` to a total. Return it.',
+      '**Write above.** Write `fun List<Int>.above(limit: Int): List<Int>`. Make a `mutableListOf<Int>()`. Loop over `this` and add each `n` that is above `limit`. Return the list.',
+      '**Call above.** Create `val big` with `numbers.above(limit)`.',
+      '**Print two lines.** Use a string template for the list:\n"Squares: 114"\n"Above 4: [5, 8]"',
+    ],
+    i: ['**Write sumOfSquares.** Loop over `this` and add squares.', '**Write above.** Loop and keep numbers above `limit`.', '**Call above.** Use `limit`.', '**Print two lines.** Show the sum and the list.'],
+    e: ['**Write sumOfSquares.**', '**Write above.**', '**Call above.**', '**Print two lines.**'],
+  },
+  'word-props': {
+    summary: 'Write extension properties with getters and read them like normal properties.',
+    goal: 'Add new properties to String and Int. Count the words of a sentence, get its first word, and double a number. Print them.',
+    steps: [
+      '**Write wordCount.** Above `main`, write `val String.wordCount: Int` with a getter. The getter returns the size of `this.split(" ")`.',
+      '**Write firstWord.** Write `val String.firstWord: String` with a getter. The getter returns the first item of `this.split(" ")`.',
+      '**Write doubled.** Write `val Int.doubled: Int` with a getter. The getter returns `this * 2`.',
+      '**Print three lines.** Join the text with `+`:\n"Words: 4"\n"First: kotlin"\n"Doubled: 42"',
+    ],
+    i: ['**Write wordCount.** Count the parts of `split(" ")`.', '**Write firstWord.** Take the first part.', '**Write doubled.** Multiply `this` by `2`.', '**Print three lines.** Read each property.'],
+    e: ['**Write wordCount.**', '**Write firstWord.**', '**Write doubled.**', '**Print three lines.**'],
+  },
+  'boosted-scorer': {
+    summary: 'Write a class that gets its interface from another object with by, and adds one more function.',
+    goal: 'A plain scorer returns the number it gets. Build a boosted scorer that reuses it and adds an extra amount. Print both scores.',
+    setup: 'The interface `Scorer` and the class `Plain` are in the starter code.',
+    steps: [
+      '**Write the wrapper.** Above `main`, write `class Boosted(private val base: Scorer, val extra: Int)`. Make it implement `Scorer by base`. Add `boosted(n: Int): Int` that returns `score(n) + extra`.',
+      '**Create it.** Create `val b` with `Boosted(Plain(), extra)`.',
+      '**Print the plain score.** Print `b.score(10)`. This call is forwarded to `Plain`:\n"10"',
+      '**Print the boosted score.** Print `b.boosted(10)`:\n"17"',
+    ],
+    i: ['**Write the wrapper.** Use `Scorer by base` and add `boosted()`.', '**Create it.** Wrap a `Plain`.', '**Print the plain score.** Call `score(10)`.', '**Print the boosted score.** Call `boosted(10)`.'],
+    e: ['**Write the wrapper.**', '**Create it.**', '**Print the plain score.**', '**Print the boosted score.**'],
+  },
+  'lazy-and-watch': {
+    summary: 'Use lazy for a property that is worked out once, and observable to watch changes.',
+    goal: 'A panel has a value that is worked out only when it is first used. It also has a score that prints a message each time it changes. Run both.',
+    setup: 'The import for `Delegates` and the class header `Panel(val base: Int)` are in the starter code.',
+    steps: [
+      '**Write the lazy property.** Inside `Panel`, write `val total: Int by lazy { ... }`. Inside the braces, print "computing", then make the last line `base * 2`.',
+      '**Write the watched score.** Inside `Panel`, write `var score: Int by Delegates.observable(0) { _, old, new -> ... }`. Inside, print "score ", `old`, " -> " and `new`.',
+      '**Read the lazy property.** Print "Before", then print `p.total` two times:\n"Before"\n"computing"\n"42"\n"42"',
+      '**Change the score.** Set `p.score` to `5`, then to `9`:\n"score 0 -> 5"\n"score 5 -> 9"',
+    ],
+    i: ['**Write the lazy property.** Print once, then return `base * 2`.', '**Write the watched score.** Print the old and new value.', '**Read the lazy property.** Print `p.total` twice.', '**Change the score.** Set it two times.'],
+    e: ['**Write the lazy property.**', '**Write the watched score.**', '**Read the lazy property.**', '**Change the score.**'],
+  },
+  'age-guard': {
+    summary: 'Use vetoable to refuse some changes to a property.',
+    goal: 'A profile only accepts a new age when it is at least a minimum age. Try three ages. Print the age that is kept, and the minimum.',
+    setup: 'The import for `Delegates` and the class header `Profile(val minAge: Int)` are in the starter code.',
+    steps: [
+      '**Write the guarded age.** Inside `Profile`, write `var age: Int by Delegates.vetoable(18) { _, _, new -> ... }`. The last line inside is `new >= minAge`.',
+      '**Try the first age.** Set `p.age` to `25`.',
+      '**Try two more ages.** Set `p.age` to `12`, then to `20`.',
+      '**Print two lines.** Join the text with `+`:\n"Age: 20"\n"Min age: 18"',
+    ],
+    i: ['**Write the guarded age.** Accept only when `new >= minAge`.', '**Try the first age.** Use `25`.', '**Try two more ages.** Use `12` and `20`.', '**Print two lines.** Show the age and the minimum.'],
+    e: ['**Write the guarded age.**', '**Try the first age.**', '**Try two more ages.**', '**Print two lines.**'],
+  },
+  'safe-account': {
+    summary: 'Keep a balance private and change it only through functions that check the rules.',
+    goal: 'A bank account hides its balance. Money goes in and out only through functions. A withdrawal that is too big is refused.',
+    steps: [
+      '**Write the class.** Above `main`, write `class Account(private var balance: Int)`. Add `deposit(n: Int)` that adds `n`. Add `withdraw(n: Int): Boolean`. When `n` is above `balance`, return `false`. Otherwise subtract `n` and return `true`. Add `show(): String` that returns "Balance: " plus `balance`.',
+      '**Make the account.** Create `val acc` with `Account(0)`. Call `acc.deposit(100)`.',
+      '**Withdraw 30.** Print "Withdraw 30: " plus `acc.withdraw(30)`:\n"Withdraw 30: true"',
+      '**Withdraw the amount.** Print "Withdraw ", `amount`, ": " and `acc.withdraw(amount)`:\n"Withdraw 120: false"',
+      '**Show the balance.** Print `acc.show()`:\n"Balance: 70"',
+    ],
+    i: ['**Write the class.** Private `balance` with three functions.', '**Make the account.** Start at `0`, then deposit `100`.', '**Withdraw 30.** Print the result.', '**Withdraw the amount.** Print the result.', '**Show the balance.** Print `show()`.'],
+    e: ['**Write the class.**', '**Make the account.**', '**Withdraw 30.**', '**Withdraw the amount.**', '**Show the balance.**'],
+  },
+  'tick-timer': {
+    summary: 'Use a private setter and a private function, and show only a public report.',
+    goal: 'A timer counts ticks. Other code can read the count but not change it. Tick the timer and print its report.',
+    setup: 'The class header `Timer` is in the starter code.',
+    steps: [
+      '**Write the counter.** Inside `Timer`, write `var ticks = 0` with `private set`. Add `tick()` that adds `1` to `ticks`.',
+      '**Write the report.** Add `private fun label(): String` that returns "Timer ticks: ". Add `report(): String` that returns `label()` plus `ticks`.',
+      '**Tick the timer.** Create `val timer` with `Timer()`. Loop `i` from `1` to `times` and call `timer.tick()`.',
+      '**Print two lines.** Print `timer.ticks`, then `timer.report()`:\n"Ticks: 3"\n"Timer ticks: 3"',
+    ],
+    i: ['**Write the counter.** Add `ticks` with a private setter, and `tick()`.', '**Write the report.** Add a private label and `report()`.', '**Tick the timer.** Loop `times` times.', '**Print two lines.** Show the count and the report.'],
+    e: ['**Write the counter.**', '**Write the report.**', '**Tick the timer.**', '**Print two lines.**'],
+  },
+};
+
+export const DBG_DATA: Record<string, DBG> = {
+  'closed-parent': {
+    subtitle: 'The program should print "Rex says Woof", but it does not compile.',
+    hints: [
+      'Look at the line where `Dog` extends `Animal`. What does Kotlin say about `Animal`?',
+      'A class is final by default, so no other class may extend it.',
+      'Mark the parent class so that other classes are allowed to extend it.',
+    ],
+    explanation: 'In Kotlin, a class is final unless it is marked `open`. `Animal` is not open, so `Dog` cannot extend it. Writing `open class Animal` allows the subclass, and the program prints `Rex says Woof`.',
+  },
+  'missing-member': {
+    subtitle: 'The program should print "Hello Ana" and "Bye Ana", but it does not compile.',
+    hints: [
+      'Compare the functions in `Greeter` with the functions in `Polite`.',
+      'A class that implements an interface must give a body for every function that has none.',
+      'Add the function that `Polite` is missing.',
+    ],
+    explanation: '`Greeter` has two functions without a body, `greet` and `farewell`. `Polite` only writes `greet`, so Kotlin refuses to compile it. Adding `override fun farewell` completes the contract, and both lines print.',
+  },
+  'open-when': {
+    subtitle: 'The program should print "slow" and "go", but it does not compile.',
+    hints: [
+      'Count the subclasses of `Light`. Then count the branches in the `when`.',
+      'A `when` that returns a value over a sealed class must handle every subclass, or have an `else`.',
+      'Add the branch for the subclass that is missing.',
+    ],
+    explanation: '`Light` is sealed with three subclasses, but the `when` handles only two. Kotlin checks that the `when` is exhaustive, so it refuses to compile. Adding `is Yellow -> "slow"` covers every case.',
+  },
+  'plain-equals': {
+    subtitle: 'The program should print "Same: true" for two equal points, but it prints "Same: false".',
+    hints: [
+      'Look at how `Point` is declared. What kind of class is it?',
+      'A plain class compares by identity. Two different objects are never `==`, even with the same values.',
+      'Use the kind of class that compares by the values of its properties.',
+    ],
+    explanation: 'In a plain class, `==` checks if both names point to the same object. `a` and `b` are two objects, so the answer is `false`. A `data class` makes `==` compare `x` and `y`, so the answer is `true`.',
+  },
+  'nested-no-outer': {
+    subtitle: 'The program should print "Cart of Ana", but it does not compile.',
+    hints: [
+      'Find the line in `Cart` that uses `name`. Where does `name` belong?',
+      'A nested class has no link to an outer object, so it cannot read the outer properties.',
+      'Change the kind of class so that each `Cart` is tied to one `Shop` object.',
+    ],
+    explanation: 'A plain nested class is not connected to a `Shop` object, so `name` is unknown inside it. An `inner class` keeps a link to the outer object. Then `name` works, and `shop.Cart()` is a valid way to create it.',
+  },
+  'inner-no-outer': {
+    subtitle: 'The program should print "10", the interest at the rate of 5 percent, but it prints "16".',
+    hints: [
+      'Look at the two banks in `main`. Which bank makes the account?',
+      'An inner class uses the outer object that created it. `other` has a rate of 8, not 5.',
+      'Create the account from the bank that has the rate you want.',
+    ],
+    explanation: 'An inner class is tied to the outer object that creates it, and it reads `rate` from that object. `other.Account(200)` uses the rate `8`, so the interest is `16`. `bank.Account(200)` uses the rate `5`, so the interest is `200 * 5 / 100 = 10`.',
+  },
+  'new-object': {
+    subtitle: 'The program should print "start" and "1", but it does not compile.',
+    hints: [
+      'Look at the line `Logger()`. Is `Logger` a class or an object?',
+      'An `object` is already one single instance. It has no constructor to call.',
+      'Use the name `Logger` directly to reach its members.',
+    ],
+    explanation: '`object Logger` creates its only instance when it is first used, so `Logger()` is not allowed. You call its members with the object name: `Logger.log("start")` and `Logger.lines`.',
+  },
+  'companion-via-instance': {
+    subtitle: 'The program should print "red", but it does not compile.',
+    hints: [
+      'Look at the line `c.red()`. What is `c`?',
+      'A companion member belongs to the class, not to an object made from it.',
+      'Call the function with the class name instead of an object.',
+    ],
+    explanation: '`red()` lives in the companion object, so it is called on the class name. `c` is an object of `Color`, and objects cannot call companion members. `Color.red()` works.',
+  },
+  'shadowed-extension': {
+    subtitle: 'The program should print "BOX", but it prints "box".',
+    hints: [
+      'Look at the two functions called `label`. Which one runs?',
+      'When a member and an extension have the same name and parameters, the member always wins.',
+      'Give the extension a name that the class does not already use.',
+    ],
+    explanation: 'Kotlin picks a member function before an extension with the same name. So `Box().label()` calls the member and prints `box`. Renaming the extension, for example to `shout`, makes the call reach it and print `BOX`.',
+  },
+  'ext-field': {
+    subtitle: 'The program should print "k", but it does not compile.',
+    hints: [
+      'Look at the line that declares `initial`. How does it get its value?',
+      'An extension property has no place to store a value, so it cannot have an initial value.',
+      'Compute the value in a getter instead of storing it.',
+    ],
+    explanation: 'An extension property cannot hold a value of its own, because it adds no field to the class. It must work out its value each time with a getter: `get() = this.substring(0, 1)`.',
+  },
+  'wrong-delegate': {
+    subtitle: 'The program should print "20", but it prints "10".',
+    hints: [
+      'Which scorer should answer the call? Which one does the class use?',
+      'The class says `Scorer by first`, so every call goes to the first scorer, which is `Plain`.',
+      'Change which object the class delegates to.',
+    ],
+    explanation: '`Scorer by first` forwards every `Scorer` call to `first`, which is `Plain`, so the score is `10`. Delegating to `second`, which is `Twice`, gives `20`.',
+  },
+  'recompute': {
+    subtitle: 'The program should print "computing" once and then "42" two times, but it prints "computing" twice.',
+    hints: [
+      'Count how many times the word "computing" appears. How many times is `total` read?',
+      'A getter runs every time the property is read, so the work is done again.',
+      'Use a property delegate that works the value out once and keeps it.',
+    ],
+    explanation: 'A `get()` block runs on every read, so the message prints twice. `by lazy` runs its block once, on the first read, and keeps the result. The second read gives `42` without printing again.',
+  },
+  'private-read': {
+    subtitle: 'The program should print "Opened: true", but it does not compile.',
+    hints: [
+      'Look at what `main` reads from `s`. Is that property public?',
+      '`code` is private, so only code inside `Safe` can read it.',
+      'Ask the object through the public function that it already offers.',
+    ],
+    explanation: '`code` is a private property, so `main` cannot read it. `Safe` offers `check(guess)` as its public API. Calling `s.check(1234)` gives `true` without showing the code.',
+  },
+};
+
+export const DBG_SUMMARY: Record<string, string> = {
+  'closed-parent': 'A class that is not open cannot be extended.',
+  'missing-member': 'A class does not write one of the interface functions.',
+  'open-when': 'A when over a sealed class misses one subclass.',
+  'plain-equals': 'A plain class compares by identity, not by values.',
+  'nested-no-outer': 'A nested class cannot read the outer property.',
+  'inner-no-outer': 'The inner class is created from the wrong outer object.',
+  'new-object': 'An object is created with () but it is already one instance.',
+  'companion-via-instance': 'A companion function is called on an object.',
+  'shadowed-extension': 'A member function hides the extension of the same name.',
+  'ext-field': 'An extension property is given a stored value.',
+  'wrong-delegate': 'The class delegates to the wrong object.',
+  'recompute': 'A getter does the work again on every read.',
+  'private-read': 'A private property is read from outside the class.',
+};

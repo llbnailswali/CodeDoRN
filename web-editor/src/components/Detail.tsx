@@ -84,7 +84,7 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
         hardcodeCheck: undefined,
       };
     }
-    if (!wr || !isPracticeMode || getPracticeHelpLevelOrDefault() === 'beginner') return wr;
+    if (!wr || !isPracticeMode) return wr;
 
     const level = getPracticeHelpLevelOrDefault();
     const levelHints = level === 'intermediate' || level === 'experienced' ? wr.levelHints?.[level] : undefined;
@@ -99,7 +99,15 @@ export const Detail = forwardRef<DetailHandle, DetailProps>(({
           return match ? `${match[1]}${levelHints.comments[next++] ?? line.trim()}` : line;
         })
         .join('\n');
-      if (next === stepCount) return { ...wr, initialCode };
+      if (next === stepCount) {
+        return {
+          ...wr,
+          // No guidance is visible in a fresh Practice editor. The selected
+          // level's comments are inserted only when the learner asks for one.
+          initialCode: stripStepComments(initialCode),
+          helperComments: levelHints.comments,
+        };
+      }
     }
 
     const helperComments = wr.initialCode

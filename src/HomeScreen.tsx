@@ -1,9 +1,9 @@
 import React from 'react';
-import { BlurView } from '@react-native-community/blur';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BW, Icon, MAIN, fz, pressedShadows, raisedShadows } from './shell';
 import { HOME_WORLDS } from './homeData';
+import { CONTENT_STATS } from './contentStats';
 import { EdgeGlow, InsetShadow, ShadowStack } from './shadows';
 import { getPathStyle, nodeDrift, nodeInset } from './pathStyles';
 import {
@@ -20,7 +20,7 @@ export const TOTAL_WORLDS = 22;
 // Match the web's progression rule: only the current world is available until earlier worlds are completed.
 export const UNLOCK_ALL = false;
 export const UNLOCK_THROUGH = 17;
-const SHOW_LEVEL_STRIPS = true;
+export const SHOW_LEVEL_STRIPS = true;
 // Height of a world node's text column in the web (chip 19.96 + title 19.35 + 2 + tag 19.96), so every row has the web's exact stride.
 // TEMPORARY performance test: false hides the moving light streaks on the trail in both Homes (old and new).
 export const SHOW_STREAKS = true;
@@ -85,6 +85,16 @@ const rampColors = (stops: string[], slices: number): string[] =>
 const INDIGO_PURPLE_PINK = rampColors(['#6366F1', '#A855F7', '#EC4899'], 32);
 const INDIGO_VIOLET = rampColors(['#6366F1', '#8B5CF6'], 32);
 
+// These curriculum-wide totals sit below Journey progress. Quiz questions include
+// bosses; the two exercise totals combine lesson stages (including bosses) with
+// their matching Practice-tab problem banks.
+const JOURNEY_TOTALS = {
+  lessons: HOME_WORLDS.reduce((total, world) => total + world.lessons, 0),
+  quizQuestions: CONTENT_STATS.quizQuestions,
+  writeRun: CONTENT_STATS.stages.writeRun.items + CONTENT_STATS.practice.writeRun,
+  debug: CONTENT_STATS.stages.debug.items + CONTENT_STATS.practice.debug,
+};
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Kotlin Journey card
 // ---------------------------------------------------------------------------------------------------------------------
@@ -116,9 +126,38 @@ export function JourneyCard({ p, current, completed }: { p: Palette; current: (t
         <View style={[s.bar, { backgroundColor: p.barTrack }, !p.isDark && { borderWidth: BW, borderColor: 'rgba(226,232,240,0.6)' }]}>
           <GradientBar colors={INDIGO_PURPLE_PINK} radius={3} style={{ height: 6, width: `${Math.max(Number(pct), 4)}%` }} />
         </View>
+        <View style={[s.journeyTotals, { borderTopColor: p.isDark ? 'rgba(148,163,184,0.16)' : 'rgba(148,163,184,0.22)' }]}>
+          <JourneyTotal icon="menu_book" value={JOURNEY_TOTALS.lessons} label="Lessons" color="#818CF8" p={p} />
+          <JourneyTotal icon="psychology" value={JOURNEY_TOTALS.quizQuestions} label="Quiz questions" color="#A78BFA" p={p} />
+          <JourneyTotal icon="code" value={JOURNEY_TOTALS.writeRun} label="Write & Run" color="#60A5FA" p={p} />
+          <JourneyTotal icon="bug_report" value={JOURNEY_TOTALS.debug} label="Debug tasks" color="#FDBA74" p={p} last />
+        </View>
       </View>
       </View>
     </View>
+  );
+}
+
+function JourneyTotal({ icon, value, label, color, p, last = false }: { icon: string; value: number; label: string; color: string; p: Palette; last?: boolean }) {
+  return (
+    <View style={[s.journeyTotal, !last && { borderRightWidth: BW, borderRightColor: p.isDark ? 'rgba(148,163,184,0.16)' : 'rgba(148,163,184,0.22)' }]}>
+      <View style={s.journeyTotalHead}>
+        {icon === 'menu_book' ? <JourneyBookIcon color={color} /> : icon === 'psychology' ? <BrainArtwork size={18} /> : <Icon name={icon} size={18} exact color={color} />}
+        <Text style={[s.journeyTotalValue, { color: p.cardText }]}>{value.toLocaleString('en-US')}</Text>
+      </View>
+      <Text numberOfLines={1} style={[s.journeyTotalLabel, { color: p.isDark ? '#94A3B8' : '#64748B' }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** SVG avoids the incomplete Material font glyph set used by the native builds. */
+function JourneyBookIcon({ color }: { color: string }) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24">
+      <Path d="M3.5 5.4c2.55-.92 5.05-.56 7.4 1.2v12c-2.3-1.5-4.78-1.8-7.4-.92V5.4Z" fill={color} />
+      <Path d="M20.5 5.4c-2.55-.92-5.05-.56-7.4 1.2v12c2.3-1.5 4.78-1.8 7.4-.92V5.4Z" fill={color} opacity={0.82} />
+      <Path d="M12 7v11.1M5.6 8.05c1.65-.38 3.13-.06 4.45.86M18.4 8.05c-1.65-.38-3.13-.06-4.45.86" stroke="#F8FAFC" strokeWidth={1.05} strokeLinecap="round" fill="none" opacity={0.88} />
+    </Svg>
   );
 }
 
@@ -133,7 +172,7 @@ function bandColors(p: Palette, chapter: 1 | 2 | 3, active: boolean) {
   const f = { indigo: FAMILIES.indigo, purple: FAMILIES.purple, rose: FAMILIES.rose }[tone];
   if (p.isDark) {
     return {
-      bg: withAlpha(f.c950, active ? (chapter === 1 ? 0.55 : 0.6) : 0.25),
+      bg: active ? f.c950 : p.page,
       border: withAlpha(f.c400, active ? 0.35 : chapter === 1 ? 0.15 : 0.15),
       chipText: active ? mix(f.c200, f.c200, 0) : f.c400,
       chipBg: withAlpha(f.c500, active ? 0.2 : 0.1),
@@ -143,7 +182,7 @@ function bandColors(p: Palette, chapter: 1 | 2 | 3, active: boolean) {
     };
   }
   return {
-    bg: active ? 'rgba(255,255,255,0.95)' : 'rgba(236,238,244,0.95)',
+    bg: active ? '#FFFFFF' : '#ECEEF4',
     border: active ? f.c200 : 'rgba(203,213,225,0.8)',
     chipText: chapter === 1 ? '#3730A3' : chapter === 2 ? '#6B21A8' : '#9F1239',
     chipBg: active ? f.c50 : '#FFFFFF',
@@ -153,7 +192,7 @@ function bandColors(p: Palette, chapter: 1 | 2 | 3, active: boolean) {
   };
 }
 
-export function Band({ p, chapter, label, active, topBorder, blurred, onLayout }: { p: Palette; chapter: 1 | 2 | 3; label: string; active: boolean; topBorder: boolean; blurred: boolean; onLayout?: (chapter: 1 | 2 | 3, y: number) => void }) {
+export function Band({ p, chapter, label, active, topBorder, onLayout }: { p: Palette; chapter: 1 | 2 | 3; label: string; active: boolean; topBorder: boolean; onLayout?: (chapter: 1 | 2 | 3, y: number) => void }) {
   if (!SHOW_LEVEL_STRIPS) return null;
   const c = bandColors(p, chapter, active);
   const rgb = chapter === 1 ? '99,102,241' : chapter === 2 ? '168,85,247' : '244,63,94';
@@ -168,13 +207,11 @@ export function Band({ p, chapter, label, active, topBorder, blurred, onLayout }
         <EdgeGlow rgb={rgb} alpha={glow.alpha} blur={glow.blur} offset={glow.offset} />
       </View>
       <View style={{ borderBottomWidth: BW, borderTopWidth: topBorder ? BW : 0, borderColor: 'transparent' }}>
-        {/* Blur and tint reach out under the 1px borders too, so nothing scrolling behind shows through a gap at the edge; the border
-            lines are drawn on top of them. The library's own overlayColor would paint over everything around the band, so the tint is a plain View. */}
+        {/* The tint reaches under the 1px borders so nothing scrolling behind shows through a gap at the edge. */}
         <View
           pointerEvents="none"
           style={{ position: 'absolute', left: 0, right: 0, top: topBorder ? -BW : 0, bottom: -BW, overflow: 'hidden' }}
         >
-          <BlurView style={StyleSheet.absoluteFill} blurType={p.isDark ? 'dark' : 'light'} blurRadius={20} overlayColor="transparent" />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]} />
         </View>
         {topBorder && <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: -BW, height: BW, backgroundColor: c.border }} />}
@@ -704,6 +741,11 @@ const s = StyleSheet.create({
   progressValue: { fontFamily: FONT.mono.b, fontSize: fz(12 * MAIN), lineHeight: 16 * MAIN, includeFontPadding: false },
   journeyTitle: { fontFamily: FONT.outfit.b, fontSize: fz(14 * MAIN), lineHeight: 20 * MAIN, letterSpacing: -0.35 * MAIN, includeFontPadding: false },
   bar: { width: '100%', height: 6, borderRadius: 3, overflow: 'hidden' },
+  journeyTotals: { flexDirection: 'row', marginTop: 2, paddingTop: 12, borderTopWidth: BW },
+  journeyTotal: { flex: 1, alignItems: 'center', gap: 3, paddingHorizontal: 3 },
+  journeyTotalHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  journeyTotalValue: { fontFamily: FONT.mono.b, fontSize: fz(13 * MAIN), lineHeight: 18 * MAIN, includeFontPadding: false },
+  journeyTotalLabel: { fontFamily: FONT.body, fontSize: fz(9 * MAIN), lineHeight: 13 * MAIN, includeFontPadding: false },
   // bands
   bandInner: { paddingHorizontal: 20, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
   bandChip: { borderWidth: BW, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },

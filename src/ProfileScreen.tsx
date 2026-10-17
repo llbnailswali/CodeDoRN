@@ -48,11 +48,6 @@ export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress
         <Stat label="Accuracy" value={stats.accuracy === null ? '-' : `${stats.accuracy}%`} row={row} title={title} muted={muted} />
         <Stat label="To review" value={String(stats.toReview)} row={row} title={title} muted={muted} />
       </View>
-      {stats.worlds.map(({ world, total, seen, correct }) => <View key={world.order} style={[s.worldRow, row]}>
-        <View style={s.worldHead}><Text style={[s.rowTitle, { color: title, flex: 1 }]} numberOfLines={1}>World {world.order}: {world.title}</Text><Text style={[s.sub, { color: muted }]}>{seen} / {total} seen</Text></View>
-        <View style={[s.track, { backgroundColor: p.barTrack }]}><View style={[s.fill, { width: `${total ? (seen / total) * 100 : 0}%` }]} /></View>
-        <Text style={[s.sub, { color: muted }]}>{correct} answered correctly at least once</Text>
-      </View>)}
     </Section>
     <Section title="Card styling" titleColor={muted}>
       <View style={[s.row, row]}>
@@ -118,10 +113,6 @@ const s = StyleSheet.create({
   statGrid: { flexDirection: 'row', gap: 8 },
   stat: { flex: 1, borderWidth: BW, borderRadius: 12, padding: 12, gap: 2 },
   statValue: { fontFamily: FONT.outfit.b, fontSize: fz(22) },
-  worldRow: { borderWidth: BW, borderRadius: 12, padding: 12, gap: 8 },
-  worldHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  fill: { height: 8, borderRadius: 4, backgroundColor: '#6366F1' },
   sizeGroup: { flexDirection: 'row', gap: 3, padding: 3, borderRadius: 8, borderWidth: BW, borderColor: '#CBD5E1' },
   mode: { paddingHorizontal: 10, height: 26, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   pathPicker: { minHeight: 82, alignItems: 'flex-start' },

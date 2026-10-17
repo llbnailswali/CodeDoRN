@@ -1,5 +1,6 @@
 import React from 'react';
 import { Animated, BackHandler, LayoutChangeEvent, Modal, NativeModules, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { BW, Icon, MAIN, fz, raisedShadows } from './shell';
 import { KotlinLines } from './kotlinCode';
@@ -23,7 +24,7 @@ const CONTINUE_LABELS: Record<StageKey, string> = {
   learn: 'Learn', explore: 'Explore', predict: 'Predict', writeRun: 'Write & Run', debug: 'Debug', mastered: 'Mastered',
 };
 
-type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: string, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null) => Promise<'continue' | 'continue_debug' | 'back'> };
+type WebStageApi = { warmUp?: () => void; open: (lessonKey: string, stage: string, dark: boolean, practice: boolean, tryIt: boolean, prefillCode: string | null, practiceHelpLevel: null) => Promise<'continue' | 'continue_debug' | 'back'> };
 const WebStage: WebStageApi | undefined = NativeModules.WebStage;
 
 const px = (n: number) => fz(n * MAIN);
@@ -239,10 +240,10 @@ function ProgressStrip({ dark, topic, stages, index, onJump }: { dark: boolean; 
   );
 }
 
-function BottomBar({ dark, children }: { dark: boolean; children: React.ReactNode }) {
+function BottomBar({ dark, bottomInset, children }: { dark: boolean; bottomInset: number; children: React.ReactNode }) {
   const page = dark ? '#0F131D' : '#F1F4F9';
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 6, paddingBottom: 20, paddingHorizontal: 8 }}>
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 6, paddingBottom: 20 + bottomInset, paddingHorizontal: 8 }}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <Svg width="100%" height="100%" preserveAspectRatio="none">
           <Defs>
@@ -436,6 +437,7 @@ export function LessonScreen({
   onExit: () => void;
   onToggleTheme: () => void;
 }) {
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const t = tk(dark);
   const lesson: LessonData | undefined = LESSONS[`${worldOrder}:${lessonTitle}`];
 
@@ -640,7 +642,7 @@ export function LessonScreen({
     setWebOpen(true);
     const stage = requestedStage;
     const isTryIt = tryItCode !== undefined;
-    WebStage.open(lesson.key, stage, dark, false, isTryIt, tryItCode ?? null)
+    WebStage.open(lesson.key, stage, dark, false, isTryIt, tryItCode ?? null, null)
       .then((action) => {
         launching.current = false;
         setWebOpen(false);
@@ -1304,11 +1306,11 @@ export function LessonScreen({
         </Animated.View>
       )}
       </View>
-      <BottomBar dark={dark}>{bottom}</BottomBar>
+      <BottomBar dark={dark} bottomInset={bottomInset}>{bottom}</BottomBar>
 
       <Modal transparent visible={skipOpen} animationType="fade" onRequestClose={() => setSkipOpen(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }} onPress={() => setSkipOpen(false)}>
-          <Pressable style={{ backgroundColor: dark ? '#171B26' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 28, gap: 8 }}>
+          <Pressable style={{ backgroundColor: dark ? '#171B26' : '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 28 + bottomInset, gap: 8 }}>
             <Text style={heading(dark, 16, { fontFamily: FONT.outfit.b, marginBottom: 6 })}>Skip to a stage</Text>
             {stages.map((key, i) =>
               i <= index ? null : (

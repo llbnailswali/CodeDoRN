@@ -24,6 +24,7 @@ class NativeScreensPlugin : Plugin() {
             result.put("practice", intent.getBooleanExtra("practice", false))
             result.put("tryIt", intent.getBooleanExtra("tryIt", false))
             result.put("prefillCode", intent.getStringExtra("prefillCode"))
+            result.put("practiceHelpLevel", intent.getStringExtra("practiceHelpLevel"))
         }
         call.resolve(result)
     }

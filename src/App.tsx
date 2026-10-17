@@ -1,6 +1,6 @@
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BackHandler, LayoutAnimation, Platform, StatusBar, StyleSheet, Text, UIManager, View } from 'react-native';
+import { Alert, BackHandler, LayoutAnimation, Platform, StatusBar, StyleSheet, Text, UIManager, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurriculumScreen } from './CurriculumScreen';
 import { HomeListContent } from './HomeListScreen';
@@ -16,7 +16,7 @@ import { BottomNav, Header, TabId } from './shell';
 import { DARK, FONT, LIGHT } from './theme';
 import { ProfileScreen } from './ProfileScreen';
 import { StatsScreen } from './StatsScreen';
-import { QuizPass, QuizProgress, buildSession, getQuizBoss, getQuizSets, getQuizWorldBank, getQuizWorlds, quizPassStatus } from './quizData';
+import { QuizPass, QuizProgress, buildSession, buildTypeSession, getQuizBoss, getQuizSets, getQuizWorldBank, getQuizWorlds, quizPassStatus } from './quizData';
 import { QuizQuestion } from './quizQuestions';
 import { PRACTICE_TASKS } from './practiceTasks';
 
@@ -25,7 +25,7 @@ export type JourneyVariant = 'milestones' | 'milestonesCircle' | 'milestonesDiam
 // The React Native app: ONE shell (top bar + bottom tab bar) that every tab shares, with each tab's content inside it. Tapping a tab
 // swaps the content; the shell, the theme and the Learn tab's GAP setting stay put. UI only, with sample data.
 
-const BADGES: Record<TabId, string> = { learn: 'LEARN', quiz: 'QUIZ', practice: 'PRACTICE', profile: 'PROFILE' };
+const BADGES: Record<TabId, string> = { learn: 'LEARN', quiz: '', practice: 'PRACTICE', profile: 'PROFILE' };
 const THEME_STORAGE_KEY = 'codedo_theme';
 const HELP_LEVEL_KEY = 'codedo_help_level';
 const QUIZ_PROGRESS_KEY = 'codedo_native_quiz_progress';
@@ -100,12 +100,9 @@ export function App({ dark = true }: { dark?: boolean }) {
   // The lesson being played (the five-stage screen, full screen over everything).
   const [lesson, setLesson] = React.useState<{ world: number; title: string } | null>(null);
   const p = isDark ? DARK : LIGHT;
-  // Android exposes the status-bar height directly, while iOS safe areas vary
-  // by device (notch, Dynamic Island, landscape). Every full-screen route uses
-  // this shared inset for its header, so keep it tied to the live device value.
-  const topInset = Platform.OS === 'android'
-    ? Math.max(StatusBar.currentHeight ?? 0, safeAreaInsets.top)
-    : safeAreaInsets.top;
+  // Headers clear the system status area and add the intentional 10 dp
+  // breathing room on both platforms.
+  const topInset = safeAreaInsets.top + 10;
 
   React.useEffect(() => {
     AsyncStorage.getItem(THEME_STORAGE_KEY).then((saved) => {
@@ -173,6 +170,10 @@ export function App({ dark = true }: { dark?: boolean }) {
   const openTaskWorld = React.useCallback((order: number) => setTaskWorld({ order, mode: 'writeRun' }), []);
   const openCurriculumWorld = React.useCallback((order: number) => setCurriculumWorld(order), []);
   const resetQuizProgress = React.useCallback(() => { setQuizProgress({}); setQuizPass({}); }, []);
+  // TEMP: testing shortcut in the Quiz tab's toolbar.
+  const confirmResetQuiz = React.useCallback(() => {
+    Alert.alert('Reset quiz progress?', 'Clears all quiz answers on this device (testing only).', [{ text: 'Cancel', style: 'cancel' }, { text: 'Reset', style: 'destructive', onPress: resetQuizProgress }]);
+  }, [resetQuizProgress]);
   // Clears every answer, stat and pass mark of one World (all of its questions, including lessons the review filter hides).
   const resetWorldQuiz = React.useCallback((order: number) => {
     const ids = new Set(getQuizWorldBank(order).map((q) => q.id));
@@ -224,6 +225,10 @@ export function App({ dark = true }: { dark?: boolean }) {
     const questions = buildSession(getQuizWorlds(), world?.order, quizProgress, review);
     if (questions.length) setQuiz({ world, questions, label: review ? 'Review mistakes' : world ? 'Full quiz' : 'Quick quiz' });
   }, [quizProgress]);
+  const openQuizType = React.useCallback((filter: import('./quizData').QuizFilter, label: string) => {
+    const questions = buildTypeSession(getQuizWorlds(), filter);
+    if (questions.length) setQuiz({ questions, label });
+  }, []);
   const openQuizCard = React.useCallback((world?: { order: number; title: string }, review?: boolean) => {
     // A World card opens that World's quiz hub (progress, the whole bank in one tap, review, lessons). No mode-choice sheet.
     if (world && !review && USE_QUIZ_HUB) {
@@ -273,6 +278,7 @@ export function App({ dark = true }: { dark?: boolean }) {
         gap={gap}
         onGap={setGap}
         onToggleTheme={toggleTheme}
+        onTempReset={tab === 'quiz' ? confirmResetQuiz : undefined}
         topInset={topInset}
       />
       <View style={{ flex: 1 }}>
@@ -289,7 +295,7 @@ export function App({ dark = true }: { dark?: boolean }) {
           />
         </View>
         <View pointerEvents={tab === 'quiz' ? 'auto' : 'none'} style={show('quiz')}>
-          <QuizContent p={p} progress={quizProgress} onOpenQuiz={openQuizCard} showAccentBorder={showAccentBorder} />
+          <QuizContent p={p} progress={quizProgress} onOpenQuiz={openQuizCard} onOpenType={openQuizType} onOpenSession={(questions, label) => setQuiz({ questions, label })} showAccentBorder={showAccentBorder} />
         </View>
         <View pointerEvents={tab === 'practice' ? 'auto' : 'none'} style={show('practice')}>
           <PracticeContent p={p} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} showAccentBorder={showAccentBorder} />
@@ -354,7 +360,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       )}
       {quiz !== null && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 110, backgroundColor: p.page }]}>
-          <QuizSessionScreen key={`${quiz.label}-${quiz.startIndex ?? 0}`} p={p} world={quiz.world} label={quiz.label} questions={quiz.questions} nextLabel={nextAfterQuiz?.label} onNext={nextAfterQuiz && quiz.world ? () => startOrdered(quiz.world!, nextAfterQuiz.questions, nextAfterQuiz.label) : undefined} startIndex={quiz.startIndex} lockedQuestionIds={quiz.lockedQuestionIds} totalOverride={quiz.total} topInset={topInset} onExit={() => setQuiz(null)} onAnswer={(question, correct) => { if (!quiz.explore) recordAnswer(question, correct, !!quiz.track); }} />
+          <QuizSessionScreen key={`${quiz.label}-${quiz.startIndex ?? 0}`} p={p} world={quiz.world} label={quiz.label} questions={quiz.questions} nextLabel={nextAfterQuiz?.label} onNext={nextAfterQuiz && quiz.world ? () => startOrdered(quiz.world!, nextAfterQuiz.questions, nextAfterQuiz.label) : undefined} startIndex={quiz.startIndex} lockedQuestionIds={quiz.lockedQuestionIds} totalOverride={quiz.total} topInset={topInset} bottomInset={safeAreaInsets.bottom} onExit={() => setQuiz(null)} onAnswer={(question, correct) => { if (!quiz.explore) recordAnswer(question, correct, !!quiz.track); }} />
         </View>
       )}
       {quizHub !== null && (

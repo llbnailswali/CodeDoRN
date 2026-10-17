@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlatList, LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { BW, Header, Icon, MAIN, fz, raisedShadows } from './shell';
 import { hexAlpha, lh } from './parts';
@@ -304,6 +305,7 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
   onToggleTheme: () => void;
   onOpenLesson?: (worldOrder: number, title: string) => void;
 }) {
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const dark = p.isDark;
   const t = tokens(dark);
   const [selected, setSelected] = React.useState(worldOrder);
@@ -414,7 +416,7 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
           </View>
         }
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 32 + bottomInset }}
         showsVerticalScrollIndicator={false}
         initialNumToRender={4}
         maxToRenderPerBatch={4}

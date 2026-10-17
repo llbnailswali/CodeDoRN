@@ -1,5 +1,6 @@
 import React from 'react';
 import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BW, Icon, fz } from './shell';
 import { lh } from './parts';
 import { FONT, Palette } from './theme';
@@ -55,6 +56,7 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
   /** Clears every answer, stat and pass mark of this World. */
   onResetWorld: () => void;
 }) {
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const dark = p.isDark;
   const title = dark ? '#F8FAFC' : '#1C2033';
   const muted = dark ? '#94A3B8' : '#64748B';
@@ -105,6 +107,7 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
           </Pressable>
         </View>
       </View>
+      <View style={{ flex: 1, paddingBottom: bottomInset }}>
       <FlatList
         data={sets}
         keyExtractor={(item) => item.id}
@@ -267,11 +270,12 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
           ) : undefined
         }
       />
+      </View>
       {confirmReset && (
         <Pressable style={s.sheetBackdrop} onPress={() => setConfirmReset(false)}>
           <Pressable
             onPress={() => {}}
-            style={[s.sheet, dark ? { backgroundColor: '#121826', borderColor: 'rgba(255,255,255,0.10)' } : { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' }]}
+            style={[s.sheet, { paddingBottom: 28 + bottomInset }, dark ? { backgroundColor: '#121826', borderColor: 'rgba(255,255,255,0.10)' } : { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' }]}
           >
             <View style={[s.sheetHandle, { backgroundColor: dark ? '#475569' : '#CBD5E1' }]} />
             <Text style={[s.cardTitle, { color: title }]}>Reset {world.title} quiz progress?</Text>

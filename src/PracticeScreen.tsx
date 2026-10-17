@@ -60,7 +60,7 @@ function WorldCard({ world, dark, onOpen, showAccentBorder }: { world: PracticeW
   return (
     <View style={{ opacity: hasAny ? 1 : 0.6 }}>
       <ShadowStack r={12} shadows={t.panelShadow} />
-      <Pressable onPress={() => { if (hasAny) onOpen(world.order); }} android_ripple={{ color: dark ? 'rgba(129,140,248,0.55)' : 'rgba(79,70,229,0.45)', borderless: false, foreground: true }} style={[s.card, t.panel, dark ? Platform.select({ ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 14 }, android: { elevation: 10, shadowColor: '#000000' } }) : { elevation: 3, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.16, shadowRadius: 5 }, { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0, overflow: 'visible' }]}>
+      <Pressable onPress={() => { if (hasAny) onOpen(world.order); }} android_ripple={{ color: `${accentText}33`, borderless: false, foreground: true }} style={[s.card, t.panel, dark ? Platform.select({ ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 14 }, android: { elevation: 10, shadowColor: '#000000' } }) : { elevation: 3, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.16, shadowRadius: 5 }, { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0, overflow: 'visible' }]}>
         {/* WORLD_NN label (+ "current" while in progress), check or chevron on the right */}
         <View style={s.cardTop}>
           <View style={s.cardTopLeft}>

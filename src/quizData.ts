@@ -136,6 +136,32 @@ export function quizProgressStats(progress: QuizProgress) {
 }
 
 const shuffle = <T,>(items: T[]) => [...items].sort(() => Math.random() - 0.5);
+/** Which questions a Practice-by-Type card draws on: one question type, or one difficulty, across every World. */
+export type QuizFilter = { type?: QuizQuestion['type']; difficulty?: QuizQuestion['difficulty'] };
+export const matchesQuizFilter = (q: QuizQuestion, filter: QuizFilter) =>
+  (!filter.type || q.type === filter.type) && (!filter.difficulty || q.difficulty === filter.difficulty);
+
+/** A short session of the questions that match the filter. */
+export function buildTypeSession(worlds: QuizWorld[], filter: QuizFilter, size = 10) {
+  return shuffle(worlds.flatMap((w) => w.questions).filter((q) => matchesQuizFilter(q, filter))).slice(0, size);
+}
+
+/** Today's Daily Challenge: the same questions all day (a shuffle seeded by the date), different tomorrow. */
+export function buildDailySession(worlds: QuizWorld[], date = new Date(), size = 10) {
+  let seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  const random = () => { seed = (seed + 0x6d2b79f5) | 0; let x = Math.imul(seed ^ (seed >>> 15), 1 | seed); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+  const pool = worlds.flatMap((w) => w.questions);
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return pool.slice(0, size);
+}
+
+/** The distinct topics (lesson names) in a session, most frequent first. */
+export function sessionTopics(questions: QuizQuestion[]) {
+  const counts = new Map<string, number>();
+  for (const q of questions) counts.set(q.topic, (counts.get(q.topic) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([topic]) => topic);
+}
+
 export function buildSession(worlds: QuizWorld[], order?: number, progress: QuizProgress = {}, review = false, size = 10) {
   const pool = order ? worlds.find((w) => w.order === order)?.questions ?? [] : worlds.filter((w) => w.order <= Math.max(1, ...worlds.map((w) => w.order))).flatMap((w) => w.questions);
   // A World card always starts the complete authored bank. Review is the only flow that filters to unresolved mistakes.

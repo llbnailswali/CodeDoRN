@@ -18,7 +18,7 @@ interface NativeScreensPlugin {
   /** The Home screen in React Native. */
   openReactHome(): Promise<void>;
   /** Set only inside the activity the React Native lesson screen opens for a web stage; empty in the normal app. */
-  getStageLaunch(): Promise<{ lessonKey?: string; stage?: string; dark?: boolean; practice?: boolean; tryIt?: boolean; prefillCode?: string }>;
+  getStageLaunch(): Promise<{ lessonKey?: string; stage?: string; dark?: boolean; practice?: boolean; tryIt?: boolean; prefillCode?: string; practiceHelpLevel?: 'beginner' | 'intermediate' | 'experienced' }>;
   /** Closes that activity and returns `action` to React Native. */
   closeStage(options: { action: 'continue' | 'back' }): Promise<void>;
   /** Tells the activity the stage has rendered, so it can remove its loading overlay. */
@@ -59,6 +59,7 @@ export interface NativeStageLaunch {
   practice: boolean;
   tryIt: boolean;
   prefillCode?: string;
+  practiceHelpLevel?: 'beginner' | 'intermediate' | 'experienced';
 }
 
 const injectedIosLaunch = (): NativeStageLaunch | undefined => {
@@ -78,13 +79,13 @@ export const getNativeStageLaunch = async (): Promise<NativeStageLaunch | null> 
     const params = new URLSearchParams(window.location.search);
     const lessonKey = params.get('stageLessonKey');
     const stage = params.get('stage');
-    if (lessonKey && (stage === 'writeRun' || stage === 'debug')) return { lessonKey, stage, dark: params.get('dark') !== 'false', practice: params.get('practice') === 'true', tryIt: params.get('tryIt') === 'true', prefillCode: decodeUtf8Base64(params.get('prefillCodeBase64')) ?? params.get('prefillCode') ?? undefined };
+    if (lessonKey && (stage === 'writeRun' || stage === 'debug')) return { lessonKey, stage, dark: params.get('dark') !== 'false', practice: params.get('practice') === 'true', tryIt: params.get('tryIt') === 'true', prefillCode: decodeUtf8Base64(params.get('prefillCodeBase64')) ?? params.get('prefillCode') ?? undefined, practiceHelpLevel: (['beginner', 'intermediate', 'experienced'] as const).includes(params.get('practiceHelpLevel') as 'beginner' | 'intermediate' | 'experienced') ? params.get('practiceHelpLevel') as 'beginner' | 'intermediate' | 'experienced' : undefined };
     return null;
   }
   try {
     const r = await NativeScreens.getStageLaunch();
     if (r.lessonKey && (r.stage === 'writeRun' || r.stage === 'debug')) {
-      return { lessonKey: r.lessonKey, stage: r.stage, dark: r.dark !== false, practice: r.practice === true, tryIt: r.tryIt === true, prefillCode: r.prefillCode };
+      return { lessonKey: r.lessonKey, stage: r.stage, dark: r.dark !== false, practice: r.practice === true, tryIt: r.tryIt === true, prefillCode: r.prefillCode, practiceHelpLevel: r.practiceHelpLevel };
     }
   } catch {
     // an older app build without the method: behave as the normal app

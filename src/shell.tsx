@@ -34,13 +34,16 @@ export const navShadows = (dark: boolean): ShadowSpec[] =>
 // Material Symbols ligature lookup is reliable on Android but not on iOS.
 // Use the font's codepoints so the same icon is rendered on both platforms.
 const MATERIAL_SYMBOL_CODEPOINTS: Record<string, number> = {
-  add: 0xe145, arrow_back: 0xe5c4, arrow_forward: 0xe5c8, assignment_turned_in: 0xe862,
-  auto_stories: 0xe0c3, autorenew: 0xe863, bug_report: 0xe868, check: 0xe5ca,
-  check_circle: 0xe86c, chevron_right: 0xe5cc, close: 0xe5cd, code: 0xe86f,
-  error: 0xe000, expand_more: 0xe5cf, fast_forward: 0xe01f, info: 0xe88e,
-  insights: 0xf092, lightbulb: 0xe90f, lock: 0xe897, military_tech: 0xea3b,
-  play_arrow: 0xe037, psychology: 0xea4b, refresh: 0xe5d5, remove: 0xe15b,
-  replay: 0xe042, rocket_launch: 0xeb9b, school: 0xe80c, terminal: 0xeb8e, tune: 0xe429, person: 0xe7fd,
+  account_tree: 0xe97a, add: 0xe145, architecture: 0xea3b, arrow_back: 0xe5c4, arrow_forward: 0xe5c8, assignment_turned_in: 0xe862,
+  auto_stories: 0xe0c3, autorenew: 0xe863, bolt: 0xea0b, bug_report: 0xe868, cancel: 0xe5c9, category: 0xe574,
+  check: 0xe5ca, check_circle: 0xe86c, chevron_right: 0xe5cc, close: 0xe5cd, cloud: 0xe2bd, code: 0xe86f,
+  dark_mode: 0xe51c, data_object: 0xf1c9, error: 0xe000, event_available: 0xe614, expand_less: 0xe5ce, expand_more: 0xe5cf,
+  explore: 0xe87a, fast_forward: 0xe01f, function: 0xe24a, hub: 0xe9f4, info: 0xe88e, insights: 0xf092, inventory_2: 0xe1a1,
+  light_mode: 0xe518, lightbulb: 0xe90f, lock: 0xe897, memory: 0xe322, menu_book: 0xe02d, military_tech: 0xea3b,
+  play_arrow: 0xe037, person: 0xe7fd, psychology: 0xea4b, refresh: 0xe5d5, remove: 0xe15b, replay: 0xe042,
+  rocket_launch: 0xeb9b, school: 0xe80c, science: 0xea4b, security: 0xe32a, shuffle: 0xe043, swap_vert: 0xe8d4,
+  terminal: 0xeb8e, touch_app: 0xe913, track_changes: 0xe8e1, tune: 0xe429, view_list: 0xe8ef, visibility: 0xe8f4,
+  workspace_premium: 0xe7af,
 };
 
 /**
@@ -61,7 +64,7 @@ export function Icon({ name, color, size, exact, filled }: { name: string; size?
 // The app shell shared by every tab: top bar and bottom tab bar
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'LEARN', showGap = true, title, onBack }: { p: Palette; gap?: number; onGap?: (v: number) => void; onToggleTheme: () => void; topInset: number; badge?: string; showGap?: boolean; title?: string; onBack?: () => void }) {
+export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'LEARN', showGap = true, title, onBack, onTempReset }: { p: Palette; gap?: number; onGap?: (v: number) => void; onToggleTheme: () => void; topInset: number; badge?: string; showGap?: boolean; title?: string; onBack?: () => void; onTempReset?: () => void }) {
   return (
     <View style={{ paddingTop: topInset, backgroundColor: p.page, borderBottomWidth: BW, borderBottomColor: p.headerBorder, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: p.isDark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
       <View style={s.headerInner}>
@@ -87,9 +90,11 @@ export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'L
             </View>
             <View style={s.brandRow}>
               <Text style={[s.brand, { color: p.pageText }]}>CodeDo</Text>
-              <View style={[s.badge, { backgroundColor: 'rgba(99,102,241,0.10)', borderColor: 'rgba(99,102,241,0.20)' }]}>
-                <Text style={[s.badgeText, { color: p.isDark ? INDIGO_400 : '#4F46E5' }]}>{badge}</Text>
-              </View>
+              {badge !== '' && (
+                <View style={[s.badge, { backgroundColor: 'rgba(99,102,241,0.10)', borderColor: 'rgba(99,102,241,0.20)' }]}>
+                  <Text style={[s.badgeText, { color: p.isDark ? INDIGO_400 : '#4F46E5' }]}>{badge}</Text>
+                </View>
+              )}
             </View>
             </>
           )}
@@ -106,6 +111,15 @@ export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'L
               <View style={{ opacity: gap === 32 ? 0.3 : 1 }}><Icon name="add" size={14} color="#64748B" /></View>
             </Pressable>
           </View>
+          )}
+          {/* TEMP: a testing shortcut (the Quiz tab passes it). Remove before release. */}
+          {onTempReset && (
+            <View>
+              <ShadowStack r={12} shadows={raisedShadows(p.isDark)} />
+              <Pressable accessibilityLabel="Reset quiz progress (testing)" onPress={onTempReset} style={[s.themeBtn, { backgroundColor: p.card, borderColor: p.cardBorder }]}>
+                <Icon name="refresh" size={17} color="#EF4444" />
+              </Pressable>
+            </View>
           )}
           <View>
             <ShadowStack r={12} shadows={raisedShadows(p.isDark)} />

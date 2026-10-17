@@ -15,6 +15,10 @@ import { loadStageLessonSource } from '../data/stageLessonSource';
  * Continuing from the stage or leaving it closes the activity and hands the result back to React Native, which owns every other stage.
  */
 export const NativeStageHost: React.FC<{ launch: NativeStageLaunch }> = ({ launch }) => {
+  // React Native owns the Practice selector. Copy its current selection into
+  // this WebView before Detail reads it, so the editor always matches the
+  // detail card the learner launched from.
+  if (launch.practice && launch.practiceHelpLevel) StorageManager.setPracticeHelpLevel(launch.practiceHelpLevel);
   const [theme, setTheme] = useState<AppTheme>(launch.dark ? 'dark' : 'light');
   const [fontSize] = useState<FontSize>(() => StorageManager.getFontSize());
   const detailRef = useRef<DetailHandle>(null);

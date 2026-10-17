@@ -1,13 +1,13 @@
 import React from 'react';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { Animated, Easing, FlatList, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, Easing, FlatList, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { BW, MAIN } from './shell';
 import { HOME_WORLDS } from './homeData';
 import { DEVICE_PATH_STYLE, buildTrail, getPathStyle, nodeDrift, nodeInset } from './pathStyles';
 import type { JourneyVariant } from './App';
 import { Palette } from './theme';
 import {
-  ActivityNode, ActivityPosition, Anchors, Band, BossNode, COMPLETED_WORLDS, CURRENT_CARD_HEIGHT, CurrentCard, FinalCard, JourneyCard,
+  ActivityNode, ActivityPosition, Anchors, Band, BossNode, COMPLETED_WORLDS, CURRENT_CARD_HEIGHT, CurrentCard, FinalCard, JourneyCard, SHOW_LEVEL_STRIPS,
   NODE_COLUMN, Pt, SHOW_STREAKS, SHIMMER_LEN, SHIMMER_W, StandardNode, StreakKeys, TOTAL_PATH_POINTS, TOTAL_WORLDS, UNLOCK_ALL, UNLOCK_THROUGH,
   WORLD_ACTIVITIES, WorldActivity, activityPointIndex, computeStreaks, resample, trailToPolyline, worldPointIndex,
 } from './HomeScreen';
@@ -289,6 +289,7 @@ type RowProps = {
   onOpenActivity?: (order: number, activity: WorldActivity) => void;
   onRowLayout: (item: RowItem, height: number) => void;
   onBandLayout: (chapter: 1 | 2 | 3, height: number) => void;
+  onPreparedRow?: (key: string) => void;
 };
 
 function WorldBlock({ order, ...r }: { order: number } & Omit<RowProps, 'item' | 'geo' | 'progress' | 'bandOpacity' | 'sectionWidth' | 'onRowLayout' | 'onBandLayout'>) {
@@ -336,24 +337,28 @@ const ListRow = React.memo(function ListRow(props: RowProps) {
   if (item.type === 'band') {
     const { currentOrder } = props;
     return (
-      <View onLayout={(e) => props.onBandLayout(item.chapter, e.nativeEvent.layout.height)}>
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: props.bandOpacity ?? 1 }]}>{slice}</Animated.View>
-        <Band
-          p={p}
-          chapter={item.chapter}
-          label={BAND_LABELS[item.chapter]}
-          active={item.chapter === 1 ? currentOrder <= 8 : item.chapter === 2 ? currentOrder > 8 && currentOrder <= 15 : currentOrder > 15}
-          topBorder={item.chapter !== 1}
-          // Band does not use `blurred` (HomeContent tracks the pinned band on every scroll event only to pass it here), so this list
-          // does not track it: no JavaScript runs while scrolling.
-          blurred={false}
-        />
+      <View
+        style={{ height: item.height }}
+        onLayout={SHOW_LEVEL_STRIPS ? (e) => props.onBandLayout(item.chapter, e.nativeEvent.layout.height) : undefined}
+      >
+        {!SHOW_LEVEL_STRIPS ? null : (
+          <>
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: props.bandOpacity ?? 1 }]}>{slice}</Animated.View>
+            <Band
+              p={p}
+              chapter={item.chapter}
+              label={BAND_LABELS[item.chapter]}
+              active={item.chapter === 1 ? currentOrder <= 8 : item.chapter === 2 ? currentOrder > 8 && currentOrder <= 15 : currentOrder > 15}
+              topBorder={item.chapter !== 1}
+            />
+          </>
+        )}
       </View>
     );
   }
   const { spec } = item;
   return (
-    <View style={{ height: item.height }}>
+    <View style={{ height: item.height }} onLayout={() => props.onPreparedRow?.(item.key)}>
       {slice}
       {/* CACHE_ROWS (off): caching this static layer as a GPU bitmap was measured on device and made scrolling WORSE (median frame
           61ms vs 53ms, 668 slow bitmap uploads vs 91), because every newly mounted row has to be rasterized and uploaded. */}
@@ -395,27 +400,42 @@ export const HomeListContent = React.memo(function HomeListContent({
   const [headerH, setHeaderH] = React.useState(0);
   const listRef = React.useRef<FlatList<Item>>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
+  const requiredPreparedRows = React.useMemo(() => {
+    const rowItems = geo.items.filter((item): item is RowItem => item.type === 'row');
+    return rowItems.map((item) => item.key);
+  }, [geo.items]);
+  const [prepared, setPrepared] = React.useState(false);
+  const preparedRows = React.useRef(new Set<string>());
+  const revealFrames = React.useRef<number[]>([]);
+  React.useEffect(() => () => revealFrames.current.forEach(cancelAnimationFrame), []);
+  const onPreparedRow = React.useCallback((key: string) => {
+    if (preparedRows.current.has(key)) return;
+    preparedRows.current.add(key);
+    // Give native layout and drawing two frames after the requested rows mount.
+    if (requiredPreparedRows.every((rowKey) => preparedRows.current.has(rowKey))) {
+      revealFrames.current.push(requestAnimationFrame(() => {
+        revealFrames.current.push(requestAnimationFrame(() => setPrepared(true)));
+      }));
+    }
+  }, [requiredPreparedRows]);
 
-  // The moving light streaks pause while the list scrolls (less work per frame) and resume from where they stopped.
-  // Android does not always report the end of a scroll (e.g. a fling stopped by a tap that never drags), so every touch/scroll end
-  // schedules a resume, and a paused state never outlives STREAK_WATCHDOG_MS without one.
+  // Keep the streaks moving during scrolling while we compare their effect on
+  // Home's scroll performance.
   const progress = React.useRef(new Animated.Value(0)).current;
   const streakAnim = React.useRef<Animated.CompositeAnimation | null>(null);
-  const streaksOn = React.useRef(false); // running, or about to start (the paused value arrives asynchronously from native)
-  const streakGen = React.useRef(0); // bumped by every pause, so a start that resolves after a pause is dropped
-  const resumeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const watchdog = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearTimers = React.useCallback(() => {
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    if (watchdog.current) clearTimeout(watchdog.current);
-    resumeTimer.current = null;
-    watchdog.current = null;
-  }, []);
+  const streaksOn = React.useRef(false); // true only after the native animation restart has begun
+  const streakGen = React.useRef(0); // invalidates a pending start if the screen unmounts
+  const streakStartFallback = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const startStreaks = React.useCallback(() => {
     if (!SHOW_STREAKS || streaksOn.current) return;
-    streaksOn.current = true;
     const gen = streakGen.current;
-    progress.stopAnimation((value) => {
+    let started = false;
+    const begin = (value: number) => {
+      if (started || gen !== streakGen.current) return;
+      started = true;
+      if (streakStartFallback.current) clearTimeout(streakStartFallback.current);
+      streakStartFallback.current = null;
+      streaksOn.current = true;
       if (gen !== streakGen.current) return; // paused again before native answered
       const trip = (from: number) =>
         Animated.timing(progress, { toValue: 1, duration: STREAK_LOOP_MS * (1 - from), easing: Easing.linear, useNativeDriver: true });
@@ -430,34 +450,28 @@ export const HomeListContent = React.memo(function HomeListContent({
         streakAnim.current = loop;
         loop.start();
       });
-    });
+    };
+    // stopAnimation normally returns the paused value promptly. If Android
+    // drops that callback during a fast drag/fling, unlock the animation state
+    // and restart from zero instead of leaving every later resume ignored.
+    if (streakStartFallback.current) clearTimeout(streakStartFallback.current);
+    streakStartFallback.current = setTimeout(() => {
+      streakStartFallback.current = null;
+      if (gen !== streakGen.current || started) return;
+      progress.setValue(0);
+      begin(0);
+    }, 300);
+    progress.stopAnimation(begin);
   }, [progress]);
-  const pauseStreaks = React.useCallback(() => {
-    clearTimers();
-    streakGen.current += 1;
-    streaksOn.current = false;
-    streakAnim.current?.stop();
-    streakAnim.current = null;
-    watchdog.current = setTimeout(() => { watchdog.current = null; startStreaks(); }, STREAK_WATCHDOG_MS);
-  }, [clearTimers, startStreaks]);
-  const resumeStreaksSoon = React.useCallback(() => {
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    // A fling starts momentum right after the finger lifts; wait for it, so a fling does not resume and pause again.
-    resumeTimer.current = setTimeout(() => {
-      resumeTimer.current = null;
-      if (watchdog.current) clearTimeout(watchdog.current);
-      watchdog.current = null;
-      startStreaks();
-    }, 150);
-  }, [startStreaks]);
   React.useEffect(() => {
     startStreaks();
     return () => {
-      clearTimers();
       streakGen.current += 1;
+      if (streakStartFallback.current) clearTimeout(streakStartFallback.current);
+      streakStartFallback.current = null;
       streakAnim.current?.stop();
     };
-  }, [startStreaks, clearTimers]);
+  }, [startStreaks]);
 
   const bandTops = React.useMemo(() => {
     const tops: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 };
@@ -515,9 +529,10 @@ export const HomeListContent = React.memo(function HomeListContent({
         onOpenActivity={onOpenActivity}
         onRowLayout={onRowLayout}
         onBandLayout={onBandLayout}
+        onPreparedRow={onPreparedRow}
       />
     ),
-    [geo, p, progress, bandSliceOpacity, sectionWidth, gap, currentOrder, shape, quizActivityCounts, writeRunActivityCounts, debugActivityCounts, onOpenWorld, onOpenActivity, onRowLayout, onBandLayout]
+    [geo, p, progress, bandSliceOpacity, sectionWidth, gap, currentOrder, shape, quizActivityCounts, writeRunActivityCounts, debugActivityCounts, onOpenWorld, onOpenActivity, onRowLayout, onBandLayout, onPreparedRow]
   );
 
   const onHeaderLayout = React.useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
@@ -546,26 +561,28 @@ export const HomeListContent = React.memo(function HomeListContent({
           keyExtractor={(item: Item) => item.key}
           renderItem={renderItem}
           getItemLayout={getItemLayout}
-          initialNumToRender={3}
-          // A row is about one screen tall: keep 3 screens above and below mounted so a fling rarely reaches an unrendered row,
-          // and mount new rows a few at a time.
+          // Mount every journey row under the preparation overlay before
+          // revealing Home, keeping the warmed cells available for scrolling.
+          initialNumToRender={geo.items.length}
+          // Keep three screens ahead/behind, but spread expensive world-row
+          // mounts across batches instead of mounting three together mid-scroll.
           windowSize={7}
-          maxToRenderPerBatch={3}
-          updateCellsBatchingPeriod={30}
+          maxToRenderPerBatch={1}
+          updateCellsBatchingPeriod={16}
           removeClippedSubviews
           stickyHeaderIndices={stickyHeaderIndices}
           ListHeaderComponent={header}
           ListFooterComponent={footer}
           onScroll={onScroll}
-          onScrollBeginDrag={pauseStreaks}
-          onScrollEndDrag={resumeStreaksSoon}
-          onMomentumScrollBegin={pauseStreaks}
-          onMomentumScrollEnd={resumeStreaksSoon}
-          onTouchEnd={resumeStreaksSoon}
-          onTouchCancel={resumeStreaksSoon}
           scrollEventThrottle={16}
           style={{ flex: 1 }}
         />
+      )}
+      {!prepared && (
+        <View style={[StyleSheet.absoluteFill, s.preparing, { backgroundColor: p.page }]}>
+          <ActivityIndicator size="large" color={p.isDark ? '#818CF8' : '#4F46E5'} />
+          <Text style={{ color: p.pageText }}>Preparing your journey…</Text>
+        </View>
       )}
     </View>
   );
@@ -574,11 +591,10 @@ export const HomeListContent = React.memo(function HomeListContent({
 const EMPTY_COUNTS: Record<number, number> = {};
 /** One full trip of the light streaks (HomeScreen's Trail uses the same 7s). */
 const STREAK_LOOP_MS = 7000;
-/** Longest the streaks stay paused without any scroll/touch end (a long fling resumes them early; a lost end event cannot freeze them). */
-const STREAK_WATCHDOG_MS = 2500;
 /** Cache each row's static layer as a GPU bitmap. Off: measured slower on device (see ListRow). */
 const CACHE_ROWS = false;
 
 const s = StyleSheet.create({
   section: { alignSelf: 'center', alignItems: 'center' },
+  preparing: { alignItems: 'center', justifyContent: 'center', gap: 16 },
 });

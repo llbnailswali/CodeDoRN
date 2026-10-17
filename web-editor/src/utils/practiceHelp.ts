@@ -4,9 +4,9 @@ import { PracticeHelpLevel, StorageManager } from './storage';
 export const getPracticeHelpLevelOrDefault = (): PracticeHelpLevel => StorageManager.getPracticeHelpLevel() ?? 'beginner';
 
 /**
- * Removes the numbered step comments (`// 1. ...`) from starter code, keeping
- * the starting values and the blank writable space. Beginner keeps them;
- * Intermediate and Experienced start from a clean editor.
+ * Removes numbered step comments (`// 1. ...`) from starter code, keeping the
+ * starting values and blank writable space. Every Practice help level starts
+ * from a clean editor; a comment is inserted only when its hint is requested.
  */
 export const stripStepComments = (code: string): string =>
   code
