@@ -1,8 +1,15 @@
 import React from 'react';
-import { BackHandler, NativeModules, Pressable, ScrollView, StyleSheet, StyleProp, Text, TextStyle, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BETS, BetId, STAKES_START, betById, loadStakesBest, payout, saveStakesRound } from './stakes';
+import { SurvivalArt, survivalArtFor } from './survivalArt';
+import { DIFFICULTY_LABEL, SURVIVAL_LEVEL_STEP, SURVIVAL_LIVES, difficultyForLevel, grantSurvivalBonus, loadSurvivalBest, pickSurvivalQuestion, spendSurvivalBonus, saveSurvivalRun, startSurvivalRun, survivalLevel } from './survival';
+import { SPEED_ROUND_HISTORY_KEY, SpeedRoundEntry, entryPoints, loadSpeedHistory, speedPoints } from './speedRoundHistory';
+import { Alert, Animated, BackHandler, Image, NativeModules, Pressable, ScrollView, StyleSheet, StyleProp, Text, TextStyle, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import PagerView from 'react-native-pager-view';
-import { HorizontalCodeScroll } from './HorizontalCodeScroll';
+import { captureRef } from 'react-native-view-shot';
+import Share from 'react-native-share';
+import { CodeScrollPagerLock, HorizontalCodeScroll } from './HorizontalCodeScroll';
 import { BW, Icon, MAIN, fz } from './shell';
 import { accentFor, lh } from './parts';
 import { QuizAnswer, QuizQuestion, correctAnswerText, gradeQuizAnswer, hasAnswer } from './quizQuestions';
@@ -250,7 +257,7 @@ function CodePanel({
         </View>
       )}
       <HorizontalCodeScroll>
-        <View style={{ alignSelf: 'flex-start', paddingVertical: 8 }}>
+        <View style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
           {lines.map((line, idx) => {
             const state = lineState ? lineState(idx) : 'idle';
             const note = lineNote ? lineNote(idx) : null;
@@ -259,7 +266,7 @@ function CodePanel({
               <View
                 style={[
                   s.codeRow,
-                  { minHeight: tappable ? 48 : 28 },
+                  { minHeight: tappable ? 38 : 24 },
                   tappable && panelWidth > 0 && { minWidth: panelWidth - 2 * BW },
                   // Tappable lines read as separate rows: a tint, a thin divider and a tap circle on the right.
                   tappable && state === 'idle' && { backgroundColor: 'rgba(255,255,255,0.04)' },
@@ -268,12 +275,9 @@ function CodePanel({
                 ]}
               >
                 {showLineNumbers && <Text style={s.gutter}>{idx + 1}</Text>}
-                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0, paddingLeft: showLineNumbers ? 0 : 8, paddingRight: fullBleed ? 0 : 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0, paddingLeft: tappable ? 32 : showLineNumbers ? 0 : 8, paddingRight: fullBleed ? 0 : 8 }}>
                   {renderLine(line)}
                 </View>
-                {tappable && (
-                  <View style={[s.tapCircle, { marginLeft: 'auto' }, state === 'selected' && { backgroundColor: '#6366F1', borderColor: '#6366F1' }]} />
-                )}
               </View>
             );
             return (
@@ -290,6 +294,14 @@ function CodePanel({
           })}
         </View>
       </HorizontalCodeScroll>
+      {onLineClick && (
+        <View pointerEvents="none" style={s.selectionRail}>
+          {lines.map((_, idx) => {
+            const state = lineState ? lineState(idx) : 'idle';
+            return <View key={idx} style={s.selectionRailRow}><View style={[s.tapCircle, { marginRight: 0 }, state === 'selected' && { backgroundColor: '#6366F1', borderColor: '#6366F1' }]} /></View>;
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -370,12 +382,15 @@ function Option({
   return (
     <Pressable disabled={locked} onPress={onPress} style={[s.option, compact && s.optionCompact, surface(state, dark)]}>
       <Indicator state={state} multi={multi} compact={compact} />
-      <RichText
-        text={label}
-        style={[mono ? s.optionMono : s.optionText, compact && s.optionTextCompact, { color: dark ? '#F1F5F9' : '#222638' }]}
-        dark={dark}
-        subtle
-      />
+      {/* A monospace option is program output: keep its line breaks and spaces exactly (RichText collapses them, so "F\n3" read as "F 3"). */}
+      {mono && !label.includes('`')
+        ? <Text style={[s.optionMono, compact && s.optionTextCompact, { color: dark ? '#F1F5F9' : '#222638' }]}>{label}</Text>
+        : <RichText
+          text={label}
+          style={[mono ? s.optionMono : s.optionText, compact && s.optionTextCompact, { color: dark ? '#F1F5F9' : '#222638' }]}
+          dark={dark}
+          subtle
+        />}
       {tag && (
         <View style={s.tag}>
           <Icon name={tag.icon} size={compact ? 13 : 16} exact color={tagColor(state, dark)} />
@@ -471,7 +486,7 @@ function AnswerBody({ q, value, onChange, checked, dark }: { q: QuizQuestion; va
       return (
         <View style={{ gap: 10 }}>
         {!checked && (
-          <Text style={[s.tapInstruction, { color: dark ? '#A5B4FC' : '#4338CA' }]}>Tap the one line with the error · {q.code.length} lines</Text>
+          <Text style={[s.tapInstruction, { color: dark ? '#A5B4FC' : '#4338CA' }]}>{q.code.length} lines to inspect</Text>
         )}
         <CodePanel
           lines={q.code}
@@ -603,6 +618,104 @@ function QuizToolbar({ p, world, label, question, topInset, step, total, checked
   );
 }
 
+function StakesToolbar({ p, topInset, coins, step, total, onClose }: { p: Palette; topInset: number; coins: number; step: number; total: number; onClose: () => void }) {
+  const dark = p.isDark;
+  const tone = dark ? '#FBBF24' : '#B45309';
+  // The coin count pops and shows the change for a moment whenever a bet is settled.
+  const [delta, setDelta] = React.useState(0);
+  const pop = React.useRef(new Animated.Value(1)).current;
+  const fade = React.useRef(new Animated.Value(0)).current;
+  const prev = React.useRef(coins);
+  React.useEffect(() => {
+    const change = coins - prev.current;
+    prev.current = coins;
+    if (!change) return;
+    setDelta(change);
+    pop.setValue(1.25);
+    fade.setValue(1);
+    Animated.parallel([
+      Animated.spring(pop, { toValue: 1, friction: 4, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 0, duration: 1400, delay: 500, useNativeDriver: true }),
+    ]).start();
+  }, [coins, pop, fade]);
+  return <View style={{ paddingTop: topInset, backgroundColor: dark ? '#1D1708' : '#FFFBEB', borderBottomWidth: BW, borderBottomColor: dark ? '#57441A' : '#FCD34D' }}>
+    <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Pressable onPress={onClose} style={[s.closeBtn, { backgroundColor: dark ? '#2A2210' : '#FFFFFF', borderColor: dark ? '#7A5F1F' : '#FCD34D' }]}><Icon name="close" size={20} exact color={dark ? '#FDE68A' : '#92400E'} /></Pressable>
+      <View style={{ flex: 1 }}>
+        <Text style={[s.speedKicker, { color: tone }]}>HIGH STAKES</Text>
+        <Text style={[s.speedMeta, { color: dark ? '#E7D7AE' : '#7C5A14' }]}>Question {step} of {total} · Bet on what you know</Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, transform: [{ scale: pop }] }}>
+          <Text style={{ fontSize: fz(17) }}>🪙</Text>
+          <Text style={[s.speedTime, { color: tone, fontSize: fz(22) }]}>{coins}</Text>
+        </Animated.View>
+        <Animated.Text style={{ position: 'absolute', top: '100%', right: 0, opacity: fade, fontFamily: FONT.mono.b, fontSize: fz(12), color: delta >= 0 ? '#16A34A' : '#DC2626' }}>{delta >= 0 ? `+${delta}` : `${delta}`}</Animated.Text>
+      </View>
+    </View>
+    <View style={{ height: 5, backgroundColor: dark ? '#3A2F12' : '#FEF3C7' }}><View style={{ height: 5, width: `${(Math.max(0, step - 1) / total) * 100}%`, backgroundColor: tone }} /></View>
+  </View>;
+}
+
+function SurvivalToolbar({ p, topInset, lives, maxLives, correct, step, onClose }: { p: Palette; topInset: number; lives: number; maxLives: number; correct: number; step: number; onClose: () => void }) {
+  const dark = p.isDark;
+  const level = survivalLevel(correct);
+  const toNext = SURVIVAL_LEVEL_STEP - (correct % SURVIVAL_LEVEL_STEP);
+  const tone = dark ? '#FB7185' : '#E11D48';
+  // A lost heart shakes the row and pops the heart that just broke.
+  const shake = React.useRef(new Animated.Value(0)).current;
+  const prevLives = React.useRef(lives);
+  React.useEffect(() => {
+    if (lives < prevLives.current) {
+      shake.setValue(0);
+      Animated.sequence([-1, 1, -1, 1, 0].map((toValue) => Animated.timing(shake, { toValue, duration: 60, useNativeDriver: true }))).start();
+    }
+    prevLives.current = lives;
+  }, [lives, shake]);
+  return <View style={{ paddingTop: topInset, backgroundColor: dark ? '#1F1220' : '#FFF1F2', borderBottomWidth: BW, borderBottomColor: dark ? '#5B2440' : '#FBCFE8' }}>
+    <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Pressable onPress={onClose} style={[s.closeBtn, { backgroundColor: dark ? '#2A1A2C' : '#FFFFFF', borderColor: dark ? '#7A3456' : '#F9A8D4' }]}><Icon name="close" size={20} exact color={dark ? '#FBCFE8' : '#9F1239'} /></Pressable>
+      <View style={{ flex: 1 }}>
+        <Text style={[s.speedKicker, { color: tone }]}>SURVIVAL · LEVEL {level}</Text>
+        <Text style={[s.speedMeta, { color: dark ? '#E9C3D2' : '#8A3B57' }]}>Question {step} · {DIFFICULTY_LABEL[difficultyForLevel(level)]} · {toNext} to Level {level + 1}</Text>
+      </View>
+      <Animated.View style={{ flexDirection: 'row', gap: 3, transform: [{ translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-5, 5] }) }] }}>
+        {Array.from({ length: maxLives }, (_, i) => <ResultIcon key={i} name={i < lives ? 'favorite' : 'favorite_border'} size={22} color={i < lives ? tone : (dark ? '#7A3456' : '#F9A8D4')} />)}
+      </Animated.View>
+    </View>
+    <View style={{ height: 5, backgroundColor: dark ? '#3A1F33' : '#FCE7F3' }}><View style={{ height: 5, width: `${((correct % SURVIVAL_LEVEL_STEP) / SURVIVAL_LEVEL_STEP) * 100}%`, backgroundColor: tone }} /></View>
+  </View>;
+}
+
+function SpeedRoundToolbar({ p, topInset, secondsLeft, limit, correct, step, onClose }: { p: Palette; topInset: number; secondsLeft: number; limit: number; correct: number; step: number; onClose: () => void }) {
+  const dark = p.isDark;
+  const urgent = secondsLeft <= 10;
+  const tone = urgent ? '#FB7185' : '#FBBF24';
+  // Through the last ten seconds the clock beats once a second, like the countdown on the Speed Round card.
+  const pulse = React.useRef(new Animated.Value(1)).current;
+  const flash = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    if (!urgent || secondsLeft <= 0) return;
+    pulse.setValue(1.22);
+    flash.setValue(1);
+    Animated.parallel([
+      Animated.spring(pulse, { toValue: 1, friction: 4, tension: 140, useNativeDriver: true }),
+      Animated.timing(flash, { toValue: 0, duration: 600, useNativeDriver: true }),
+    ]).start();
+  }, [secondsLeft, urgent, pulse, flash]);
+  return <View style={{ paddingTop: topInset, backgroundColor: dark ? '#171225' : '#FFF8E7', borderBottomWidth: BW, borderBottomColor: dark ? '#4C3B18' : '#F6D78A' }}>
+    <View style={{ paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Pressable onPress={onClose} style={[s.closeBtn, { backgroundColor: dark ? '#211A32' : '#FFFFFF', borderColor: dark ? '#5B4779' : '#E8C978' }]}><Icon name="close" size={20} exact color={dark ? '#FDE68A' : '#6B4D0A'} /></Pressable>
+      <View style={{ flex: 1 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><ResultIcon name="bolt" size={18} color={tone} /><Text style={[s.speedKicker, { color: tone }]}>SPEED ROUND</Text></View><Text style={[s.speedMeta, { color: dark ? '#C9BEDB' : '#725C2E' }]}>Question {step} · {correct} correct</Text></View>
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', top: -6, bottom: -6, left: -10, right: -10, borderRadius: 999, backgroundColor: `${tone}33`, opacity: flash, transform: [{ scale: pulse }] }} />
+        <Animated.Text style={[s.speedTime, { color: tone, transform: [{ scale: pulse }] }]}>{`${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`}</Animated.Text>
+      </View>
+    </View>
+    <View style={{ height: 5, backgroundColor: dark ? '#2E2440' : '#F3E2B4' }}><View style={{ height: 5, width: `${limit ? Math.min(100, (secondsLeft / limit) * 100) : 0}%`, backgroundColor: tone }} /></View>
+  </View>;
+}
+
 function QuestionScreen({
   p, q, value, checked, onDraftChange, onScrollRef,
 }: {
@@ -631,7 +744,7 @@ function QuestionScreen({
 
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
-      <ScrollView ref={onScrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 16 }}>
+      <ScrollView ref={onScrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 10 }}>
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <RichText text={q.question} style={[s.question, { color: title, flex: 1 }]} dark={dark} />
@@ -687,8 +800,13 @@ function QuestionScreen({
               <Icon name={correct ? 'check_circle' : 'cancel'} size={18} exact filled color={correct ? '#10B981' : '#F43F5E'} />
               <Text style={[s.feedbackTitle, { color: correct ? (dark ? '#A7F3D0' : '#065F46') : dark ? '#FECDD3' : '#9F1239' }]}>{correct ? 'Correct!' : 'Not quite'}</Text>
             </View>
-            {!correct && (
-              <Text style={[s.body13, { color: dark ? '#E2E8F0' : '#334155' }]}>
+            {!correct && (correctAnswerText(q).includes('\n')
+              // A multi-line output (such as "F\n3") goes in its own block, so its lines line up instead of wrapping after the label.
+              ? <View style={{ gap: 4 }}>
+                <Text style={[s.body13, { color: dark ? '#E2E8F0' : '#334155', fontFamily: FONT.outfit.sb }]}>Correct answer:</Text>
+                <Text style={[s.body13, { color: dark ? '#E2E8F0' : '#334155', fontFamily: FONT.mono.b, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: dark ? '#475569' : '#CBD5E1' }]}>{correctAnswerText(q)}</Text>
+              </View>
+              : <Text style={[s.body13, { color: dark ? '#E2E8F0' : '#334155' }]}>
                 <Text style={{ fontFamily: FONT.outfit.sb }}>Correct answer: </Text>
                 <Text style={{ fontFamily: FONT.mono.b }}>{correctAnswerText(q)}</Text>
               </Text>
@@ -800,7 +918,481 @@ function ReviewMistakesScreen({ p, world, questions, answers, topInset, bottomIn
   </View>;
 }
 
-function CompleteScreen({ p, results, xp, topInset, bottomInset, onDone, onReview, nextLabel, onNext }: { p: Palette; results: Result[]; xp: number; topInset: number; bottomInset: number; onDone: () => void; onReview: () => void; nextLabel?: string; onNext?: () => void }) {
+
+// The bundled Material Symbols fonts are small subsets without these glyphs, so the results dialog draws them (Material paths, 24px grid).
+const RESULT_ICON_PATHS: Record<string, string> = {
+  share: 'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z',
+  favorite: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
+  favorite_border: 'M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z',
+  bolt: 'M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z',
+  schedule: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z',
+  done_all: 'M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z',
+  emoji_events: 'M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z',
+  rule: 'M16.54 11L13 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L16.54 11zM11 7H2v2h9V7zm10 6.41L19.59 12 17 14.59 14.41 12 13 13.41 15.59 16 13 18.59 14.41 20 17 17.41 19.59 20 21 18.59 18.41 16 21 13.41zM11 15H2v2h9v-2z',
+};
+function ResultIcon({ name, size, color }: { name: string; size: number; color: string }) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d={RESULT_ICON_PATHS[name]} fill={color} /></Svg>;
+}
+
+// Two benchmarks, both scaled to a minute so a short test round compares with a 60-second one:
+// quantity = questions attempted per minute, quality = accuracy.
+function perMinute(n: number, limit: number) { return limit ? (n * 60) / limit : 0; }
+
+// Dummy benchmark: there is no backend with other learners' results, so the percentile is derived from the round itself.
+// It scores correct answers minus half a point per wrong one (guessing does not pay), and caps low-volume rounds,
+// so a perfect 3 of 3 ranks below 12 of 15. The same result always gives the same number.
+const FASTER_THAN_CURVE: [number, number][] = [[0, 15], [4, 35], [8, 60], [12, 72], [18, 84], [24, 92], [30, 97]];
+function dummyFasterThan(correct: number, attempted: number, limit: number) {
+  const effective = perMinute(Math.max(0, correct - 0.5 * (attempted - correct)), limit);
+  // No points (nothing answered, or misses cancel out the correct answers) means faster than nobody.
+  if (effective <= 0) return 0;
+  let base = FASTER_THAN_CURVE[FASTER_THAN_CURVE.length - 1][1];
+  for (let i = 1; i < FASTER_THAN_CURVE.length; i++) {
+    const [x0, y0] = FASTER_THAN_CURVE[i - 1], [x1, y1] = FASTER_THAN_CURVE[i];
+    if (effective <= x1) { base = y0 + ((effective - x0) / (x1 - x0)) * (y1 - y0); break; }
+  }
+  const jitter = ((correct * 7 + attempted * 13) % 7) - 3;
+  const volume = perMinute(attempted, limit);
+  const volumeCap = volume < 5 ? 45 : volume < 8 ? 65 : volume < 12 ? 85 : 99;
+  return Math.max(15, Math.min(volumeCap, Math.round(base + jitter)));
+}
+
+// Per-concept summary of the round, grouped by the learner-facing topic (the "CONCEPT · ..." tag on each question).
+// Strong = every answer on it correct; weak = at least one wrong. Most-answered first, so the best-evidenced topics lead.
+type ConceptTally = { topic: string; correct: number; total: number };
+function conceptSummary(questions: QuizQuestion[], results: Result[]) {
+  const byTopic = new Map<string, ConceptTally>();
+  results.forEach((result, i) => {
+    const topic = result && questions[i]?.topic;
+    if (!topic) return;
+    const t = byTopic.get(topic) ?? { topic, correct: 0, total: 0 };
+    t.total += 1;
+    if (result === 'correct') t.correct += 1;
+    byTopic.set(topic, t);
+  });
+  const all = [...byTopic.values()];
+  const strong = all.filter((t) => t.correct === t.total).sort((a, b) => b.total - a.total);
+  const weak = all.filter((t) => t.correct < t.total).sort((a, b) => (b.total - b.correct) - (a.total - a.correct) || a.correct / a.total - b.correct / b.total);
+  return { strong, weak };
+}
+
+// One sentence naming the weaker benchmark, so the label is never a mystery. None when neither is weak.
+function speedCoachLine(attempted: number, missed: number, accuracy: number, limit: number): string | null {
+  if (!attempted) return 'Answer a few to get a score.';
+  const manyAttempts = perMinute(attempted, limit) >= 12;
+  if (manyAttempts && accuracy >= 80) return null; // nothing to fix: the label says it
+  if (manyAttempts && accuracy >= 60) return `Good volume, only ${missed} missed.`;
+  if (manyAttempts) return `Fast, but ${missed} missed. Slow down a little.`;
+  if (accuracy === 100) return 'Perfect accuracy. Now try answering more.';
+  if (accuracy >= 60) return 'Accurate. Now try answering more.';
+  return 'Take your time, then pick up the pace.';
+}
+
+// Shared by the Speed Round and Survival Ladder result dialogs.
+const RESULT_INK = '#202020', RESULT_MUTED = '#7C7C8D', RESULT_ACCENT = '#5146E5', RESULT_RULE = '#E2E2E8';
+const RESULT_BOX = { marginTop: 12, width: '100%', borderRadius: 18, borderWidth: 1, borderColor: RESULT_RULE, backgroundColor: '#FFFFFF' } as const;
+const resultStat = (icon: string, iconColor: string, value: string, label: string, filled = true) => <View style={{ alignItems: 'center', gap: 2 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>{icon === 'check_circle' ? <Icon name={icon} size={19} exact filled={filled} color={iconColor} /> : <ResultIcon name={icon} size={19} color={iconColor} />}<Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(18), color: RESULT_INK }}>{value}</Text></View><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(11), letterSpacing: 0.3, color: RESULT_MUTED }}>{label}</Text></View>;
+
+/** Strong-grip and needs-practice concepts side by side, with the link to review the misses. */
+function ConceptSummaryBox({ questions, results, missed, onReview, weakTitle = 'NEEDS PRACTICE' }: { questions: QuizQuestion[]; results: Result[]; missed: number; onReview: () => void; weakTitle?: string }) {
+  const concepts = React.useMemo(() => conceptSummary(questions, results), [questions, results]);
+  // Each concept column shows 3 chips until its "+N" chip is tapped.
+  const [expanded, setExpanded] = React.useState<[boolean, boolean]>([false, false]);
+  const toggleColumn = (col: number) => setExpanded((e) => (col === 0 ? [!e[0], e[1]] : [e[0], !e[1]]));
+  return <>
+      {concepts.strong.length + concepts.weak.length > 0 && <View style={[RESULT_BOX, { paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', gap: 12 }]}>
+        {([['STRONG GRIP', concepts.strong, '#EAF3EC', '#3E6B4A', 'None this round'], [weakTitle, concepts.weak, '#FBEDE9', '#A63D2A', 'Nothing missed']] as const).map(([title, list, bg, fg, empty], col) => <React.Fragment key={title}>
+          {col === 1 && <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: RESULT_RULE }} />}
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(10.5), letterSpacing: 0.5, color: RESULT_MUTED }}>{title}</Text>
+            {list.length === 0 ? <Text style={{ fontFamily: FONT.body, fontSize: fz(12), color: RESULT_MUTED }}>{empty}</Text> : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>{(expanded[col] ? list : list.slice(0, 3)).map((t) => <View key={t.topic} style={{ maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: bg }}><Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: FONT.outfit.md, fontSize: fz(11.5), color: fg }}>{t.topic}</Text><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(10.5), color: fg }}>{t.correct}/{t.total}</Text></View>)}{list.length > 3 && <Pressable onPress={() => toggleColumn(col)} hitSlop={6} style={{ borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#F2F2F5' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(11.5), color: RESULT_MUTED }}>{expanded[col] ? 'Less' : `+${list.length - 3}`}</Text></Pressable>}</View>}
+            {col === 1 && missed > 0 && <Pressable onPress={onReview} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(12.5), color: RESULT_ACCENT }}>Review {missed} missed</Text><Icon name="chevron_right" size={16} exact color={RESULT_ACCENT} /></Pressable>}
+          </View>
+        </React.Fragment>)}
+      </View>}
+      {missed > 0 && concepts.strong.length + concepts.weak.length === 0 && <Pressable onPress={onReview} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 2 }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(13), color: RESULT_ACCENT }}>Review {missed} missed</Text><Icon name="chevron_right" size={16} exact color={RESULT_ACCENT} /></Pressable>}
+  </>;
+}
+
+/** A burst of falling confetti over the dialog, played once when it opens. */
+function Confetti() {
+  const fall = React.useRef(new Animated.Value(0)).current;
+  const pieces = React.useMemo(() => Array.from({ length: 36 }, (_, i) => ({ left: ((i * 37) % 100), delay: (i % 9) * 0.05, drift: ((i * 53) % 90) - 45, spin: 360 + ((i * 71) % 540), size: 7 + (i % 4) * 2, color: ['#FBBF24', '#818CF8', '#34D399', '#FB7185', '#60A5FA'][i % 5] })), []);
+  React.useEffect(() => { Animated.timing(fall, { toValue: 1, duration: 2600, useNativeDriver: true }).start(); }, [fall]);
+  return <View pointerEvents="none" style={StyleSheet.absoluteFill}>{pieces.map((c, i) => <Animated.View key={i} style={{ position: 'absolute', top: -20, left: `${c.left}%`, width: c.size, height: c.size * 1.7, borderRadius: 2, backgroundColor: c.color, opacity: fall.interpolate({ inputRange: [0, c.delay, 0.8, 1], outputRange: [0, 1, 1, 0], extrapolate: 'clamp' }), transform: [{ translateY: fall.interpolate({ inputRange: [0, c.delay, 1], outputRange: [0, 0, 560], extrapolate: 'clamp' }) }, { translateX: fall.interpolate({ inputRange: [0, 1], outputRange: [0, c.drift] }) }, { rotate: fall.interpolate({ inputRange: [0, 1], outputRange: ['0deg', `${c.spin}deg`] }) }] }} />)}</View>;
+}
+
+function SpeedRoundDialog({ results, questions, onPlayAgain, limit, elapsed, onDone, onReview }: { results: Result[]; questions: QuizQuestion[]; onPlayAgain?: () => void; limit: number; elapsed: number; onDone: () => void; onReview: () => void }) {
+  const correct = results.filter((result) => result === 'correct').length;
+  const attempted = results.filter(Boolean).length;
+  const missed = Math.max(0, attempted - correct);
+  const accuracy = attempted ? Math.round((correct / attempted) * 100) : 0;
+  const pace = attempted ? Math.max(1, elapsed) / attempted : 0;
+  const points = speedPoints(correct, attempted);
+  const [history, setHistory] = React.useState<SpeedRoundEntry[] | null>(null);
+  React.useEffect(() => {
+    let alive = true;
+    loadSpeedHistory().then((all) => {
+      if (alive) setHistory(all.filter((e) => e.limit === limit));
+      if (points > 0) AsyncStorage.setItem(SPEED_ROUND_HISTORY_KEY, JSON.stringify([...all, { limit, correct, attempted, pace, points, at: Date.now() }].slice(-100))).catch(() => {});
+    }).catch(() => { if (alive) setHistory([]); });
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Rounds saved before points existed are scored from their counts.
+  const scored = history ? history.filter((e) => entryPoints(e) > 0) : [];
+  const prevBest = scored.length ? Math.max(...scored.map(entryPoints)) : null;
+  const best = Math.max(prevBest ?? 0, points);
+  const fasterPct = dummyFasterThan(correct, attempted, limit);
+  // Label guards: under 50% accuracy or very few attempts, the label stops at "Nice Effort", and no record is set.
+  const weakRound = accuracy < 50 || perMinute(attempted, limit) < 5;
+  const newRecord = prevBest !== null && points > prevBest && accuracy >= 50;
+  const tier = newRecord ? 'New Record! 🏆' : fasterPct >= 85 && !weakRound ? 'Outstanding! ⚡' : fasterPct >= 60 && !weakRound ? 'Great Run! 🔥' : fasterPct >= 35 ? 'Nice Effort! 👏' : 'Keep Practicing! 💪';
+  const coach = speedCoachLine(attempted, missed, accuracy, limit);
+  const [shown, setShown] = React.useState(points > 0 ? 1 : 0);
+  React.useEffect(() => {
+    if (points < 1) return undefined;
+    // Count up from 1 to the points total in about 1.4 s, easing out near the end.
+    const started = Date.now();
+    const tick = setInterval(() => { const t = Math.min(1, (Date.now() - started) / 1400); setShown(Math.max(1, Math.round(points * (1 - (1 - t) ** 3)))); if (t === 1) clearInterval(tick); }, 30);
+    return () => clearInterval(tick);
+  }, [points]);
+  const ink = '#202020', muted = '#7C7C8D', accent = '#5146E5', rule = '#E2E2E8';
+  const box = { marginTop: 12, width: '100%', borderRadius: 18, borderWidth: 1, borderColor: rule, backgroundColor: '#FFFFFF' } as const;
+  const bestNote = !history ? '' : prevBest === null ? 'first round' : points > prevBest ? `+${points - prevBest} on ${prevBest}` : `${best - points + 5} more to beat`;
+  return <View style={{ flex: 1, backgroundColor: '#242424', padding: 10, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: '100%', maxWidth: 550, maxHeight: '100%', borderRadius: 18, backgroundColor: '#FFFCF9', overflow: 'hidden' }}>
+    <View style={{ height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Pressable onPress={onDone} hitSlop={10}><Icon name="close" size={26} exact color={ink} /></Pressable><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(16), color: ink }}>Speed Round Results</Text><View style={{ width: 26 }} /></View>
+    <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, alignItems: 'center' }}>
+      <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: accent }}>{tier}</Text>
+      <Text style={{ marginTop: 2, fontFamily: FONT.outfit.b, fontSize: fz(64), lineHeight: fz(70), color: '#191919' }}>{shown}</Text>
+      <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(11), letterSpacing: 0.6, color: muted }}>POINTS</Text>
+      <Text style={{ marginTop: 6, fontFamily: FONT.outfit.md, fontSize: fz(16), color: ink }}>{correct} correct <Text style={{ fontFamily: FONT.outfit.b, color: '#4F7A5A' }}>+{correct * 10}</Text>  ·  {missed} wrong <Text style={{ fontFamily: FONT.outfit.b, color: missed ? '#B4442F' : muted }}>−{missed * 5}</Text></Text>
+      {coach && <Text style={{ marginTop: 4, fontFamily: FONT.body, fontSize: fz(13), color: muted, textAlign: 'center' }}>{coach}</Text>}
+      <View style={[box, { marginTop: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }]}>{resultStat('done_all', accent, `${attempted}`, 'ATTEMPTED')}<View style={{ width: 1, height: 36, backgroundColor: rule }} />{resultStat('check_circle', '#4F7A5A', attempted ? `${accuracy}%` : '–', 'ACCURACY')}<View style={{ width: 1, height: 36, backgroundColor: rule }} />{resultStat('schedule', accent, attempted ? `${pace.toFixed(1)}s` : '–', 'AVG PACE', false)}</View>
+      <View style={[box, { paddingHorizontal: 14, paddingVertical: 10, gap: 8 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><ResultIcon name="bolt" size={18} color={accent} /><Text style={{ flex: 1, fontFamily: FONT.outfit.md, fontSize: fz(14), color: '#29252D' }}>Faster than <Text style={{ fontFamily: FONT.outfit.b, color: accent }}>{fasterPct}%</Text> of learners</Text></View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><ResultIcon name="emoji_events" size={18} color={accent} /><Text style={{ flex: 1, fontFamily: FONT.outfit.md, fontSize: fz(14), color: '#29252D' }}>Personal Best <Text style={{ fontFamily: FONT.outfit.b, color: accent }}>{best} points</Text>{bestNote ? <Text style={{ fontFamily: FONT.body, fontSize: fz(13), color: muted }}>  ·  {bestNote}</Text> : null}</Text></View>
+      </View>
+      <ConceptSummaryBox questions={questions} results={results} missed={missed} onReview={onReview} />
+    </ScrollView>
+    <View style={{ borderTopWidth: BW, borderTopColor: '#EEEEF2', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', gap: 12 }}><Pressable onPress={onDone} style={{ flex: 1, height: 48, borderRadius: 12, borderWidth: BW, borderColor: rule, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: '#29252D' }}>Back to Quiz</Text></Pressable><Pressable onPress={onPlayAgain ?? onDone} style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: accent, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: '#FFFFFF' }}>Play Again</Text><ResultIcon name="bolt" size={18} color="#FFFFFF" /></Pressable></View>
+    {points > 0 && <Confetti />}
+  </View></View>;
+}
+
+// Concepts split by how the bet went: sure or fairly sure and right, right on a guess, sure and wrong.
+function StakesConceptBox({ questions, results, bets, missed, onReview }: { questions: QuizQuestion[]; results: Result[]; bets: (BetId | undefined)[]; missed: number; onReview: () => void }) {
+  const groups = React.useMemo(() => {
+    const knew = new Set<string>(), lucky = new Set<string>(), bold = new Set<string>();
+    results.forEach((r, i) => {
+      const topic = questions[i]?.topic, bet = bets[i];
+      if (!r || !topic || !bet) return;
+      if (r === 'correct') (bet === 'guess' ? lucky : knew).add(topic);
+      else if (bet === 'sure') bold.add(topic);
+    });
+    return ([['KNEW IT', [...knew], '#EAF3EC', '#3E6B4A'], ['LUCKY GUESS', [...lucky], '#FEF3C7', '#92400E'], ['OVERCONFIDENT', [...bold], '#FBEDE9', '#A63D2A']] as const).filter(([, list]) => list.length > 0);
+  }, [questions, results, bets]);
+  if (!groups.length && !missed) return null;
+  return <View style={[RESULT_BOX, { paddingHorizontal: 14, paddingVertical: 10, gap: 8 }]}>
+    {groups.map(([title, list, bg, fg]) => <View key={title} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+      <Text style={{ width: 96, marginTop: 4, fontFamily: FONT.outfit.md, fontSize: fz(10.5), letterSpacing: 0.5, color: RESULT_MUTED }}>{title}</Text>
+      <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>{list.map((topic) => <View key={topic} style={{ maxWidth: '100%', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: bg }}><Text numberOfLines={1} style={{ fontFamily: FONT.outfit.md, fontSize: fz(11.5), color: fg }}>{topic}</Text></View>)}</View>
+    </View>)}
+    {missed > 0 && <Pressable onPress={onReview} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(12.5), color: RESULT_ACCENT }}>Review {missed} missed</Text><Icon name="chevron_right" size={16} exact color={RESULT_ACCENT} /></Pressable>}
+  </View>;
+}
+
+function StakesDialog({ results, questions, bets, onPlayAgain, onDone, onReview }: { results: Result[]; questions: QuizQuestion[]; bets: (BetId | undefined)[]; onPlayAgain?: () => void; onDone: () => void; onReview: () => void }) {
+  const correct = results.filter((r) => r === 'correct').length;
+  const attempted = results.filter(Boolean).length;
+  const missed = Math.max(0, attempted - correct);
+  const coins = Math.max(0, STAKES_START + results.reduce((sum, r, i) => sum + (r && bets[i] ? payout(bets[i]!, r === 'correct') : 0), 0));
+  const change = coins - STAKES_START;
+  // How often each bet was right: the calibration this mode is about.
+  const calibration = BETS.map((b) => {
+    const idx = results.map((r, i) => (r && bets[i] === b.id ? i : -1)).filter((i) => i >= 0);
+    return { ...b, total: idx.length, right: idx.filter((i) => results[i] === 'correct').length };
+  }).filter((c) => c.total > 0);
+  const sure = calibration.find((c) => c.id === 'sure'), guess = calibration.find((c) => c.id === 'guess');
+  const coach = sure && sure.total >= 2 && sure.right / sure.total < 0.6 ? `Sure but wrong ${sure.total - sure.right} times. Slow down before betting big.`
+    : guess && guess.total >= 2 && guess.right / guess.total >= 0.7 ? 'You know more than you think. Bet higher next time.'
+    : attempted ? 'Your bets matched what you knew. Well judged.' : 'Answer a question to place a bet.';
+  const [prevBest, setPrevBest] = React.useState<number | null | undefined>(undefined);
+  React.useEffect(() => {
+    let alive = true;
+    loadStakesBest().then((best) => {
+      if (alive) setPrevBest(best);
+      if (attempted > 0) saveStakesRound({ coins, correct, attempted, at: Date.now() });
+    });
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const best = Math.max(prevBest ?? 0, coins);
+  const newRecord = prevBest != null && coins > prevBest;
+  const tier = newRecord ? 'New Record! 🏆' : coins >= 200 ? 'Sharp Instincts! ⚡' : coins >= 150 ? 'Well Judged! 🔥' : coins >= 100 ? 'Held Your Ground! 👏' : 'Too Bold This Time! 🎲';
+  const bestNote = prevBest === undefined ? '' : prevBest === null ? 'first round' : newRecord ? `+${coins - prevBest} on ${prevBest}` : `${best - coins + 5} more to beat`;
+  const [shown, setShown] = React.useState(STAKES_START);
+  React.useEffect(() => {
+    const started = Date.now();
+    const tick = setInterval(() => { const t = Math.min(1, (Date.now() - started) / 1200); setShown(Math.round(STAKES_START + change * (1 - (1 - t) ** 3))); if (t === 1) clearInterval(tick); }, 30);
+    return () => clearInterval(tick);
+  }, [change]);
+  return <View style={{ flex: 1, backgroundColor: '#242424', padding: 10, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: '100%', maxWidth: 550, maxHeight: '100%', borderRadius: 18, backgroundColor: '#FFFCF9', overflow: 'hidden' }}>
+    <View style={{ height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Pressable onPress={onDone} hitSlop={10}><Icon name="close" size={26} exact color={RESULT_INK} /></Pressable><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(16), color: RESULT_INK }}>High Stakes Results</Text><View style={{ width: 26 }} /></View>
+    <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, alignItems: 'center' }}>
+      <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: RESULT_ACCENT }}>{tier}</Text>
+      <View style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text style={{ fontSize: fz(40) }}>🪙</Text><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(64), lineHeight: fz(70), color: '#191919' }}>{shown}</Text></View>
+      <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(11), letterSpacing: 0.6, color: RESULT_MUTED }}>COINS</Text>
+      <Text style={{ marginTop: 6, fontFamily: FONT.outfit.md, fontSize: fz(16), color: RESULT_INK }}>Started with {STAKES_START}  ·  <Text style={{ fontFamily: FONT.outfit.b, color: change >= 0 ? '#4F7A5A' : '#B4442F' }}>{change >= 0 ? `+${change}` : `−${-change}`}</Text></Text>
+      <Text style={{ marginTop: 4, fontFamily: FONT.body, fontSize: fz(13), color: RESULT_MUTED, textAlign: 'center' }}>{coach}</Text>
+      {calibration.length > 0 && <View style={[RESULT_BOX, { marginTop: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }]}>
+        {calibration.map((c, i) => <React.Fragment key={c.id}>
+          {i > 0 && <View style={{ width: 1, height: 36, backgroundColor: RESULT_RULE }} />}
+          <View style={{ alignItems: 'center', gap: 2 }}>
+            <Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(18), color: RESULT_INK }}>{c.emoji} {c.right}/{c.total}</Text>
+            <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(11), letterSpacing: 0.3, color: RESULT_MUTED }}>{c.label.toUpperCase()} · RIGHT</Text>
+          </View>
+        </React.Fragment>)}
+      </View>}
+      <View style={[RESULT_BOX, { paddingHorizontal: 14, paddingVertical: 10 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><ResultIcon name="emoji_events" size={18} color={RESULT_ACCENT} /><Text style={{ flex: 1, fontFamily: FONT.outfit.md, fontSize: fz(14), color: '#29252D' }}>Best <Text style={{ fontFamily: FONT.outfit.b, color: RESULT_ACCENT }}>{best} coins</Text>{bestNote ? <Text style={{ fontFamily: FONT.body, fontSize: fz(13), color: RESULT_MUTED }}>  ·  {bestNote}</Text> : null}</Text></View>
+      </View>
+      <StakesConceptBox questions={questions} results={results} bets={bets} missed={missed} onReview={onReview} />
+    </ScrollView>
+    <View style={{ borderTopWidth: BW, borderTopColor: '#EEEEF2', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', gap: 12 }}><Pressable onPress={onDone} style={{ flex: 1, height: 48, borderRadius: 12, borderWidth: BW, borderColor: RESULT_RULE, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: '#29252D' }}>Back to Quiz</Text></Pressable><Pressable onPress={onPlayAgain ?? onDone} style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: RESULT_ACCENT, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: '#FFFFFF' }}>Bet Again 🪙</Text></Pressable></View>
+    {change > 0 && <Confetti />}
+  </View></View>;
+}
+
+const STEP_ACCENT = ['#15803D', '#4F46E5', '#B45309', '#B91C1C', '#5B21B6'];
+
+/**
+ * The illustrated hero for a level: the art fills the width, and the number of each step is drawn on its front face (anchors are
+ * fractions of the image, so they scale with it). The labels are decorative: the same
+ * facts are in the text under the hero, and the whole hero reads as one line to a screen reader.
+ */
+function SurvivalArtHero({ art, level, correct, description, still = false }: { art: SurvivalArt; level: number; correct: number; description?: string; /** No fade-in: drawn in its final state (the share card is captured as an image). */ still?: boolean }) {
+  const [width, setWidth] = React.useState(0);
+  // A plain fade: a scale transform on the parent made the Android image view draw the picture at the wrong size and place.
+  const enter = React.useRef(new Animated.Value(still ? 1 : 0)).current;
+  React.useEffect(() => { if (!still) Animated.timing(enter, { toValue: 1, duration: 450, useNativeDriver: true }).start(); }, [enter, still]);
+  const height = width * (art.height / art.width);
+  return (
+    <Animated.View
+      accessible
+      accessibilityLabel={description ?? `Level ${level} on the ladder, ${correct} correct`}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{ alignSelf: 'stretch', marginHorizontal: -8, marginTop: 4, aspectRatio: art.width / art.height, opacity: enter }}
+    >
+      {/* Explicit pixel size from the measured width (not a fill), so the picture can only be drawn at the size of its box. */}
+      {width > 0 && <Image source={art.source} fadeDuration={0} resizeMode="contain" style={{ position: 'absolute', left: 0, top: 0, width, height }} />}
+      {/* The labels are SVG text in the picture's own pixel space: placed by baseline, so no Android line box can clip them, and they scale exactly with the image. */}
+      <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
+        <Svg width="100%" height="100%" viewBox={`0 0 ${art.width} ${art.height}`}>
+          {art.faces.map((f, i) => {
+            const text = art.labels ? art.labels(level)[i] : String(i === art.faces.length - 1 ? Math.max(art.faces.length, level) : i + 1);
+            if (text == null) return null;
+            const pill = !!art.pills?.includes(i);
+            const cx = (f.x + f.w / 2) * art.width, cy = (f.y + f.h / 2) * art.height;
+            // Sized to the step face: a short or narrow face (a low step, or one half hidden by clouds) gets a smaller number.
+            const size = Math.min(art.width * (pill ? 0.04 : 0.05), f.h * art.height * 0.8, f.w * art.width * 0.55);
+            const pillW = text.length * size * 0.62 + size * 1.2, pillH = size * 1.6;
+            return (
+              <React.Fragment key={i}>
+                {pill && <Rect x={cx - pillW / 2} y={cy - pillH / 2} width={pillW} height={pillH} rx={pillH / 2} fill="#FFFFFF" fillOpacity={0.92} stroke="#DDD6FE" strokeWidth={art.width * 0.0012} />}
+                <SvgText x={cx} y={cy + size * 0.36} fontSize={size} fontFamily={FONT.outfit.b} fill={art.colors?.[i] ?? (i >= art.lit ? '#9CA3AF' : STEP_ACCENT[i])} fillOpacity={0.9} textAnchor="middle">{text}</SvgText>
+              </React.Fragment>
+            );
+          })}
+        </Svg>
+      </View>
+    </Animated.View>
+  );
+}
+
+// The picture people share: a fixed 4:5 portrait card (it is captured at 1080 x 1350, the shape WhatsApp, Instagram and LinkedIn all show well).
+// It is laid out at 320 x 400 with plain font sizes, so it looks the same on every phone whatever the font scale. A record or a Level 5+
+// climb gets a gold look and a record gets a ribbon, because that is what people want to show off. Add the store link to `shareFooter`
+// (and to the message in `shareResult`) once the app is live.
+const SHARE_W = 320, SHARE_H = 400;
+const shareFooter = (level: number) => `Can you beat Level ${level}?  #CodeDo`;
+
+function SurvivalShareCard({ level, correct, bestClimb, tier, newRecord, strongIn }: { level: number; correct: number; bestClimb: number; tier: string; newRecord: boolean; strongIn: string[] }) {
+  const art = survivalArtFor(level);
+  const gold = newRecord || level >= 5;
+  const answers = correct === 1 ? '1 right answer' : `${correct} right answers`;
+  return (
+    <View style={{ width: SHARE_W, height: SHARE_H, backgroundColor: gold ? '#FFF8E7' : '#FFFCF9', alignItems: 'center' }}>
+      <View style={{ alignSelf: 'stretch', paddingHorizontal: 18, paddingTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: FONT.outfit.b, fontSize: 21, color: RESULT_ACCENT }}>CodeDo</Text>
+        <Text style={{ fontFamily: FONT.outfit.md, fontSize: 11, letterSpacing: 0.8, color: RESULT_MUTED }}>SURVIVAL LADDER</Text>
+      </View>
+      {/* The picture and its text are centred in the space between the header and the footer band. */}
+      <View style={{ flex: 1, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', paddingBottom: 46 }}>
+        {newRecord && <View style={{ marginBottom: 6, paddingHorizontal: 12, paddingVertical: 3, borderRadius: 999, backgroundColor: '#F59E0B' }}><Text style={{ fontFamily: FONT.outfit.b, fontSize: 11.5, letterSpacing: 0.8, color: '#FFFFFF' }}>🏆  NEW RECORD</Text></View>}
+        {!newRecord && <Text style={{ fontFamily: FONT.outfit.md, fontSize: 15, color: RESULT_ACCENT }}>{tier}</Text>}
+        <View style={{ alignSelf: 'stretch', paddingHorizontal: 10 }}>{art && <SurvivalArtHero still art={art} level={level} correct={correct} />}</View>
+        <Text style={{ marginTop: 6, fontFamily: FONT.outfit.b, fontSize: 24, color: RESULT_INK }}>You reached Level {level}</Text>
+        <Text style={{ marginTop: 2, fontFamily: FONT.outfit.md, fontSize: 16, color: '#3E6B4A' }}>{answers}</Text>
+        {strongIn.length > 0 && <Text style={{ marginTop: 8, paddingHorizontal: 20, fontFamily: FONT.outfit.md, fontSize: 12.5, color: '#3E6B4A', textAlign: 'center' }}>Strong in: {strongIn.join(' · ')}</Text>}
+        {bestClimb > 0 && !newRecord && <Text style={{ marginTop: 6, fontFamily: FONT.body, fontSize: 12.5, color: RESULT_MUTED }}>🏆 Best climb: Level {survivalLevel(bestClimb)}</Text>}
+      </View>
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 46, backgroundColor: gold ? '#B45309' : RESULT_ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontFamily: FONT.outfit.b, fontSize: 15, color: '#FFFFFF' }}>{shareFooter(level)}</Text>
+      </View>
+    </View>
+  );
+}
+
+// 1st, 2nd, 3rd, 4th ... 11th, 12th, 13th ... 21st.
+const ordinal = (n: number) => {
+  const mod100 = n % 100;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+  return `${n}${suffix}`;
+};
+
+function SurvivalDialog({ lives, results, questions, onPlayAgain, onDone, onReview }: { lives: number; results: Result[]; questions: QuizQuestion[]; onPlayAgain?: () => void; onDone: () => void; onReview: () => void }) {
+  const correct = results.filter((result) => result === 'correct').length;
+  const attempted = results.filter(Boolean).length;
+  const missed = Math.max(0, attempted - correct);
+  const accuracy = attempted ? Math.round((correct / attempted) * 100) : 0;
+  const level = survivalLevel(correct);
+  const toNext = SURVIVAL_LEVEL_STEP - (correct % SURVIVAL_LEVEL_STEP);
+  // Where each heart was lost: the question number, the level it was asked at, and its concept.
+  let climbed = 0;
+  const losses: { q: number; level: number; topic: string }[] = [];
+  results.forEach((r, i) => {
+    if (r === 'correct') climbed++;
+    else if (r === 'wrong') losses.push({ q: i + 1, level: survivalLevel(climbed), topic: questions[i]?.topic ?? '' });
+  });
+  // Best climb before this run (undefined while loading), then this run is saved.
+  const [prevBest, setPrevBest] = React.useState<number | null | undefined>(undefined);
+  // A climb that started with the bonus heart has now used it.
+  React.useEffect(() => { if (lives > SURVIVAL_LIVES) spendSurvivalBonus(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  React.useEffect(() => {
+    let alive = true;
+    loadSurvivalBest().then((best) => {
+      if (alive) setPrevBest(best);
+      if (correct > 0) saveSurvivalRun({ correct, attempted, level, at: Date.now() });
+    });
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const newRecord = prevBest != null && correct > prevBest;
+  // The best climb including this run (nothing until the earlier runs have loaded).
+  const bestClimb = prevBest === undefined ? 0 : Math.max(prevBest ?? 0, correct);
+  // A run with no correct answer never really climbed: a sad face and a gentler message instead of "Level 1".
+  const noClimb = attempted > 0 && correct === 0;
+  const tier = noClimb ? 'Tough Start 😔' : newRecord ? 'New Record! 🏆' : level >= 4 ? 'Legendary Climb! ⚡' : level === 3 ? 'Great Climb! 🔥' : level === 2 ? 'Nice Climb! 👏' : 'Keep Climbing! 💪';
+  // The run is over, so the wording is past tense: what you reached, how many you got right, and what was one step short.
+  const rightAnswers = correct === 1 ? '1 right answer' : `${correct} right answers`;
+  // What the learner achieved is said positively; what would have been next is a separate hint.
+  const positive = noClimb ? null : rightAnswers;
+  // The concepts you answered right every time, for the share card and message (the two most-answered ones fit on the card).
+  const strongIn = React.useMemo(() => conceptSummary(questions, results).strong.slice(0, 2).map((t) => t.topic), [questions, results]);
+  // Share: the card below is drawn behind the dialog (full size, always loaded), then captured as a PNG and handed to the phone's share sheet.
+  const shareRef = React.useRef<React.ComponentRef<typeof View>>(null);
+  const [sharing, setSharing] = React.useState(false);
+  // Set once a share went through: the reward is one bonus heart for the next climb.
+  const [bonusEarned, setBonusEarned] = React.useState(false);
+  const shareResult = async () => {
+    if (sharing || !shareRef.current) return;
+    setSharing(true);
+    try {
+      const file = await captureRef(shareRef, { format: 'png', quality: 1, result: 'tmpfile', width: 1080, height: 1350 });
+      const shared = await Share.open({
+        url: file.startsWith('file://') ? file : `file://${file}`,
+        type: 'image/png',
+        message: `I reached Level ${level} in the CodeDo Survival Ladder with ${correct === 1 ? '1 right answer' : `${correct} right answers`}${newRecord ? ', a new personal record' : ''}!${strongIn.length ? ` Strong in ${strongIn.join(' and ')}.` : ''} Can you beat Level ${level}? #CodeDo`,
+        failOnCancel: false,
+      });
+      // Android reports success once an app was picked in the share sheet; iOS, once the share completed. Cancelling earns nothing.
+      if (shared?.success) { await grantSurvivalBonus(); setBonusEarned(true); }
+    } catch {
+      Alert.alert('Could not share', 'Something went wrong while preparing the picture. Please try again.');
+    } finally {
+      setSharing(false);
+    }
+  };
+  const hint = noClimb ? { icon: '💡', text: 'The first questions are the easiest. Take your time and try again.' }
+    : newRecord ? { icon: '🏆', text: `${correct - prevBest!} more than your best of ${prevBest}.` }
+    : { icon: '💡', text: `${toNext} more right ${toNext === 1 ? 'answer' : 'answers'} would have reached ${ordinal(level + 1)} Level.` };
+  return <View style={{ flex: 1, backgroundColor: '#242424', padding: 10, alignItems: 'center', justifyContent: 'center' }}>
+    {/* The share card sits centred behind the dialog (which covers it), so it is on screen and loaded when captured. */}
+    {!noClimb && <View ref={shareRef} collapsable={false} pointerEvents="none" style={{ position: 'absolute', top: '50%', left: '50%', width: SHARE_W, height: SHARE_H, marginTop: -SHARE_H / 2, marginLeft: -SHARE_W / 2 }}><SurvivalShareCard level={level} correct={correct} bestClimb={bestClimb} tier={tier} newRecord={newRecord} strongIn={strongIn} /></View>}
+    <View style={{ width: '100%', maxWidth: 550, maxHeight: '100%', borderRadius: 18, backgroundColor: '#FFFCF9', overflow: 'hidden' }}>
+    <View style={{ height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Pressable onPress={onDone} hitSlop={10}><Icon name="close" size={26} exact color={RESULT_INK} /></Pressable><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(16), color: RESULT_INK }}>Survival Results</Text><View style={{ width: 26 }} /></View>
+    <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, alignItems: 'center' }}>
+      <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: RESULT_ACCENT }}>{tier}</Text>
+      {survivalArtFor(level, noClimb) && <SurvivalArtHero key={noClimb ? 0 : level} art={survivalArtFor(level, noClimb)!} level={level} correct={correct} description={noClimb ? 'The climber fell before the first step: no correct answers' : undefined} />}
+      <Text style={{ marginTop: 10, fontFamily: FONT.outfit.b, fontSize: fz(17), color: RESULT_INK }}>{noClimb ? 'No correct answers yet' : `You reached Level ${level}`}</Text>
+      {positive && <Text style={{ marginTop: 3, fontFamily: FONT.outfit.md, fontSize: fz(14), color: '#3E6B4A', textAlign: 'center' }}>{positive}</Text>}
+      {/* One line always: the pill spans the dialog and the text shrinks a little if a long level name needs it, but never wraps. */}
+      <View style={{ alignSelf: 'stretch', marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FDE68A', backgroundColor: '#FFFBEB', paddingHorizontal: 10, paddingVertical: 7 }}>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ fontFamily: FONT.body, fontSize: fz(12), color: '#92400E', textAlign: 'center' }}>{hint.icon} {hint.text}</Text>
+      </View>
+      {/* The one way to share, offered on every climb that got something right (a run with none is nothing to post). */}
+      {!noClimb && <Pressable onPress={shareResult} disabled={sharing} accessibilityRole="button" style={{ alignSelf: 'stretch', marginTop: 10, height: 44, borderRadius: 12, backgroundColor: newRecord ? '#F59E0B' : RESULT_ACCENT, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: sharing ? 0.6 : 1 }}>
+        <ResultIcon name="share" size={18} color="#FFFFFF" />
+        <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: '#FFFFFF' }}>{newRecord ? 'Share your new record' : 'Share your climb'}  +❤️</Text>
+      </Pressable>}
+      {/* The reward: said before sharing, confirmed after. */}
+      {!noClimb && (bonusEarned
+        ? <Text style={{ marginTop: 6, fontFamily: FONT.outfit.md, fontSize: fz(12.5), color: '#3E6B4A', textAlign: 'center' }}>🎉 Bonus heart added! Your next climb starts with {SURVIVAL_LIVES + 1} ❤️</Text>
+        : <Text style={{ marginTop: 6, fontFamily: FONT.body, fontSize: fz(12.5), color: RESULT_MUTED, textAlign: 'center' }}>Share it and start your next climb with an extra heart</Text>)}
+      {/* Heart log: where each heart went */}
+      <View style={[RESULT_BOX, { marginTop: 14, paddingHorizontal: 12, paddingVertical: 10, gap: 8 }]}>
+        <Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(10.5), letterSpacing: 0.5, color: RESULT_MUTED }}>WHERE YOUR HEARTS WENT</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {Array.from({ length: lives }, (_, i) => {
+            const loss = losses[i];
+            return <View key={i} style={{ flexGrow: 1, flexBasis: lives > 3 ? '46%' : 0, alignItems: 'center', gap: 2, paddingVertical: 6, borderRadius: 12, backgroundColor: loss ? '#FFF1F2' : '#F0FDF4' }}>
+              <Text style={{ fontSize: fz(16) }}>{loss ? '💔' : '❤️'}</Text>
+              <Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(11.5), color: loss ? '#9F1239' : '#166534' }}>{loss ? `Q${loss.q} · ${DIFFICULTY_LABEL[difficultyForLevel(loss.level)]}` : 'Kept'}</Text>
+              {/* The concept name wraps onto as many lines as it needs (the three tiles stretch to the same height), so it is never cut off. */}
+              {loss && <Text style={{ alignSelf: 'stretch', paddingHorizontal: 6, fontFamily: FONT.body, fontSize: fz(11), lineHeight: fz(14), color: RESULT_MUTED, textAlign: 'center' }}>{loss.topic}</Text>}
+            </View>;
+          })}
+        </View>
+        {missed > 0 && <Pressable onPress={onReview} hitSlop={8} style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 2 }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(12.5), color: RESULT_ACCENT }}>Review {missed} missed</Text><Icon name="chevron_right" size={16} exact color={RESULT_ACCENT} /></Pressable>}
+      </View>
+      {/* The best climb, on every run: before, it only showed up when a record was broken. */}
+      {bestClimb > 0 && <View style={[RESULT_BOX, { paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+        <ResultIcon name="emoji_events" size={18} color={RESULT_ACCENT} />
+        <Text style={{ flex: 1, fontFamily: FONT.outfit.md, fontSize: fz(14), color: '#29252D' }}>Best climb <Text style={{ fontFamily: FONT.outfit.b, color: RESULT_ACCENT }}>Level {survivalLevel(bestClimb)}</Text><Text style={{ fontFamily: FONT.body, fontSize: fz(13), color: RESULT_MUTED }}>  ·  {bestClimb === 1 ? '1 right answer' : `${bestClimb} right answers`}{correct === bestClimb ? '  ·  this run' : ''}</Text></Text>
+      </View>}
+      <View style={[RESULT_BOX, { paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }]}>{resultStat('done_all', RESULT_ACCENT, `${attempted}`, 'ATTEMPTED')}<View style={{ width: 1, height: 36, backgroundColor: RESULT_RULE }} />{resultStat('check_circle', '#4F7A5A', attempted ? `${accuracy}%` : '–', 'ACCURACY')}</View>
+    </ScrollView>
+    <View style={{ borderTopWidth: BW, borderTopColor: '#EEEEF2', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', gap: 12 }}><Pressable onPress={onDone} style={{ flex: 1, height: 48, borderRadius: 12, borderWidth: BW, borderColor: RESULT_RULE, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: '#29252D' }}>Back to Quiz</Text></Pressable><Pressable onPress={onPlayAgain ?? onDone} style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: RESULT_ACCENT, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(15), color: '#FFFFFF' }}>Climb Again</Text><ResultIcon name="favorite" size={18} color="#FFFFFF" /></Pressable></View>
+    {(level >= 2 || newRecord) && <Confetti />}
+  </View></View>;
+}
+
+function SpeedRoundComplete({ p, results, questions, onPlayAgain, limit, elapsed, topInset, bottomInset, onDone, onReview }: { p: Palette; results: Result[]; questions: QuizQuestion[]; onPlayAgain?: () => void; limit: number; elapsed: number; topInset: number; bottomInset: number; onDone: () => void; onReview: () => void }) {
+  return <SpeedRoundDialog results={results} questions={questions} onPlayAgain={onPlayAgain} limit={limit} elapsed={elapsed} onDone={onDone} onReview={onReview} />;
+  const dark = p.isDark;
+  const correct = results.filter((result) => result === 'correct').length;
+  const attempted = results.filter(Boolean).length;
+  const band = correct < 3 ? { label: 'Keep warming up', note: 'Every fast answer builds your instinct.', tone: '#94A3B8' } : correct < 7 ? { label: 'Solid start', note: 'You found your rhythm. Push for a few more next round.', tone: '#60A5FA' } : correct < 12 ? { label: 'Great pace!', note: 'Sharp work under pressure. That was a strong run.', tone: '#34D399' } : { label: 'Excellent!', note: 'Outstanding speed and accuracy. You owned that round.', tone: '#FBBF24' };
+  const [shownScore, setShownScore] = React.useState(0);
+  const pop = React.useRef(new Animated.Value(0.7)).current;
+  React.useEffect(() => { const started = Date.now(); const tick = setInterval(() => { const progress = Math.min(1, (Date.now() - started) / 700); setShownScore(Math.round(correct * progress)); if (progress === 1) clearInterval(tick); }, 24); Animated.spring(pop, { toValue: 1, useNativeDriver: true, friction: 5 }).start(); return () => clearInterval(tick); }, [correct, pop]);
+  const accuracyNow = attempted ? Math.round((correct / attempted) * 100) : 0;
+  const missedNow = Math.max(0, attempted - correct);
+  return <View style={{ flex: 1, backgroundColor: '#242424', padding: 10, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: '100%', maxWidth: 550, borderRadius: 18, overflow: 'hidden', backgroundColor: '#FFFCF9' }}><View style={{ height: 76, paddingHorizontal: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Pressable onPress={onDone}><Icon name="close" size={27} exact color="#202020" /></Pressable><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(19 * MAIN), color: '#202020' }}>Speed Round Results</Text><View style={{ width: 27 }} /></View><ScrollView contentContainerStyle={{ paddingHorizontal: 45, paddingBottom: 20, alignItems: 'center' }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}><Icon name="bolt" size={18} exact color="#5146E5" /><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(15 * MAIN), color: '#5146E5' }}>{band.label}</Text></View><Animated.Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(68 * MAIN), lineHeight: lh(68, 1), color: '#191919', marginTop: 12, transform: [{ scale: pop }] }}>{shownScore}</Animated.Text><Text style={{ marginTop: 6, fontFamily: FONT.outfit.b, fontSize: fz(20 * MAIN), color: '#202020' }}>Correct out of {attempted} questions</Text><Text style={{ marginTop: 4, fontFamily: FONT.mono.r, fontSize: fz(11 * MAIN), letterSpacing: 0.08 * 11 * MAIN, color: '#7C7C8D' }}>60-SECOND CHALLENGE COMPLETED</Text><View style={{ marginTop: 20, width: '100%', borderRadius: 18, paddingVertical: 18, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-around' }}><View style={{ alignItems: 'center' }}><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(20 * MAIN), color: '#202020' }}>✓ {accuracyNow}%</Text><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(11 * MAIN), color: '#7C7C8D' }}>ACCURACY</Text></View><View style={{ width: 1, backgroundColor: '#E2E2E8' }} /><View style={{ alignItems: 'center' }}><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(20 * MAIN), color: '#202020' }}>◷ {attempted ? (60 / attempted).toFixed(1) : '0.0'}s</Text><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(11 * MAIN), color: '#7C7C8D' }}>AVG PACE</Text></View><View style={{ width: 1, backgroundColor: '#E2E2E8' }} /><View style={{ alignItems: 'center' }}><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(20 * MAIN), color: '#202020' }}>♨ {correct}</Text><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(11 * MAIN), color: '#7C7C8D' }}>BEST STREAK</Text></View></View><View style={{ marginTop: 20, width: '100%', borderRadius: 18, backgroundColor: '#FFFFFF', padding: 22, gap: 18 }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(16 * MAIN), color: '#29252D' }}>⚡  Outperformed <Text style={{ fontFamily: FONT.outfit.b, color: '#5146E5' }}>82%</Text> of learners</Text><View style={{ height: 1, backgroundColor: '#E2E2E8' }} /><View><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(16 * MAIN), color: '#29252D' }}>🏆  Personal Best: <Text style={{ fontFamily: FONT.outfit.b, color: '#5146E5' }}>{Math.max(correct, 26)} correct</Text></Text><Text style={{ marginLeft: 30, marginTop: 4, fontFamily: FONT.body, fontSize: fz(13 * MAIN), color: '#7C7C8D' }}>{Math.max(0, 26 - correct)} more to beat your record.</Text></View></View>{missedNow > 0 && <Pressable onPress={onReview} style={{ width: '100%', marginTop: 22, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(16 * MAIN), color: '#29252D' }}>✣  Review {missedNow} missed answers</Text><Icon name="chevron_right" size={22} exact color="#7C7C8D" /></Pressable>}</ScrollView><View style={{ borderTopWidth: BW, borderTopColor: '#EEEEF2', padding: 18, flexDirection: 'row', gap: 14 }}><Pressable onPress={onDone} style={{ flex: 1, height: 56, borderRadius: 11, borderWidth: BW, borderColor: '#E2E2E8', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(16 * MAIN), color: '#29252D' }}>Back to Quiz</Text></Pressable><Pressable onPress={onDone} style={{ flex: 1, height: 56, borderRadius: 11, backgroundColor: '#5146E5', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(16 * MAIN), color: '#FFFFFF' }}>Play Again ⚡</Text></Pressable></View></View></View>;
+  return <View style={{ flex: 1, padding: 16, backgroundColor: 'rgba(2,6,23,0.78)', alignItems: 'center', justifyContent: 'center' }}><View style={{ width: '100%', maxWidth: 420, borderRadius: 24, overflow: 'hidden', backgroundColor: dark ? '#171225' : '#FFFCF7' }}><View style={{ height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Pressable onPress={onDone}><Icon name="close" size={26} exact color={dark ? '#F8FAFC' : '#202020'} /></Pressable><Text style={[s.worldTitle, { color: dark ? '#F8FAFC' : '#202020', fontSize: fz(18 * MAIN) }]}>Speed Round Results</Text><View style={{ width: 26 }} /></View>{correct >= 7 && <View pointerEvents="none" style={{ position: 'absolute', top: 62, left: 0, right: 0, height: 80 }}>{['#FBBF24','#818CF8','#34D399','#FB7185','#60A5FA'].map((color, i) => <Animated.View key={color} style={{ position: 'absolute', left: `${12 + i * 19}%`, top: i % 2 ? 24 : 5, width: 8, height: 14, borderRadius: 3, backgroundColor: color, transform: [{ rotate: `${i * 31}deg` }, { scale: pop }] }} />)}</View>}<View style={{ padding: 24, alignItems: 'center', gap: 14 }}><View style={{ borderRadius: 999, backgroundColor: `${band.tone}22`, paddingHorizontal: 18, paddingVertical: 8 }}><Text style={{ color: band.tone, fontFamily: FONT.outfit.b, fontSize: fz(16 * MAIN) }}>⚡ {band.label} ⚡</Text></View><Animated.Text style={[s.bigScore, { color: dark ? '#F8FAFC' : '#202020', transform: [{ scale: pop }] }]}>{shownScore}</Animated.Text><Text style={[s.completeTitle, { color: dark ? '#F8FAFC' : '#202020', fontSize: fz(18 * MAIN) }]}>Correct out of {attempted} questions</Text><Text style={[s.reviewNote, { color: dark ? '#DDD4ED' : '#4E4858' }]}>{band.note}</Text></View><View style={{ padding: 16, gap: 10 }}>{attempted > correct && <Pressable onPress={onReview} style={[s.reviewBtn, { borderColor: band.tone }]}><Text style={[s.mainBtnText, { color: band.tone }]}>Review {attempted - correct} missed answers</Text></Pressable>}<Pressable onPress={onDone} style={[s.mainBtn, { backgroundColor: '#4C3BCF' }]}><Text style={[s.mainBtnText, { color: '#FFFFFF' }]}>Back to Quiz</Text></Pressable></View></View></View>;
+  const accuracy = attempted ? Math.round((correct / attempted) * 100) : 0;
+  const pace = attempted ? (60 / attempted).toFixed(1) : '0.0';
+  return <View style={{ flex: 1, padding: 16, backgroundColor: 'rgba(2,6,23,0.78)', alignItems: 'center', justifyContent: 'center' }}><View style={{ width: '100%', maxWidth: 420, maxHeight: '92%', borderRadius: 24, overflow: 'hidden', backgroundColor: dark ? '#171225' : '#FFFCF7' }}><View style={{ height: 58, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Pressable onPress={onDone}><Icon name="close" size={26} exact color={dark ? '#F8FAFC' : '#202020'} /></Pressable><Text style={[s.worldTitle, { color: dark ? '#F8FAFC' : '#202020', fontSize: fz(18 * MAIN) }]}>Speed Round Results</Text><View style={{ width: 26 }} /></View><ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 20, alignItems: 'center', gap: 16 }}><View style={{ borderRadius: 999, backgroundColor: `${band.tone}22`, paddingHorizontal: 18, paddingVertical: 8, flexDirection: 'row', gap: 7 }}><Icon name="bolt" size={18} exact color={band.tone} /><Text style={{ color: band.tone, fontFamily: FONT.outfit.b, fontSize: fz(16 * MAIN) }}>{band.label}</Text></View><Text style={[s.bigScore, { color: dark ? '#F8FAFC' : '#202020' }]}>{correct}</Text><Text style={[s.completeTitle, { color: dark ? '#F8FAFC' : '#202020', fontSize: fz(18 * MAIN) }]}>Correct out of {attempted} questions</Text><Text style={[s.completeKicker, { color: dark ? '#AFA4C5' : '#7C7588' }]}>60-SECOND CHALLENGE COMPLETED</Text><View style={{ width: '100%', borderRadius: 18, padding: 16, backgroundColor: dark ? '#211A32' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-around' }}><View style={{ alignItems: 'center' }}><Text style={[s.statValue, { color: dark ? '#F8FAFC' : '#202020' }]}>{accuracy}%</Text><Text style={[s.statLabel, { color: dark ? '#C9BEDB' : '#7C7588' }]}>ACCURACY</Text></View><View style={{ alignItems: 'center' }}><Text style={[s.statValue, { color: dark ? '#F8FAFC' : '#202020' }]}>{pace}s</Text><Text style={[s.statLabel, { color: dark ? '#C9BEDB' : '#7C7588' }]}>AVG PACE</Text></View></View><Text style={[s.reviewNote, { color: dark ? '#DDD4ED' : '#4E4858' }]}>{band.note}</Text></ScrollView><View style={{ padding: 16, gap: 10 }}>{attempted > correct && <Pressable onPress={onReview} style={[s.reviewBtn, { borderColor: band.tone }]}><Text style={[s.mainBtnText, { color: band.tone }]}>Review {attempted - correct} missed answers</Text></Pressable>}<Pressable onPress={onDone} style={[s.mainBtn, { backgroundColor: '#4C3BCF' }]}><Text style={[s.mainBtnText, { color: '#FFFFFF' }]}>Back to Quiz</Text></Pressable></View></View></View>;
+  return <View style={{ flex: 1, backgroundColor: dark ? '#0B0F19' : '#202020', padding: 4 }}><View style={{ flex: 1, borderRadius: 24, backgroundColor: dark ? '#171225' : '#FFFCF7', overflow: 'hidden', paddingTop: topInset }}><View style={{ height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Pressable onPress={onDone}><Icon name="close" size={28} exact color={dark ? '#F8FAFC' : '#202020'} /></Pressable><Text style={[s.worldTitle, { color: dark ? '#F8FAFC' : '#202020', fontSize: fz(18 * MAIN) }]}>Speed Round Results</Text><View style={{ width: 28 }} /></View><ScrollView contentContainerStyle={{ padding: 24, alignItems: 'center', gap: 20 }}><View style={{ borderRadius: 999, backgroundColor: `${band.tone}22`, paddingHorizontal: 18, paddingVertical: 8, flexDirection: 'row', gap: 7 }}><Icon name="bolt" size={18} exact color={band.tone} /><Text style={{ color: band.tone, fontFamily: FONT.outfit.b, fontSize: fz(16 * MAIN) }}>{band.label}</Text></View><Text style={[s.bigScore, { color: dark ? '#F8FAFC' : '#202020' }]}>{correct}</Text><Text style={[s.completeTitle, { color: dark ? '#F8FAFC' : '#202020', fontSize: fz(18 * MAIN) }]}>Correct out of {attempted} questions</Text><Text style={[s.completeKicker, { color: dark ? '#AFA4C5' : '#7C7588' }]}>60-SECOND CHALLENGE COMPLETED</Text><View style={{ width: '100%', borderRadius: 20, padding: 18, backgroundColor: dark ? '#211A32' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-around' }}><View style={{ alignItems: 'center' }}><Text style={[s.statValue, { color: dark ? '#F8FAFC' : '#202020' }]}>{accuracy}%</Text><Text style={[s.statLabel, { color: dark ? '#C9BEDB' : '#7C7588' }]}>ACCURACY</Text></View><View style={{ alignItems: 'center' }}><Text style={[s.statValue, { color: dark ? '#F8FAFC' : '#202020' }]}>{pace}s</Text><Text style={[s.statLabel, { color: dark ? '#C9BEDB' : '#7C7588' }]}>AVG PACE</Text></View></View><Text style={[s.reviewNote, { color: dark ? '#DDD4ED' : '#4E4858' }]}>{band.note}</Text></ScrollView><View style={{ padding: 16, paddingBottom: 24 + bottomInset, gap: 10 }}>{attempted > correct && <Pressable onPress={onReview} style={[s.reviewBtn, { borderColor: band.tone }]}><Text style={[s.mainBtnText, { color: band.tone }]}>Review {attempted - correct} missed answers</Text></Pressable>}<Pressable onPress={onDone} style={[s.mainBtn, { backgroundColor: '#4C3BCF' }]}><Text style={[s.mainBtnText, { color: '#FFFFFF' }]}>Back to Quiz</Text></Pressable></View></View></View>;
+  return <View style={{ flex: 1, backgroundColor: dark ? '#100D1A' : '#FFF9EA', paddingTop: topInset }}><ScrollView contentContainerStyle={{ padding: 24, alignItems: 'center', gap: 18 }}><Icon name="bolt" size={46} exact color={band.tone} /><Text style={[s.completeKicker, { color: band.tone }]}>TIME'S UP · SPEED ROUND</Text><Text style={[s.completeTitle, { color: dark ? '#F8FAFC' : '#30230C' }]}>{band.label}</Text><View style={{ alignItems: 'center', paddingVertical: 16, paddingHorizontal: 36, borderRadius: 24, backgroundColor: dark ? '#211A32' : '#FFF0BF', borderWidth: BW, borderColor: `${band.tone}88` }}><Text style={[s.bigScore, { color: band.tone }]}>{correct}</Text><Text style={[s.scoreSub, { color: dark ? '#C9BEDB' : '#725C2E' }]}>correct answers · {attempted} attempted</Text></View><Text style={[s.reviewNote, { color: dark ? '#DDD4ED' : '#58451C' }]}>{band.note}</Text><View style={{ width: '100%', gap: 9 }}>{['Poor · 0–2', 'Average · 3–6', 'Good · 7–11', 'Excellent · 12+'].map((label, i) => { const active = i === (correct < 3 ? 0 : correct < 7 ? 1 : correct < 12 ? 2 : 3); return <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Text style={{ width: 112, fontFamily: FONT.mono.b, fontSize: fz(10 * MAIN), color: active ? band.tone : dark ? '#8B7FA4' : '#8B794D' }}>{active ? '● ' : ''}{label}</Text><View style={{ flex: 1, height: active ? 9 : 6, borderRadius: 6, backgroundColor: active ? band.tone : dark ? '#302842' : '#EADDB6' }} /></View>; })}</View></ScrollView><View style={{ paddingHorizontal: 16, paddingBottom: 24 + bottomInset, gap: 10 }}>{attempted > correct && <Pressable onPress={onReview} style={[s.reviewBtn, { borderColor: band.tone }]}><Text style={[s.mainBtnText, { color: band.tone }]}>Review missed answers</Text></Pressable>}<Pressable onPress={onDone} style={[s.mainBtn, { backgroundColor: band.tone }]}><Text style={[s.mainBtnText, { color: '#1C1607' }]}>Back to Quiz</Text></Pressable></View></View>;
+}
+
+function CompleteScreen({ p, results, xp, topInset, bottomInset, onDone, onReview, nextLabel, onNext, speedRound = false, speedLimit = 0, speedElapsed = 0, questions = [], onPlayAgain, survival = false, survivalLives = SURVIVAL_LIVES, stakesBets }: { p: Palette; onPlayAgain?: () => void; survival?: boolean; survivalLives?: number; /** High Stakes: the bet placed on each question. */ stakesBets?: (BetId | undefined)[]; results: Result[]; questions?: QuizQuestion[]; xp: number; topInset: number; bottomInset: number; onDone: () => void; onReview: () => void; nextLabel?: string; onNext?: () => void; speedRound?: boolean; speedLimit?: number; speedElapsed?: number }) {
+  if (stakesBets) return <StakesDialog results={results} questions={questions} bets={stakesBets} onPlayAgain={onPlayAgain} onDone={onDone} onReview={onReview} />;
+  if (survival) return <SurvivalDialog lives={survivalLives} results={results} questions={questions} onPlayAgain={onPlayAgain} onDone={onDone} onReview={onReview} />;
+  if (speedRound) return <SpeedRoundComplete p={p} results={results} questions={questions} onPlayAgain={onPlayAgain} limit={speedLimit} elapsed={speedElapsed} topInset={topInset} bottomInset={bottomInset} onDone={onDone} onReview={onReview} />;
   const dark = p.isDark;
   const total = results.length;
   const right = results.filter((r) => r === 'correct').length;
@@ -892,11 +1484,13 @@ function getCorrectQuizAnswer(question: QuizQuestion): QuizAnswer {
   return question.answer;
 }
 
-export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, topInset, bottomInset = 0, stepOffset = 0, startIndex = 0, lockedQuestionIds = [], totalOverride, onExit, onComplete, onAnswer, nextLabel, onNext }: { p: Palette; world?: { order: number; title: string }; label?: string; /** Position of a resumed quiz: questions already answered before this session. */ stepOffset?: number; /** First page to show when resuming. */ startIndex?: number; /** Previously passed pages, shown correct and kept read-only. */ lockedQuestionIds?: string[]; /** The whole quiz's length. */ totalOverride?: number; /** What to offer after the last question: the next set (label and action). */ nextLabel?: string; onNext?: () => void; /** Called as each answer is committed, so progress survives quitting midway. */ onAnswer?: (question: QuizQuestion, correct: boolean) => void; questions?: QuizQuestion[]; topInset: number; /** Device bottom safe-area inset. */ bottomInset?: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
+export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, timeLimitSeconds: initialTimeLimit, topInset, bottomInset = 0, stepOffset = 0, startIndex = 0, lockedQuestionIds = [], totalOverride, onExit, onComplete, onAnswer, nextLabel, onNext, onPlayAgain, survival: initialSurvival = false, survivalLives: maxLives = SURVIVAL_LIVES, stakes: initialStakes = false }: { p: Palette; /** High Stakes: bet on each answer before checking it. */ stakes?: boolean; /** Survival: hearts for this climb (3, or 4 with the bonus heart earned by sharing). */ survivalLives?: number; /** Survival Ladder: `questions` is the pool; the run picks from it level by level. */ survival?: boolean; /** Speed Round: start a fresh round from the results dialog. */ onPlayAgain?: () => void; world?: { order: number; title: string }; label?: string; timeLimitSeconds?: number; /** Position of a resumed quiz: questions already answered before this session. */ stepOffset?: number; /** First page to show when resuming. */ startIndex?: number; /** Previously passed pages, shown correct and kept read-only. */ lockedQuestionIds?: string[]; /** The whole quiz's length. */ totalOverride?: number; /** What to offer when a set ends: the next set (label and action). */ nextLabel?: string; onNext?: () => void; /** Called as each answer is committed, so progress survives quitting midway. */ onAnswer?: (question: QuizQuestion, correct: boolean) => void; questions?: QuizQuestion[]; topInset: number; /** Device bottom safe-area inset. */ bottomInset?: number; onExit: () => void; onComplete?: (questions: QuizQuestion[], results: Result[]) => void }) {
   const lockedIds = React.useMemo(() => new Set(lockedQuestionIds), [lockedQuestionIds]);
-  const initialResults = React.useMemo(() => questions.map((question) => lockedIds.has(question.id) ? 'correct' as Result : undefined) as Result[], [questions, lockedIds]);
-  const initialAnswers = React.useMemo(() => questions.map((question) => lockedIds.has(question.id) ? getCorrectQuizAnswer(question) : null), [questions, lockedIds]);
-  const initialDrafts = React.useMemo(() => questions.map((question, i) => ({ answer: initialAnswers[i], checked: lockedIds.has(question.id) })), [questions, initialAnswers, lockedIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initialQuestions = React.useMemo(() => (initialSurvival ? startSurvivalRun(questions) : questions), []);
+  const initialResults = React.useMemo(() => initialQuestions.map((question) => lockedIds.has(question.id) ? 'correct' as Result : undefined) as Result[], [initialQuestions, lockedIds]);
+  const initialAnswers = React.useMemo(() => initialQuestions.map((question) => lockedIds.has(question.id) ? getCorrectQuizAnswer(question) : null), [initialQuestions, lockedIds]);
+  const initialDrafts = React.useMemo(() => initialQuestions.map((question, i) => ({ answer: initialAnswers[i], checked: lockedIds.has(question.id) })), [initialQuestions, initialAnswers, lockedIds]);
   const [index, setIndex] = React.useState(startIndex);
   const [results, setResults] = React.useState<Result[]>(initialResults);
   const resultsRef = React.useRef<Result[]>(initialResults);
@@ -907,10 +1501,29 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
   const draftsRef = React.useRef(drafts);
   const activeIndexRef = React.useRef(startIndex);
   const pagerRef = React.useRef<PagerView | null>(null);
+  // While a finger is on a code block, the pager stops swiping so the code can scroll sideways (see CodeScrollPagerLock).
+  const lockPagerForCode = React.useCallback((locked: boolean) => pagerRef.current?.setScrollEnabled(!locked), []);
   const questionScrollRefs = React.useRef<Array<any>>([]);
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [confirmLeave, setConfirmLeave] = React.useState(false);
-  const [sessionQuestions, setSessionQuestions] = React.useState(questions);
+  const [sessionQuestions, setSessionQuestions] = React.useState(initialQuestions);
+  const [survival, setSurvival] = React.useState(initialSurvival);
+  const [stakes, setStakes] = React.useState(initialStakes);
+  const [bets, setBets] = React.useState<(BetId | undefined)[]>([]);
+  const betsRef = React.useRef<(BetId | undefined)[]>([]);
+  const placeBet = (questionIndex: number, bet: BetId) => { const next = [...betsRef.current]; next[questionIndex] = bet; betsRef.current = next; setBets(next); };
+  const wrongCount = results.filter((result) => result === 'wrong').length;
+  // "Try these again" after a Speed Round retries the misses as a normal, untimed quiz.
+  const [timeLimitSeconds, setTimeLimitSeconds] = React.useState(initialTimeLimit);
+  const [secondsLeft, setSecondsLeft] = React.useState(initialTimeLimit ?? 0);
+  React.useEffect(() => {
+    if (!timeLimitSeconds) return undefined;
+    const timer = setInterval(() => setSecondsLeft((seconds) => {
+      if (seconds <= 1) { clearInterval(timer); activeIndexRef.current = sessionQuestions.length; setIndex(sessionQuestions.length); return 0; }
+      return seconds - 1;
+    }), 1000);
+    return () => clearInterval(timer);
+  }, [timeLimitSeconds, sessionQuestions.length]);
   // The offset / whole-quiz length only apply to the first run; "Try these again" replays the missed questions on their own.
   const [position, setPosition] = React.useState<{ offset: number; total?: number }>({ offset: stepOffset, total: totalOverride });
   const missed = sessionQuestions.filter((_, i) => results[i] === 'wrong');
@@ -932,13 +1545,29 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
     return () => subscription.remove();
   }, [reviewOpen, index, sessionQuestions.length, confirmLeave, requestClose]);
 
-  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} answers={missedAnswers} topInset={topInset} bottomInset={bottomInset} onTryAgain={() => { setSessionQuestions(missed); setPosition({ offset: 0, total: undefined }); setReviewOpen(false); setIndex(0); activeIndexRef.current = 0; setResults([]); resultsRef.current = []; setAnswers([]); answersRef.current = []; setDrafts([]); draftsRef.current = []; }} onDone={onExit} />;
+  if (reviewOpen) return <ReviewMistakesScreen p={p} world={world} questions={missed} answers={missedAnswers} topInset={topInset} bottomInset={bottomInset} onTryAgain={() => { setTimeLimitSeconds(undefined); setSurvival(false); setStakes(false); setSessionQuestions(missed); setPosition({ offset: 0, total: undefined }); setReviewOpen(false); setIndex(0); activeIndexRef.current = 0; setResults([]); resultsRef.current = []; setAnswers([]); answersRef.current = []; setDrafts([]); draftsRef.current = []; }} onDone={onExit} />;
 
-  if (index >= sessionQuestions.length) {
+  if (index >= sessionQuestions.length || (survival && wrongCount >= maxLives)) {
     const xp = sessionQuestions.reduce((sum, q, i) => sum + (!lockedIds.has(q.id) && results[i] === 'correct' ? q.xp : 0), 0);
-    return <CompleteScreen p={p} results={results} xp={xp} topInset={topInset} bottomInset={bottomInset} onReview={() => setReviewOpen(true)} nextLabel={nextLabel} onNext={onNext} onDone={() => { onComplete?.(sessionQuestions, results); onExit(); }} />;
+    return <CompleteScreen p={p} survival={survival} survivalLives={maxLives} stakesBets={stakes ? bets.slice(0, index) : undefined} results={results.slice(0, index)} questions={sessionQuestions.slice(0, index)} onPlayAgain={onPlayAgain} xp={xp} speedRound={!!timeLimitSeconds} speedLimit={timeLimitSeconds ?? 0} speedElapsed={(timeLimitSeconds ?? 0) - secondsLeft} topInset={topInset} bottomInset={bottomInset} onReview={() => setReviewOpen(true)} nextLabel={nextLabel} onNext={onNext} onDone={() => { onComplete?.(sessionQuestions, results); onExit(); }} />;
   }
-  const saveDraft = (questionIndex: number, answer: QuizAnswer, checked: boolean) => {
+  const saveDraft = (questionIndex: number, answer: QuizAnswer, checkedIn: boolean, correctOverride?: boolean) => {
+    // High Stakes: no answer is checked (even a tap-to-check type) until a bet is on it.
+    const checked = checkedIn && !(stakes && !betsRef.current[questionIndex] && correctOverride === undefined);
+    // Survival: the moment an answer is checked, swap the next page for a question of the level this answer leads to.
+    // That page is still off screen (the learner can only move on after checking), so the swap is never seen.
+    if (survival && checked && !draftsRef.current[questionIndex]?.checked && questionIndex + 1 < sessionQuestions.length) {
+      const correct = correctOverride ?? gradeQuizAnswer(sessionQuestions[questionIndex], answer);
+      const before = resultsRef.current.slice(0, questionIndex);
+      const correctSoFar = before.filter((r) => r === 'correct').length + (correct ? 1 : 0);
+      const wrongSoFar = before.filter((r) => r === 'wrong').length + (correct ? 0 : 1);
+      if (wrongSoFar < maxLives) {
+        const used = new Set(sessionQuestions.slice(0, questionIndex + 1).map((q) => q.id));
+        const nextQuestions = [...sessionQuestions];
+        nextQuestions[questionIndex + 1] = pickSurvivalQuestion(questions, difficultyForLevel(survivalLevel(correctSoFar)), used);
+        setSessionQuestions(nextQuestions);
+      }
+    }
     const next = [...draftsRef.current];
     next[questionIndex] = { answer, checked };
     draftsRef.current = next;
@@ -956,6 +1585,14 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
     setAnswers(nextAnswers);
     onAnswer?.(sessionQuestions[questionIndex], correct);
   };
+  // Survival ends with the last heart: jump to the results, which count only the questions answered.
+  const survivalOver = () => {
+    if (!survival || resultsRef.current.filter((r) => r === 'wrong').length < maxLives) return false;
+    const answered = resultsRef.current.reduce((n, r, i) => (r ? i + 1 : n), 0);
+    activeIndexRef.current = answered;
+    setIndex(answered);
+    return true;
+  };
   const handlePageSelected = (pageIndex: number) => {
     const previousIndex = activeIndexRef.current;
     if (pageIndex > previousIndex) {
@@ -965,13 +1602,16 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
         return;
       }
       commitAnswer(previousIndex, draft.answer, gradeQuizAnswer(sessionQuestions[previousIndex], draft.answer));
+      if (survivalOver()) return;
     }
     activeIndexRef.current = pageIndex;
     setIndex(pageIndex);
   };
   const continueQuestion = (questionIndex: number, correct: boolean, answer: QuizAnswer) => {
-    saveDraft(questionIndex, answer, true);
+    if (stakes && !betsRef.current[questionIndex]) placeBet(questionIndex, 'think'); // DEBUG Pass / Fail skip the bet
+    saveDraft(questionIndex, answer, true, correct);
     commitAnswer(questionIndex, answer, correct);
+    if (survivalOver()) return;
     if (questionIndex === sessionQuestions.length - 1) {
       activeIndexRef.current = sessionQuestions.length;
       setIndex(sessionQuestions.length);
@@ -984,28 +1624,27 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
   const currentAnswered = hasAnswer(currentDraft.answer);
   const currentCorrect = gradeQuizAnswer(currentQuestion, currentDraft.answer);
   const checkCurrentAnswer = () => {
-    if (!currentAnswered || currentDraft.checked) return;
+    if (!currentAnswered || currentDraft.checked || (stakes && !betsRef.current[index])) return;
     saveDraft(index, currentDraft.answer, true);
     setTimeout(() => questionScrollRefs.current[index]?.scrollToEnd({ animated: true }), 80);
   };
 
   const dark = p.isDark;
   const bg = dark ? '#0B0F19' : '#F3F4F8';
-  const actionReady = currentDraft.checked || currentAnswered;
-  const actionButtonBg = actionReady ? (dark ? '#343A70' : '#D5D8FF') : bg;
+  // High Stakes: once an answer is picked, a bet must be placed before it can be checked.
+  const needsBet = stakes && currentAnswered && !currentDraft.checked && !bets[index];
+  const currentReady = currentAnswered && !needsBet;
+  const coins = STAKES_START + sessionQuestions.reduce((sum, q, i) => {
+    const bet = bets[i], draft = drafts[i];
+    if (!bet || !(draft?.checked || results[i])) return sum;
+    return sum + payout(bet, results[i] ? results[i] === 'correct' : gradeQuizAnswer(q, draft.answer));
+  }, 0);
+  const actionReady = currentDraft.checked || currentReady;
+  const actionButtonBg = actionReady ? (dark ? '#343A70' : '#D5D8FF') : (dark ? '#202846' : '#E5E7FA');
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
-      <QuizToolbar
-        p={p}
-        world={world}
-        label={label}
-        question={currentQuestion}
-        topInset={topInset}
-        step={position.offset + index + 1}
-        total={position.total ?? sessionQuestions.length}
-        checked={currentDraft.checked}
-        onClose={requestClose}
-      />
+      {stakes ? <StakesToolbar p={p} topInset={topInset} coins={coins} step={index + 1} total={sessionQuestions.length} onClose={requestClose} /> : survival ? <SurvivalToolbar p={p} topInset={topInset} lives={maxLives - wrongCount} maxLives={maxLives} correct={results.filter((result) => result === 'correct').length} step={index + 1} onClose={requestClose} /> : timeLimitSeconds ? <SpeedRoundToolbar p={p} topInset={topInset} secondsLeft={secondsLeft} limit={timeLimitSeconds} correct={results.filter((result) => result === 'correct').length} step={position.offset + index + 1} onClose={requestClose} /> : <QuizToolbar p={p} world={world} label={label} question={currentQuestion} topInset={topInset} step={position.offset + index + 1} total={position.total ?? sessionQuestions.length} checked={currentDraft.checked} onClose={requestClose} />}
+      <CodeScrollPagerLock.Provider value={lockPagerForCode}>
       <PagerView
         ref={pagerRef}
         style={{ flex: 1 }}
@@ -1019,7 +1658,7 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
           const isNearActivePage = Math.abs(questionIndex - index) <= 1;
           const draft = drafts[questionIndex] ?? { answer: answers[questionIndex] ?? null, checked: results[questionIndex] !== undefined };
           return (
-            <View key={question.id} style={{ width: '100%', height: '100%' }}>
+            <View key={`${questionIndex}-${question.id}`} style={{ width: '100%', height: '100%' }}>
               {isNearActivePage && <QuestionScreen
                 p={p}
                 q={question}
@@ -1032,6 +1671,7 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
           );
         })}
       </PagerView>
+      </CodeScrollPagerLock.Provider>
       <View style={{ backgroundColor: bg }}>
         <Svg width="100%" height={6} style={{ position: 'absolute', left: 0, right: 0, top: -6 }} pointerEvents="none">
           <Defs>
@@ -1053,13 +1693,18 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
               <Text style={[s.debugBtnText, { color: dark ? '#FDA4AF' : '#BE123C' }]}>Fail</Text>
             </Pressable>
           </View>
+          {stakes && currentAnswered && <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+            {currentDraft.checked && bets[index]
+              ? <Text style={{ textAlign: 'center', fontFamily: FONT.outfit.md, fontSize: fz(13), color: currentCorrect ? (dark ? '#6EE7B7' : '#047857') : (dark ? '#FDA4AF' : '#BE123C') }}>{betById(bets[index]!).emoji} {betById(bets[index]!).label} · {currentCorrect ? `+${betById(bets[index]!).win}` : `−${betById(bets[index]!).lose}`} coins</Text>
+              : <View style={{ flexDirection: 'row', gap: 8 }}>{BETS.map((b) => { const on = bets[index] === b.id; return <Pressable key={b.id} onPress={() => placeBet(index, b.id)} accessibilityRole="radio" accessibilityState={{ selected: on }} style={{ flex: 1, paddingVertical: 8, borderRadius: 12, alignItems: 'center', borderWidth: on ? 2 : BW, borderColor: on ? (dark ? '#FBBF24' : '#B45309') : (dark ? '#3A3F55' : '#D6D9E6'), backgroundColor: on ? (dark ? 'rgba(251,191,36,0.14)' : '#FFFBEB') : (dark ? '#151A28' : '#FFFFFF') }}><Text style={{ fontFamily: FONT.outfit.md, fontSize: fz(13), color: dark ? '#E2E8F0' : '#1F2937' }}>{b.emoji} {b.label}</Text><Text style={{ marginTop: 1, fontFamily: FONT.mono.b, fontSize: fz(10.5), color: dark ? '#94A3B8' : '#64748B' }}>+{b.win} / −{b.lose}</Text></Pressable>; })}</View>}
+          </View>}
           <View style={{ position: 'relative', width: '100%', paddingHorizontal: 16 }}>
             <Pressable
-              disabled={!currentDraft.checked && !currentAnswered}
+              disabled={!currentDraft.checked && !currentReady}
               onPress={() => (currentDraft.checked ? continueQuestion(index, currentCorrect, currentDraft.answer) : checkCurrentAnswer())}
               accessibilityRole="button"
-              accessibilityLabel={currentDraft.checked ? (index + 1 >= sessionQuestions.length ? 'Finish quiz' : 'Next question') : currentAnswered ? 'Check answer' : WAITING_LABEL[currentQuestion.type]}
-              accessibilityState={{ disabled: !currentDraft.checked && !currentAnswered }}
+              accessibilityLabel={currentDraft.checked ? (index + 1 >= sessionQuestions.length ? 'Finish quiz' : 'Next question') : currentReady ? 'Check answer' : (needsBet ? 'Place your bet' : WAITING_LABEL[currentQuestion.type])}
+              accessibilityState={{ disabled: !currentDraft.checked && !currentReady }}
               android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
               style={[
                 s.mainBtn,
@@ -1074,13 +1719,13 @@ export function QuizSessionScreen({ p, world, label, questions = SAMPLE_QUIZ, to
                   shadowOpacity: dark ? 0.52 : 0.38,
                   elevation: 8,
                 },
-                !currentDraft.checked && !currentAnswered && s.quizActionDisabled,
+                !currentDraft.checked && !currentReady && s.quizActionDisabled,
               ]}
             >
-              <Text style={[s.mainBtnText, s.quizActionText, { color: !currentDraft.checked && !currentAnswered ? (dark ? '#64748B' : '#94A3B8') : (dark ? '#A5B4FC' : '#4F46E5') }]}>
-                {currentDraft.checked ? (index + 1 >= sessionQuestions.length ? 'Finish' : 'Next') : currentAnswered ? 'Check answer' : WAITING_LABEL[currentQuestion.type]}
+              <Text style={[s.mainBtnText, s.quizActionText, { color: !currentDraft.checked && !currentReady ? (dark ? '#8E9AD0' : '#6872BC') : (dark ? '#A5B4FC' : '#4F46E5') }]}>
+                {currentDraft.checked ? (index + 1 >= sessionQuestions.length ? 'Finish' : 'Next') : currentReady ? 'Check answer' : (needsBet ? 'Place your bet' : WAITING_LABEL[currentQuestion.type])}
               </Text>
-              {(currentDraft.checked || currentAnswered) && <Icon name={currentDraft.checked ? 'arrow_forward' : 'check'} size={20} exact color={dark ? '#A5B4FC' : '#4F46E5'} />}
+              {(currentDraft.checked || currentReady) && <Icon name={currentDraft.checked ? 'arrow_forward' : 'check'} size={20} exact color={dark ? '#A5B4FC' : '#4F46E5'} />}
             </Pressable>
           </View>
         </View>
@@ -1121,6 +1766,9 @@ const s = StyleSheet.create({
   reviewFooter: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 24, gap: 8 },
   doneBtn: { height: 40, alignItems: 'center', justifyContent: 'center' },
   closeBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },
+  speedKicker: { fontFamily: FONT.mono.b, fontSize: fz(10 * MAIN), letterSpacing: 0.12 * 10 * MAIN, includeFontPadding: false },
+  speedMeta: { marginTop: 3, fontFamily: FONT.mono.r, fontSize: fz(10 * MAIN), includeFontPadding: false },
+  speedTime: { fontFamily: FONT.mono.b, fontSize: fz(24 * MAIN), lineHeight: lh(24, 1), includeFontPadding: false },
   worldTag: { fontFamily: FONT.mono.b, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.3333), includeFontPadding: false },
   worldTitle: { flexShrink: 1, fontFamily: FONT.outfit.sb, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
   progressTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
@@ -1132,19 +1780,21 @@ const s = StyleSheet.create({
   diffPill: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
   diffText: { fontFamily: FONT.mono.b, fontSize: fz(10), letterSpacing: 0.6, textTransform: 'uppercase', includeFontPadding: false },
   concept: { fontFamily: FONT.mono.b, fontSize: fz(10.5 * MAIN), lineHeight: lh(10.5, 1.5), letterSpacing: 0.05 * 10.5 * MAIN, textTransform: 'uppercase', includeFontPadding: false },
-  question: { fontFamily: FONT.outfit.sb, fontSize: fz(16 * MAIN), lineHeight: lh(16, 1.4), letterSpacing: -0.025 * 16 * MAIN, includeFontPadding: false },
+  question: { fontFamily: FONT.outfit.sb, fontSize: fz(15 * MAIN), lineHeight: lh(15, 1.3), letterSpacing: -0.025 * 15 * MAIN, includeFontPadding: false },
   selectedPill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   selectedText: { fontFamily: FONT.outfit.b, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.3333), includeFontPadding: false },
   mono11: { fontFamily: FONT.mono.r, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.5), includeFontPadding: false },
   body13: { fontFamily: FONT.body, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
   // code panel
-  codePanel: { width: '100%', borderRadius: 12, borderWidth: BW, borderColor: 'rgba(51,65,85,0.6)', backgroundColor: '#0D1322', overflow: 'hidden' },
-  codeBar: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 4, backgroundColor: '#090D17', borderBottomWidth: BW, borderBottomColor: 'rgba(30,41,59,0.7)' },
+  codePanel: { width: '100%', borderRadius: 12, borderWidth: BW, borderColor: 'rgba(51,65,85,0.6)', backgroundColor: '#0D1322', overflow: 'hidden', position: 'relative' },
+  codeBar: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 3, backgroundColor: '#090D17', borderBottomWidth: BW, borderBottomColor: 'rgba(30,41,59,0.7)' },
   copyButton: { marginLeft: 'auto', width: 22, height: 22, borderRadius: 5, borderWidth: BW, borderColor: '#334155', backgroundColor: 'rgba(30,41,59,0.9)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   codeRow: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 2.91 },
+  selectionRail: { position: 'absolute', top: 32, left: 0, bottom: 0, width: 28, paddingTop: 2 },
+  selectionRailRow: { height: 38, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0D1322' },
   gutter: { width: 36, textAlign: 'right', paddingRight: 12, fontFamily: FONT.mono.r, fontSize: fz(12 * MAIN), color: '#64748B', includeFontPadding: false },
-  codeText: { fontFamily: FONT.mono.r, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.625), includeFontPadding: false },
+  codeText: { fontFamily: FONT.mono.r, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.4), includeFontPadding: false },
   slot: { marginHorizontal: 6, minWidth: 68, height: 32, paddingHorizontal: 12, borderRadius: 8, borderWidth: TWO, alignItems: 'center', justifyContent: 'center' },
   slotText: { fontFamily: FONT.mono.b, fontSize: fz(13 * MAIN), includeFontPadding: false },
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 8, marginLeft: 36, marginRight: 8, marginBottom: 4, borderRadius: 8 },

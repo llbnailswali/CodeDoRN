@@ -3310,3 +3310,12 @@ Found while authoring the World 16 Practice bank (2026-10-15) by running the sam
 - **Not supported:** `yield()` interleaving (`a1 b1 b2 a2`, real Kotlin differs), `isActive` inside a coroutine, `withTimeoutOrNull`, `launch(start = CoroutineStart.LAZY)` (named argument rejected), and `CoroutineExceptionHandler` (the handler never prints).
 - **Exceptions:** `try { d.await() } catch` directly inside `runBlocking` prints `caught`, but real Kotlin fails the scope first. `coroutineScope` with a failing child and a sibling that prints behaves differently. `GlobalScope.launch` output and `job.cancel()` without `join()` also differ.
 - Compile error for a suspend call from a normal `main` is reported by both.
+
+## Native quiz: code inside the question pager could not scroll sideways (fixed)
+
+Found 2026-10-18 on Compare Code questions (Code A / Code B cards). Every quiz question sits on a page of the horizontal
+`PagerView` in `src/QuizSessionScreen.tsx`. On Android the pager claims a sideways drag before the code's horizontal
+`ScrollView` (`HorizontalCodeScroll`) sees it, so a long line could not be scrolled to its end; inside a tappable card it was
+worse. Fix: `HorizontalCodeScroll` reads the `CodeScrollPagerLock` context and, while a finger is on the code, the quiz turns the
+pager's swiping off (`setScrollEnabled(false)`), turning it back on when the finger lifts. Any new horizontal pager that holds
+code must provide `CodeScrollPagerLock` the same way, or the code inside it will not scroll.

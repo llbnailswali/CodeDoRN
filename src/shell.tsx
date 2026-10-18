@@ -43,7 +43,7 @@ const MATERIAL_SYMBOL_CODEPOINTS: Record<string, number> = {
   play_arrow: 0xe037, person: 0xe7fd, psychology: 0xea4b, refresh: 0xe5d5, remove: 0xe15b, replay: 0xe042,
   rocket_launch: 0xeb9b, school: 0xe80c, science: 0xea4b, security: 0xe32a, shuffle: 0xe043, swap_vert: 0xe8d4,
   terminal: 0xeb8e, touch_app: 0xe913, track_changes: 0xe8e1, tune: 0xe429, view_list: 0xe8ef, visibility: 0xe8f4,
-  workspace_premium: 0xe7af,
+  workspace_premium: 0xe7af, schedule: 0xe8b5, local_fire_department: 0xef55, emoji_events: 0xea23, rule: 0xf1c2,
 };
 
 /**
