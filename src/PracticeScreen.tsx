@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BW, Icon, MAIN, fz } from './shell';
 import { EditorPanel, WorldsDivider, accentFor, hexAlpha, lh } from './parts';
 import { HELP_OPTIONS, HelpLevel } from './HelpSheet';
@@ -47,6 +48,15 @@ const tokens = (dark: boolean) => ({
     : [{ dy: 1, blur: 3, rgb: '0,0,0', alpha: 0.1 }],
 });
 
+function OffWhiteCardGradient({ id }: { id: string }) {
+  const [size, setSize] = React.useState({ w: 0, h: 0 });
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {size.w > 0 && <Svg width={size.w} height={size.h}><Defs><LinearGradient id={id} x1="0" y1="0" x2="0" y2={size.h} gradientUnits="userSpaceOnUse"><Stop offset="0" stopColor="#FCFCF9" /><Stop offset="1" stopColor="#F3F4F6" /></LinearGradient></Defs><Rect width={size.w} height={size.h} fill={`url(#${id})`} /></Svg>}
+    </View>
+  );
+}
+
 function WorldCard({ world, dark, onOpen, showAccentBorder }: { world: PracticeWorld; dark: boolean; onOpen: (order: number) => void; showAccentBorder: boolean }) {
   const t = tokens(dark);
   const [darkAccent, lightAccent] = accentFor(world.order);
@@ -60,7 +70,8 @@ function WorldCard({ world, dark, onOpen, showAccentBorder }: { world: PracticeW
   return (
     <View style={{ opacity: hasAny ? 1 : 0.6 }}>
       <ShadowStack r={12} shadows={t.panelShadow} />
-      <Pressable onPress={() => { if (hasAny) onOpen(world.order); }} android_ripple={{ color: `${accentText}33`, borderless: false, foreground: true }} style={[s.card, t.panel, dark ? Platform.select({ ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 14 }, android: { elevation: 10, shadowColor: '#000000' } }) : { elevation: 3, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.16, shadowRadius: 5 }, { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0, overflow: 'visible' }]}>
+      <Pressable onPress={() => { if (hasAny) onOpen(world.order); }} android_ripple={{ color: `${accentText}33`, borderless: false, foreground: true }} style={[s.card, t.panel, !dark && { backgroundColor: '#FAFAF7', borderWidth: BW, borderColor: '#E1E6EC' }, dark ? Platform.select({ ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 14 }, android: { elevation: 10, shadowColor: '#000000' } }) : { elevation: 3, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.16, shadowRadius: 5 }, { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0, overflow: 'hidden' }]}>
+        {!dark && <OffWhiteCardGradient id={`practice-world-card-${world.order}`} />}
         {/* WORLD_NN label (+ "current" while in progress), check or chevron on the right */}
         <View style={s.cardTop}>
           <View style={s.cardTopLeft}>

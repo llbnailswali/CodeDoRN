@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlatList, NativeModules, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BW, Icon, MAIN, fz } from './shell';
 import { accentFor, hexAlpha, lh } from './parts';
@@ -43,6 +44,15 @@ const difficultyStyle = (d: PracticeTask['difficulty'], dark: boolean) =>
     medium: dark ? { color: '#E5C07B', borderColor: 'rgba(229,192,123,0.5)' } : { color: '#936A14', borderColor: 'rgba(199,154,46,0.7)' },
     hard: dark ? { color: '#CE9178', borderColor: 'rgba(206,145,120,0.5)' } : { color: '#A8502F', borderColor: 'rgba(206,145,120,0.8)' },
   })[d];
+
+function OffWhiteCardGradient({ id }: { id: string }) {
+  const [size, setSize] = React.useState({ w: 0, h: 0 });
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {size.w > 0 && <Svg width={size.w} height={size.h}><Defs><LinearGradient id={id} x1="0" y1="0" x2="0" y2={size.h} gradientUnits="userSpaceOnUse"><Stop offset="0" stopColor="#FCFCF9" /><Stop offset="1" stopColor="#F3F4F6" /></LinearGradient></Defs><Rect width={size.w} height={size.h} fill={`url(#${id})`} /></Svg>}
+    </View>
+  );
+}
 
 // Same idea as the web: break after each finished sentence unless the text already has real line breaks.
 const breakAfterSentences = (text: string): string => (text.includes('\n') ? text : text.replace(/([.!?])\s+(?=[A-Z(])/g, '$1\n\n'));
@@ -143,7 +153,7 @@ export function TaskListScreen({
   const muted = dark ? '#94A3B8' : '#64748B';
   const panel = dark
     ? { backgroundColor: '#0F1420', borderColor: 'rgba(255,255,255,0.10)' }
-    : { backgroundColor: '#F6F7FA', borderColor: 'rgba(203,213,225,0.7)' };
+    : { backgroundColor: '#FAFAF7', borderColor: '#E1E6EC' };
   const panelShadow = dark ? [{ dy: 4, blur: 6, rgb: '0,0,0', alpha: 0.3 }] : [{ dy: 1, blur: 3, rgb: '0,0,0', alpha: 0.1 }];
 
   const statuses = tasks.map((_, i) => statusFor(worldOrder, mode, i));
@@ -217,6 +227,7 @@ export function TaskListScreen({
           <View>
             <ShadowStack r={12} shadows={panelShadow} />
             <View style={[s.progressCard, panel, { borderLeftColor: darkAccent, borderLeftWidth: showAccentBorder ? 2.91 : 0 }]}>
+              {!dark && <OffWhiteCardGradient id="task-list-progress" />}
               <View style={s.progressRow}>
                 <Text style={[s.mono11, { color: muted }]}>
                   {'completed = '}
@@ -239,6 +250,7 @@ export function TaskListScreen({
         ListEmptyComponent={
           <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
             <View style={[s.empty, panel]}>
+              {!dark && <OffWhiteCardGradient id="task-list-empty" />}
               <Text style={[s.mono12, { color: muted }]}>{'// no problems available for this World yet'}</Text>
             </View>
           </View>
@@ -268,6 +280,7 @@ export function TaskListScreen({
                           { overflow: 'hidden' },
                         ]}
                       >
+                      {!dark && <OffWhiteCardGradient id={`task-list-card-${mode}-${idx}`} />}
                       <View style={{ gap: 6 }}>
                         <View style={s.taskTop}>
                           <Text style={[s.taskNum, { color: modeColor }]}>{String(idx + 1).padStart(2, '0')}</Text>
@@ -327,12 +340,12 @@ const s = StyleSheet.create({
   track: { flexDirection: 'row', borderRadius: 12, borderWidth: BW, padding: 4, gap: 4, overflow: 'hidden' },
   tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 8 },
   tabText: { fontFamily: FONT.outfit.sb, fontSize: fz(13 * MAIN), lineHeight: lh(13, 1.5), includeFontPadding: false },
-  progressCard: { padding: 14, borderRadius: 12, borderWidth: BW, borderLeftWidth: 2.91 },
+  progressCard: { padding: 14, borderRadius: 12, borderWidth: BW, borderLeftWidth: 2.91, overflow: 'hidden' },
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   bar: { height: 4, borderRadius: 2, overflow: 'hidden', width: '100%' },
   mono11: { fontFamily: FONT.mono.r, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.5), includeFontPadding: false },
   mono12: { fontFamily: FONT.mono.r, fontSize: fz(12 * MAIN), lineHeight: lh(12, 1.5), includeFontPadding: false },
-  empty: { padding: 16, borderRadius: 12, borderWidth: BW, alignItems: 'center' },
+  empty: { padding: 16, borderRadius: 12, borderWidth: BW, alignItems: 'center', overflow: 'hidden' },
   // task card
   task: { padding: 14, borderRadius: 12, borderWidth: BW, borderLeftWidth: 2.91, gap: 8, overflow: 'hidden' },
   taskTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },

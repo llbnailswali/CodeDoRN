@@ -303,7 +303,7 @@ export function QuizHubScreen({ p, world, questions, sets, boss, progress, pass,
 
 const s = StyleSheet.create({
   toolbar: { borderBottomWidth: BW, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.14, shadowRadius: 3 },
-  toolbarInner: { paddingHorizontal: 16, paddingTop: 1, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toolbarInner: { paddingHorizontal: 16, paddingTop: 1, paddingBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 12 },
   back: { width: 38, height: 38, borderRadius: 12, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },
   kicker: { fontFamily: FONT.mono.b, fontSize: fz(10), letterSpacing: 0.8, includeFontPadding: false },
   heading: { fontFamily: FONT.outfit.b, fontSize: fz(18), lineHeight: lh(18, 1.35), includeFontPadding: false },
