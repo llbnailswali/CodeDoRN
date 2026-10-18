@@ -2332,7 +2332,7 @@ export const WORLD_13_QUIZ: QuizQuestion[] = [
    "}"
   ],
   "options": [
-   " ADA ",
+   "null",
    "GUEST",
    "ADA",
    "ada"

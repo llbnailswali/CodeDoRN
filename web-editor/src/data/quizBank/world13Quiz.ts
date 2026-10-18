@@ -352,7 +352,7 @@ const setQuestions: QuizQuestion[] = [
     sc('easy', 'remove needless scopes', 'Which rewrite of `x.let { it }.let { it.trim() }` is best?', 'x.trim()', ['x.run { trim() }.let { it }', 'with(x) { trim() }.also { }', 'x.apply { trim() }'],
       'The scope calls add nothing. `x.apply { trim() }` is also wrong: it returns the untrimmed `x`.',
       'Remove the parts that do nothing.', true),
-    pr('medium', 'safe-call chain with a fallback', ['val name: String? = " ada "', 'val label = name', '  ?.trim()', '  ?.let { it.uppercase() }', '  ?: "GUEST"', 'println(label)'], 'ADA', [' ADA ', 'GUEST', 'ada'],
+    pr('medium', 'safe-call chain with a fallback', ['val name: String? = " ada "', 'val label = name', '  ?.trim()', '  ?.let { it.uppercase() }', '  ?: "GUEST"', 'println(label)'], 'ADA', ['null', 'GUEST', 'ada'],
       '`name` is not null, so it is trimmed and uppercased; the Elvis fallback is not used.',
       'Is name null?'),
     cm('medium', 'log, then count', 'Which version prints `log: [1, 2]` and then `2`?', ['mutableListOf(1).apply { add(2) }', '  .also { println("log: $it") }', '  .let { println(it.size) }'], ['mutableListOf(1).also { it.add(2) }', '  .let { it.size }', '  .also { println("log: $it") }'],

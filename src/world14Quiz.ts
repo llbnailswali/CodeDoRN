@@ -49,7 +49,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace terminal value versus pipeline one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val result = sequenceOf(3, 6, 9).map { it / 3 }.first()",
+   "val result = sequenceOf(3, 6, 9).map {",
+   "  it / 3",
+   "}.first()",
    "println(result)"
   ],
   "options": [
@@ -74,7 +76,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace bounded demand on an unbounded source one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val values = generateSequence(2) { it + 2 }.take(4).toList()",
+   "val values = generateSequence(2) {",
+   "  it + 2",
+   "}.take(4).toList()",
    "println(values)"
   ],
   "options": [
@@ -100,8 +104,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val values: List<Int> = sequenceOf(1, 2, 3).map { it * 2 }",
-   " println(values)",
+   "  val values: List<Int> = sequenceOf(1, 2, 3).map {",
+   "    it * 2",
+   "  }",
+   "  println(values)",
    "}"
   ],
   "errorLine": 1,
@@ -141,8 +147,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "var visited = 0",
-   "val values = sequenceOf(4, 5, 6).map { visited++",
-   " it }",
+   "val values = sequenceOf(4, 5, 6).map {",
+   "  visited++",
+   "  it",
+   "}",
    "println(visited)"
   ],
   "options": [
@@ -223,9 +231,13 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace eager stage trace one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val result = listOf(1, 2, 3).filter { println(\"F$it\")",
-   " it > 1 }.map { println(\"M$it\")",
-   " it * 10 }",
+   "val result = listOf(1, 2, 3).filter {",
+   "  println(\"F$it\")",
+   "  it > 1",
+   "}.map {",
+   "  println(\"M$it\")",
+   "  it * 10",
+   "}",
    "println(result)"
   ],
   "options": [
@@ -251,8 +263,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var visits = 0",
-   "val first = listOf(2, 4, 6, 8).map { visits++",
-   " it }.take(1)",
+   "val first = listOf(2, 4, 6, 8).map {",
+   "  visits++",
+   "  it",
+   "}.take(1)",
    "println(\"$first:$visits\")"
   ],
   "options": [
@@ -278,8 +292,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val values: Sequence<Int> = listOf(1, 2, 3).map { it * 2 }",
-   " println(values)",
+   "  val values: Sequence<Int> = listOf(1, 2, 3).map {",
+   "    it * 2",
+   "  }",
+   "  println(values)",
    "}"
   ],
   "errorLine": 1,
@@ -298,7 +314,11 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use eager intermediate allocation to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val result = listOf(\"a\", \"bb\", \"ccc\").filter { it.length > 1 }.map { it.length }",
+   "val result = listOf(\"a\", \"bb\", \"ccc\").filter {",
+   "  it.length > 1",
+   "}.map {",
+   "  it.length",
+   "}",
    "println(result)"
   ],
   "options": [
@@ -323,8 +343,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "var n = 0",
-   "val first = listOf(1, 2, 3, 4).map { n++",
-   " it * 2 }.take(1)",
+   "val first = listOf(1, 2, 3, 4).map {",
+   "  n++",
+   "  it * 2",
+   "}.take(1)",
    "println(\"$first:$n\")"
   ],
   "options": [
@@ -372,18 +394,22 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " var n = 0",
-   " listOf(1, 2, 3, 4).asSequence().map { n++",
-   " it * 2 }.take(1).toList()",
-   " println(n)",
+   "  var n = 0",
+   "  listOf(1, 2, 3, 4).asSequence().map {",
+   "    n++",
+   "    it * 2",
+   "  }.take(1).toList()",
+   "  println(n)",
    "}"
   ],
   "b": [
    "fun main() {",
-   " var n = 0",
-   " listOf(1, 2, 3, 4).map { n++",
-   " it * 2 }.take(1)",
-   " println(n)",
+   "  var n = 0",
+   "  listOf(1, 2, 3, 4).map {",
+   "    n++",
+   "    it * 2",
+   "  }.take(1)",
+   "  println(n)",
    "}"
   ],
   "answer": 0
@@ -436,8 +462,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var mapped = 0",
-   "val pipeline = sequenceOf(1, 2, 3).map { mapped++",
-   " it + 10 }",
+   "val pipeline = sequenceOf(1, 2, 3).map {",
+   "  mapped++",
+   "  it + 10",
+   "}",
    "println(\"$mapped:${pipeline is Sequence<*>}\")"
   ],
   "options": [
@@ -463,8 +491,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var calls = 0",
-   "val values = sequenceOf(2, 4).map { calls++",
-   " it }",
+   "val values = sequenceOf(2, 4).map {",
+   "  calls++",
+   "  it",
+   "}",
    "values.toList()",
    "values.toList()",
    "println(calls)"
@@ -492,8 +522,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val total: Int = sequenceOf(1, 2, 3).map { it * 2 }",
-   " println(total)",
+   "  val total: Int = sequenceOf(1, 2, 3).map {",
+   "    it * 2",
+   "  }",
+   "  println(total)",
    "}"
   ],
   "errorLine": 1,
@@ -512,9 +544,13 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace element-oriented flow one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "sequenceOf(1, 2, 3).filter { println(\"F$it\")",
-   " it != 1 }.map { println(\"M$it\")",
-   " it }.toList()"
+   "sequenceOf(1, 2, 3).filter {",
+   "  println(\"F$it\")",
+   "  it != 1",
+   "}.map {",
+   "  println(\"M$it\")",
+   "  it",
+   "}.toList()"
   ],
   "options": [
    "F1\nF2\nM2\nM3\nF3",
@@ -538,8 +574,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "var calls = 0",
-   "val values = (1..3).asSequence().map { calls++",
-   " it }",
+   "val values = (1..3).asSequence().map {",
+   "  calls++",
+   "  it",
+   "}",
    "values.sum()",
    "values.count()",
    "println(calls)"
@@ -589,16 +627,20 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " val s = listOf(1, 2).map { println(it)",
-   " it }",
-   " println(\"built\")",
+   "  val s = listOf(1, 2).map {",
+   "    println(it)",
+   "    it",
+   "  }",
+   "  println(\"built\")",
    "}"
   ],
   "b": [
    "fun main() {",
-   " val s = sequenceOf(1, 2).map { println(it)",
-   " it }",
-   " println(\"built\")",
+   "  val s = sequenceOf(1, 2).map {",
+   "    println(it)",
+   "    it",
+   "  }",
+   "  println(\"built\")",
    "}"
   ],
   "answer": 1
@@ -617,8 +659,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "fill_blank",
   "code": [
    "fun main() {",
-   " val s = sequenceOf(1, 2).map { it * 2 }",
-   " println(s.___())",
+   "  val s = sequenceOf(1, 2).map {",
+   "    it * 2",
+   "  }",
+   "  println(s.___())",
    "}"
   ],
   "chips": [
@@ -701,7 +745,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace finite generateSequence one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val odds = generateSequence(1) { if (it < 5) it + 2 else null }.toList()",
+   "val odds = generateSequence(1) {",
+   "  if (it < 5) it + 2 else null",
+   "}.toList()",
    "println(odds)"
   ],
   "options": [
@@ -726,7 +772,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace bounded generated source one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val answer = generateSequence(10) { it + 10 }.take(3).toList().last()",
+   "val answer = generateSequence(10) {",
+   "  it + 10",
+   "}.take(3).toList().last()",
    "println(answer)"
   ],
   "options": [
@@ -752,8 +800,8 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " yield(4)",
-   " println(\"done\")",
+   "  yield(4)",
+   "  println(\"done\")",
    "}"
   ],
   "errorLine": 1,
@@ -797,9 +845,11 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use sequence builder yield to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val values = sequence { yield(2)",
-   " yield(5)",
-   " yield(9) }.toList()",
+   "val values = sequence {",
+   "  yield(2)",
+   "  yield(5)",
+   "  yield(9)",
+   "}.toList()",
    "println(values)"
   ],
   "options": [
@@ -847,12 +897,16 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " println(generateSequence(1) { it + 1 }.take(5).toList())",
+   "  println(generateSequence(1) {",
+   "    it + 1",
+   "  }.take(5).toList())",
    "}"
   ],
   "b": [
    "fun main() {",
-   " println(generateSequence(1) { it + 1 }.toList())",
+   "  println(generateSequence(1) {",
+   "    it + 1",
+   "  }.toList())",
    "}"
   ],
   "answer": 0
@@ -871,10 +925,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "fill_blank",
   "code": [
    "fun main() {",
-   " val s = sequence {",
-   " ___(10)",
-   " }",
-   " println(s.first())",
+   "  val s = sequence {",
+   "    ___(10)",
+   "  }",
+   "  println(s.first())",
    "}"
   ],
   "chips": [
@@ -960,8 +1014,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var calls = 0",
-   "val result = listOf(1, 2, 3).map { calls++",
-   " it }.asSequence()",
+   "val result = listOf(1, 2, 3).map {",
+   "  calls++",
+   "  it",
+   "}.asSequence()",
    "println(\"before:$calls\")"
   ],
   "options": [
@@ -987,8 +1043,8 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val values: List<Int> = listOf(1, 2, 3).asSequence()",
-   " println(values)",
+   "  val values: List<Int> = listOf(1, 2, 3).asSequence()",
+   "  println(values)",
    "}"
   ],
   "errorLine": 1,
@@ -1008,8 +1064,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "var calls = 0",
-   "val view = listOf(1, 2, 3).asSequence().map { calls++",
-   " it }",
+   "val view = listOf(1, 2, 3).asSequence().map {",
+   "  calls++",
+   "  it",
+   "}",
    "println(calls)",
    "view.first()",
    "println(calls)"
@@ -1035,7 +1093,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use reusable collection-backed view to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val view = listOf(\"x\", \"yy\").asSequence().map { it.length }",
+   "val view = listOf(\"x\", \"yy\").asSequence().map {",
+   "  it.length",
+   "}",
    "println(view.sum())",
    "println(view.sum())"
   ],
@@ -1045,6 +1105,7 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
    "3\n6",
    "3\n1"
   ],
+  "monoOptions": true,
   "answer": 0
  },
  {
@@ -1084,18 +1145,22 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " var n = 0",
-   " val s = listOf(1, 2, 3).map { n++",
-   " it * 2 }.asSequence()",
-   " println(n)",
+   "  var n = 0",
+   "  val s = listOf(1, 2, 3).map {",
+   "    n++",
+   "    it * 2",
+   "  }.asSequence()",
+   "  println(n)",
    "}"
   ],
   "b": [
    "fun main() {",
-   " var n = 0",
-   " val s = listOf(1, 2, 3).asSequence().map { n++",
-   " it * 2 }",
-   " println(n)",
+   "  var n = 0",
+   "  val s = listOf(1, 2, 3).asSequence().map {",
+   "    n++",
+   "    it * 2",
+   "  }",
+   "  println(n)",
    "}"
   ],
   "answer": 1
@@ -1147,7 +1212,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace map transformation one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val values = sequenceOf(2, 3, 4).map { it * it }.toList()",
+   "val values = sequenceOf(2, 3, 4).map {",
+   "  it * it",
+   "}.toList()",
    "println(values)"
   ],
   "options": [
@@ -1172,7 +1239,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace filter predicate one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val words = sequenceOf(\"sun\", \"cloud\", \"rain\").filter { it.length >= 3 }.toList()",
+   "val words = sequenceOf(\"sun\", \"cloud\", \"rain\").filter {",
+   "  it.length >= 3",
+   "}.toList()",
    "println(words)"
   ],
   "options": [
@@ -1198,8 +1267,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val values = sequenceOf(1, 2, 3).filter { it * 2 }",
-   " println(values.toList())",
+   "  val values = sequenceOf(1, 2, 3).filter {",
+   "    it * 2",
+   "  }",
+   "  println(values.toList())",
    "}"
   ],
   "errorLine": 1,
@@ -1244,8 +1315,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var requested = 0",
-   "val result = sequenceOf(4, 5, 6, 7, 8).map { requested++",
-   " it }.drop(3).take(2).toList()",
+   "val result = sequenceOf(4, 5, 6, 7, 8).map {",
+   "  requested++",
+   "  it",
+   "}.drop(3).take(2).toList()",
    "println(\"$result:$requested\")"
   ],
   "options": [
@@ -1318,12 +1391,24 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " println(generateSequence(1) { it + 1 }.filter { it % 2 == 0 }.map { it * it }.take(2).toList())",
+   "  println(generateSequence(1) {",
+   "    it + 1",
+   "  }.filter {",
+   "    it % 2 == 0",
+   "  }.map {",
+   "    it * it",
+   "  }.take(2).toList())",
    "}"
   ],
   "b": [
    "fun main() {",
-   " println(generateSequence(1) { it + 1 }.map { it * it }.filter { it % 2 == 0 }.drop(2).take(2).toList())",
+   "  println(generateSequence(1) {",
+   "    it + 1",
+   "  }.map {",
+   "    it * it",
+   "  }.filter {",
+   "    it % 2 == 0",
+   "  }.drop(2).take(2).toList())",
    "}"
   ],
   "answer": 0
@@ -1375,7 +1460,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace materialization result one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val values = sequenceOf(1, 3, 5).map { it + 1 }.toList()",
+   "val values = sequenceOf(1, 3, 5).map {",
+   "  it + 1",
+   "}.toList()",
    "println(values is List<*>)",
    "println(values)"
   ],
@@ -1401,7 +1488,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace first matching value one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val found = sequenceOf(4, 7, 10, 13).first { it > 5 && it % 3 == 1 }",
+   "val found = sequenceOf(4, 7, 10, 13).first {",
+   "  it > 5 && it % 3 == 1",
+   "}",
    "println(found)"
   ],
   "options": [
@@ -1427,8 +1516,8 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val value: Sequence<Int> = sequenceOf(1, 2, 3).first()",
-   " println(value)",
+   "  val value: Sequence<Int> = sequenceOf(1, 2, 3).first()",
+   "  println(value)",
    "}"
   ],
   "errorLine": 1,
@@ -1447,7 +1536,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace count predicate result one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val count = sequenceOf(2, 3, 4, 5, 6).count { it % 2 == 0 }",
+   "val count = sequenceOf(2, 3, 4, 5, 6).count {",
+   "  it % 2 == 0",
+   "}",
    "println(count)"
   ],
   "options": [
@@ -1472,7 +1563,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace fold accumulator one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val total = sequenceOf(3, 4, 5).fold(10) { acc, value -> acc + value }",
+   "val total = sequenceOf(3, 4, 5).fold(10) { acc, value ->",
+   "  acc + value",
+   "}",
    "println(total)"
   ],
   "options": [
@@ -1497,7 +1590,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace forEach side effect one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "sequenceOf(\"red\", \"blue\").forEach { println(it.uppercase()) }"
+   "sequenceOf(\"red\", \"blue\").forEach {",
+   "  println(it.uppercase())",
+   "}"
   ],
   "options": [
    "RED, BLUE",
@@ -1522,8 +1617,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var checks = 0",
-   "val found = sequenceOf(2, 4, 7, 8).any { checks++",
-   " it % 2 == 1 }",
+   "val found = sequenceOf(2, 4, 7, 8).any {",
+   "  checks++",
+   "  it % 2 == 1",
+   "}",
    "println(\"$found:$checks\")"
   ],
   "options": [
@@ -1572,12 +1669,14 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " println(sequenceOf(1, 2, 3, 4).toList().last())",
+   "  println(sequenceOf(1, 2, 3, 4).toList().last())",
    "}"
   ],
   "b": [
    "fun main() {",
-   " println(sequenceOf(1, 2, 3, 4).first { it > 2 })",
+   "  println(sequenceOf(1, 2, 3, 4).first {",
+   "    it > 2",
+   "  })",
    "}"
   ],
   "answer": 1
@@ -1629,9 +1728,13 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace element-oriented evaluation trace one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "sequenceOf(2, 3, 4).filter { println(\"check$it\")",
-   " it > 2 }.map { println(\"keep$it\")",
-   " it }.take(1).toList()"
+   "sequenceOf(2, 3, 4).filter {",
+   "  println(\"check$it\")",
+   "  it > 2",
+   "}.map {",
+   "  println(\"keep$it\")",
+   "  it",
+   "}.take(1).toList()"
   ],
   "options": [
    "check2\ncheck3\ncheck4\nkeep3",
@@ -1655,9 +1758,13 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace stage-oriented eager trace one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "listOf(2, 3, 4).filter { println(\"check$it\")",
-   " it > 2 }.map { println(\"keep$it\")",
-   " it }.take(1)"
+   "listOf(2, 3, 4).filter {",
+   "  println(\"check$it\")",
+   "  it > 2",
+   "}.map {",
+   "  println(\"keep$it\")",
+   "  it",
+   "}.take(1)"
   ],
   "options": [
    "check2\ncheck3\ncheck4\nkeep3\nkeep4",
@@ -1682,9 +1789,11 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val trace: List<Int> = sequenceOf(1, 2).map { println(it)",
-   " it }",
-   " println(trace)",
+   "  val trace: List<Int> = sequenceOf(1, 2).map {",
+   "    println(it)",
+   "    it",
+   "  }",
+   "  println(trace)",
    "}"
   ],
   "errorLine": 1,
@@ -1703,8 +1812,15 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use filter gates later stage to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val result = sequenceOf(1, 2, 3, 4).filter { it % 2 == 0 }.map { println(\"mapped$it\")",
-   " it * 10 }.toList()"
+   "val result = sequenceOf(1, 2, 3, 4)",
+   "  .filter {",
+   "    it % 2 == 0",
+   "  }",
+   "  .map {",
+   "    println(\"mapped$it\")",
+   "    it * 10",
+   "  }",
+   "  .toList()"
   ],
   "options": [
    "mapped1\nmapped2\nmapped3\nmapped4",
@@ -1712,6 +1828,7 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
    "mapped2\nmapped3",
    "mapped1\nmapped3"
   ],
+  "monoOptions": true,
   "answer": 1
  },
  {
@@ -1727,10 +1844,14 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use execution order changes with abstraction to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val lazy = sequenceOf(1, 2).map { println(\"S$it\")",
-   " it }.toList()",
-   "val eager = listOf(1, 2).map { println(\"L$it\")",
-   " it }"
+   "val lazy = sequenceOf(1, 2).map {",
+   "  println(\"S$it\")",
+   "  it",
+   "}.toList()",
+   "val eager = listOf(1, 2).map {",
+   "  println(\"L$it\")",
+   "  it",
+   "}"
   ],
   "options": [
    "Both defer map until toList.",
@@ -1777,16 +1898,24 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " listOf(1, 2, 3).filter { println(\"F$it\")",
-   " it > 1 }.map { println(\"M$it\")",
-   " it }",
+   "  listOf(1, 2, 3).filter {",
+   "    println(\"F$it\")",
+   "    it > 1",
+   "  }.map {",
+   "    println(\"M$it\")",
+   "    it",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
-   " sequenceOf(1, 2, 3).filter { println(\"F$it\")",
-   " it > 1 }.map { println(\"M$it\")",
-   " it }.toList()",
+   "  sequenceOf(1, 2, 3).filter {",
+   "    println(\"F$it\")",
+   "    it > 1",
+   "  }.map {",
+   "    println(\"M$it\")",
+   "    it",
+   "  }.toList()",
    "}"
   ],
   "answer": 1
@@ -1805,9 +1934,11 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "fill_blank",
   "code": [
    "fun main() {",
-   " val s = sequenceOf(1, 2, 3).map { println(it)",
-   " it }",
-   " s.___()",
+   "  val s = sequenceOf(1, 2, 3).map {",
+   "    println(it)",
+   "    it",
+   "  }",
+   "  s.___()",
    "}"
   ],
   "chips": [
@@ -1866,8 +1997,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var seen = 0",
-   "val answer = sequenceOf(2, 4, 5, 8).first { seen++",
-   " it > 4 }",
+   "val answer = sequenceOf(2, 4, 5, 8).first {",
+   "  seen++",
+   "  it > 4",
+   "}",
    "println(\"$answer:$seen\")"
   ],
   "options": [
@@ -1893,8 +2026,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var checks = 0",
-   "val answer = sequenceOf(\"ant\", \"bee\", \"owl\", \"yak\").find { checks++",
-   " it.length == 3 && it.startsWith(\"o\") }",
+   "val answer = sequenceOf(\"ant\", \"bee\", \"owl\", \"yak\").find {",
+   "  checks++",
+   "  it.length == 3 && it.startsWith(\"o\")",
+   "}",
    "println(\"$answer:$checks\")"
   ],
   "options": [
@@ -1920,11 +2055,14 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val values = generateSequence(1) { it + 1 }.take(\"2\")",
-   " println(values.toList())",
+   "  val values = generateSequence(1) {",
+   "    it + 1",
+   "  }",
+   "    .take(\"2\")",
+   "  println(values.toList())",
    "}"
   ],
-  "errorLine": 1,
+  "errorLine": 4,
   "errorNote": "take expects an Int count, not String."
  },
  {
@@ -1941,8 +2079,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var checks = 0",
-   "val result = sequenceOf(2, 4, 7, 8, 10).all { checks++",
-   " it % 2 == 0 }",
+   "val result = sequenceOf(2, 4, 7, 8, 10).all {",
+   "  checks++",
+   "  it % 2 == 0",
+   "}",
    "println(\"$result:$checks\")"
   ],
   "options": [
@@ -1968,8 +2108,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var checked = 0",
-   "val result = sequenceOf(2, 4, 6, 7, 8).takeWhile { checked++",
-   " it % 2 == 0 }.toList()",
+   "val result = sequenceOf(2, 4, 6, 7, 8).takeWhile {",
+   "  checked++",
+   "  it % 2 == 0",
+   "}.toList()",
    "println(\"$result:$checked\")"
   ],
   "options": [
@@ -1995,8 +2137,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var tested = 0",
-   "val answer = sequenceOf(1, 3, 6, 9).none { tested++",
-   " it % 2 == 0 }",
+   "val answer = sequenceOf(1, 3, 6, 9).none {",
+   "  tested++",
+   "  it % 2 == 0",
+   "}",
    "println(\"$answer:$tested\")"
   ],
   "options": [
@@ -2021,7 +2165,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace takeWhile prefix one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val prefix = sequenceOf(2, 4, 6, 5, 8).takeWhile { it % 2 == 0 }.toList()",
+   "val prefix = sequenceOf(2, 4, 6, 5, 8).takeWhile {",
+   "  it % 2 == 0",
+   "}.toList()",
    "println(prefix)"
   ],
   "options": [
@@ -2070,12 +2216,18 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " println(generateSequence(1) { it + 1 }.first { it == 7 })",
+   "  println(generateSequence(1) {",
+   "    it + 1",
+   "  }.first {",
+   "    it == 7",
+   "  })",
    "}"
   ],
   "b": [
    "fun main() {",
-   " println(generateSequence(1) { it + 1 }.count())",
+   "  println(generateSequence(1) {",
+   "    it + 1",
+   "  }.count())",
    "}"
   ],
   "answer": 0
@@ -2094,8 +2246,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "fill_blank",
   "code": [
    "fun main() {",
-   " val values = sequenceOf(2, 4, 5, 6).___ { it % 2 == 0 }.toList()",
-   " println(values)",
+   "  val values = sequenceOf(2, 4, 5, 6).___ {",
+   "    it % 2 == 0",
+   "  }.toList()",
+   "  println(values)",
    "}"
   ],
   "chips": [
@@ -2153,8 +2307,12 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace equal values distinct execution one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val listResult = listOf(1, 2, 3).map { it * 3 }",
-   "val sequenceResult = listOf(1, 2, 3).asSequence().map { it * 3 }.toList()",
+   "val listResult = listOf(1, 2, 3).map {",
+   "  it * 3",
+   "}",
+   "val sequenceResult = listOf(1, 2, 3).asSequence().map {",
+   "  it * 3",
+   "}.toList()",
    "println(\"$listResult:$sequenceResult\")"
   ],
   "options": [
@@ -2179,7 +2337,11 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace collection stage order one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val result = listOf(1, 2, 3, 4).filter { it > 2 }.map { it * 10 }",
+   "val result = listOf(1, 2, 3, 4).filter {",
+   "  it > 2",
+   "}.map {",
+   "  it * 10",
+   "}",
    "println(result)"
   ],
   "options": [
@@ -2205,8 +2367,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val values: List<Int> = (1..3).asSequence().map { it * 2 }",
-   " println(values)",
+   "  val values: List<Int> = (1..3).asSequence().map {",
+   "    it * 2",
+   "  }",
+   "  println(values)",
    "}"
   ],
   "errorLine": 1,
@@ -2226,7 +2390,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "val records = (1..100).toList()",
-   "val record = records.asSequence().filter { it % 7 == 0 }.firstOrNull()",
+   "val record = records.asSequence().filter {",
+   "  it % 7 == 0",
+   "}.firstOrNull()",
    "println(record)"
   ],
   "options": [
@@ -2250,7 +2416,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use stored result reuse to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val names = listOf(\"Ada\", \"Lin\").map { it.uppercase() }",
+   "val names = listOf(\"Ada\", \"Lin\").map {",
+   "  it.uppercase()",
+   "}",
    "println(names.first())",
    "println(names.last())"
   ],
@@ -2324,20 +2492,24 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " var n = 0",
-   " val values = (1..3).map { n++",
-   " it * 2 }",
-   " println(values.sum() + values.size)",
-   " println(n)",
+   "  var n = 0",
+   "  val values = (1..3).map {",
+   "    n++",
+   "    it * 2",
+   "  }",
+   "  println(values.sum() + values.size)",
+   "  println(n)",
    "}"
   ],
   "b": [
    "fun main() {",
-   " var n = 0",
-   " val values = (1..3).asSequence().map { n++",
-   " it * 2 }",
-   " println(values.sum() + values.count())",
-   " println(n)",
+   "  var n = 0",
+   "  val values = (1..3).asSequence().map {",
+   "    n++",
+   "    it * 2",
+   "  }",
+   "  println(values.sum() + values.count())",
+   "  println(n)",
    "}"
   ],
   "answer": 0
@@ -2390,8 +2562,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var mapped = 0",
-   "val answer = (1..500).asSequence().map { mapped++",
-   " it * 2 }.first()",
+   "val answer = (1..500).asSequence().map {",
+   "  mapped++",
+   "  it * 2",
+   "}.first()",
    "println(\"$answer:$mapped\")"
   ],
   "options": [
@@ -2416,8 +2590,16 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use intermediate allocation to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val eager = (1..5).filter { it > 2 }.map { it * 2 }",
-   "val lazy = (1..5).asSequence().filter { it > 2 }.map { it * 2 }"
+   "val eager = (1..5).filter {",
+   "  it > 2",
+   "}.map {",
+   "  it * 2",
+   "}",
+   "val lazy = (1..5).asSequence().filter {",
+   "  it > 2",
+   "}.map {",
+   "  it * 2",
+   "}"
   ],
   "options": [
    "The eager pipeline creates intermediate collections; the Sequence describes stages until consumed.",
@@ -2440,7 +2622,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use small workload trade-off to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val labels = listOf(\"a\", \"b\", \"c\").map { it.uppercase() }",
+   "val labels = listOf(\"a\", \"b\", \"c\").map {",
+   "  it.uppercase()",
+   "}",
    "println(labels)"
   ],
   "options": [
@@ -2465,8 +2649,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "var calls = 0",
-   "(1..1000).asSequence().map { calls++",
-   " it }.take(4).toList()",
+   "(1..1000).asSequence().map {",
+   "  calls++",
+   "  it",
+   "}.take(4).toList()",
    "println(calls)"
   ],
   "options": [
@@ -2491,8 +2677,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val calls: Int = (1..100).asSequence().map { it * 2 }",
-   " println(calls)",
+   "  val calls: Int = (1..100).asSequence().map {",
+   "    it * 2",
+   "  }",
+   "  println(calls)",
    "}"
   ],
   "errorLine": 1,
@@ -2511,7 +2699,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use lazy wrapper overhead to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val result = listOf(1, 2).asSequence().map { it + 1 }.toList()",
+   "val result = listOf(1, 2).asSequence().map {",
+   "  it + 1",
+   "}.toList()",
    "println(result)"
   ],
   "options": [
@@ -2536,8 +2726,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "var calls = 0",
-   "val pipeline = (1..4).asSequence().map { calls++",
-   " it }",
+   "val pipeline = (1..4).asSequence().map {",
+   "  calls++",
+   "  it",
+   "}",
    "pipeline.first()",
    "pipeline.sum()",
    "println(calls)"
@@ -2588,18 +2780,22 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " var n = 0",
-   " (1..100).map { n++",
-   " it }.take(2)",
-   " println(n)",
+   "  var n = 0",
+   "  (1..100).map {",
+   "    n++",
+   "    it",
+   "  }.take(2)",
+   "  println(n)",
    "}"
   ],
   "b": [
    "fun main() {",
-   " var n = 0",
-   " (1..100).asSequence().map { n++",
-   " it }.take(2).toList()",
-   " println(n)",
+   "  var n = 0",
+   "  (1..100).asSequence().map {",
+   "    n++",
+   "    it",
+   "  }.take(2).toList()",
+   "  println(n)",
    "}"
   ],
   "answer": 1
@@ -2652,7 +2848,11 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "val records = (1..100).toList()",
-   "val result = records.asSequence().filter { it % 3 == 0 }.map { it * 10 }.take(5).toList()",
+   "val result = records.asSequence().filter {",
+   "  it % 3 == 0",
+   "}.map {",
+   "  it * 10",
+   "}.take(5).toList()",
    "println(result.size)"
   ],
   "options": [
@@ -2676,7 +2876,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use tiny transformation choice to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val display = listOf(\"a\", \"b\").map { it.uppercase() }",
+   "val display = listOf(\"a\", \"b\").map {",
+   "  it.uppercase()",
+   "}",
    "println(display)"
   ],
   "options": [
@@ -2700,7 +2902,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Use infinite source bound to check whether each option's operation, return type, and evaluation timing fit the stated task.",
   "type": "single_choice",
   "code": [
-   "val page = generateSequence(1) { it + 1 }.drop(20).take(5).toList()",
+   "val page = generateSequence(1) {",
+   "  it + 1",
+   "}.drop(20).take(5).toList()",
    "println(page)"
   ],
   "options": [
@@ -2725,8 +2929,14 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "val source = listOf(1, 2, 3, 4)",
-   "val stored = source.asSequence().filter { it % 2 == 0 }.map { it * 10 }.toList()",
-   "repeat(3) { println(stored.size) }"
+   "val stored = source.asSequence().filter {",
+   "  it % 2 == 0",
+   "}.map {",
+   "  it * 10",
+   "}.toList()",
+   "repeat(3) {",
+   "  println(stored.size)",
+   "}"
   ],
   "options": [
    "Keep the reusable values deferred and materialize for each traversal.",
@@ -2750,8 +2960,10 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val names: List<String> = listOf(\"A\", \"B\").asSequence().map { it.lowercase() }",
-   " println(names)",
+   "  val names: List<String> = listOf(\"A\", \"B\").asSequence().map {",
+   "    it.lowercase()",
+   "  }",
+   "  println(names)",
    "}"
   ],
   "errorLine": 1,
@@ -2770,7 +2982,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "hint": "Trace finite prefix from generated source one source value at a time; stop when the terminal has obtained everything the prompt requests.",
   "type": "predict_output",
   "code": [
-   "val firstSix = generateSequence(10) { it + 10 }.take(6).toList()",
+   "val firstSix = generateSequence(10) {",
+   "  it + 10",
+   "}.take(6).toList()",
    "println(firstSix)"
   ],
   "options": [
@@ -2819,14 +3033,18 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " val names: List<String> = listOf(\"A\",\"B\").map { it.lowercase() }",
-   " println(names)",
+   "  val names: List<String> = listOf(\"A\",\"B\").map {",
+   "    it.lowercase()",
+   "  }",
+   "  println(names)",
    "}"
   ],
   "b": [
    "fun main() {",
-   " val names: List<String> = listOf(\"A\",\"B\").asSequence().map { it.lowercase() }",
-   " println(names)",
+   "  val names: List<String> = listOf(\"A\",\"B\").asSequence().map {",
+   "    it.lowercase()",
+   "  }",
+   "  println(names)",
    "}"
   ],
   "answer": 0
@@ -2867,16 +3085,24 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " listOf(2, 3, 4).filter { println(\"F$it\")",
-   " it > 2 }.map { println(\"M$it\")",
-   " it }",
+   "  listOf(2, 3, 4).filter {",
+   "    println(\"F$it\")",
+   "    it > 2",
+   "  }.map {",
+   "    println(\"M$it\")",
+   "    it",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
-   " sequenceOf(2, 3, 4).filter { println(\"F$it\")",
-   " it > 2 }.map { println(\"M$it\")",
-   " it }.toList()",
+   "  sequenceOf(2, 3, 4).filter {",
+   "    println(\"F$it\")",
+   "    it > 2",
+   "  }.map {",
+   "    println(\"M$it\")",
+   "    it",
+   "  }.toList()",
    "}"
   ],
   "answer": 1
@@ -2920,10 +3146,12 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   " var calls = 0",
-   " val x = (1..10).asSequence().map { calls++",
-   " it }.take(2).toList()",
-   " println(\"$x:$calls\")",
+   "  var calls = 0",
+   "  val x = (1..10).asSequence().map {",
+   "    calls++",
+   "    it",
+   "  }.take(2).toList()",
+   "  println(\"$x:$calls\")",
    "}"
   ],
   "options": [
@@ -2972,20 +3200,24 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " var n = 0",
-   " val x = listOf(1, 2).asSequence().map { n++",
-   " it * 2 }",
-   " println(n)",
-   " println(x.first())",
+   "  var n = 0",
+   "  val x = listOf(1, 2).asSequence().map {",
+   "    n++",
+   "    it * 2",
+   "  }",
+   "  println(n)",
+   "  println(x.first())",
    "}"
   ],
   "b": [
    "fun main() {",
-   " var n = 0",
-   " val x = listOf(1, 2).map { n++",
-   " it * 2 }.asSequence()",
-   " println(n)",
-   " println(x.first())",
+   "  var n = 0",
+   "  val x = listOf(1, 2).map {",
+   "    n++",
+   "    it * 2",
+   "  }.asSequence()",
+   "  println(n)",
+   "  println(x.first())",
    "}"
   ],
   "answer": 0
@@ -3005,7 +3237,9 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   " println(sequenceOf(1, 2, 3, 4).drop(1).filter { it % 2 == 0 }.take(2).toList())",
+   "  println(sequenceOf(1, 2, 3, 4).drop(1).filter {",
+   "    it % 2 == 0",
+   "  }.take(2).toList())",
    "}"
   ],
   "options": [
@@ -3077,10 +3311,12 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   " var n = 0",
-   " val found = sequenceOf(1, 2, 3, 4).any { n++",
-   " it == 3 }",
-   " println(\"$found:$n\")",
+   "  var n = 0",
+   "  val found = sequenceOf(1, 2, 3, 4).any {",
+   "    n++",
+   "    it == 3",
+   "  }",
+   "  println(\"$found:$n\")",
    "}"
   ],
   "options": [
@@ -3131,12 +3367,16 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " println(generateSequence(0) { it + 1 }.take(11).last())",
+   "  println(generateSequence(0) {",
+   "    it + 1",
+   "  }.take(11).last())",
    "}"
   ],
   "b": [
    "fun main() {",
-   " println(generateSequence(0) { it + 1 }.count())",
+   "  println(generateSequence(0) {",
+   "    it + 1",
+   "  }.count())",
    "}"
   ],
   "answer": 0
@@ -3201,11 +3441,13 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   " var calls = 0",
-   " val values = (1..3).asSequence().map { calls++",
-   " it * 2 }.toList()",
-   " println(values.sum())",
-   " println(calls)",
+   "  var calls = 0",
+   "  val values = (1..3).asSequence().map {",
+   "    calls++",
+   "    it * 2",
+   "  }.toList()",
+   "  println(values.sum())",
+   "  println(calls)",
    "}"
   ],
   "options": [
@@ -3232,18 +3474,22 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " var n = 0",
-   " val x = (1..1000).filter { n++",
-   " it % 100 == 0 }.first()",
-   " println(\"$x:$n\")",
+   "  var n = 0",
+   "  val x = (1..1000).filter {",
+   "    n++",
+   "    it % 100 == 0",
+   "  }.first()",
+   "  println(\"$x:$n\")",
    "}"
   ],
   "b": [
    "fun main() {",
-   " var n = 0",
-   " val x = (1..1000).asSequence().filter { n++",
-   " it % 100 == 0 }.first()",
-   " println(\"$x:$n\")",
+   "  var n = 0",
+   "  val x = (1..1000).asSequence().filter {",
+   "    n++",
+   "    it % 100 == 0",
+   "  }.first()",
+   "  println(\"$x:$n\")",
    "}"
   ],
   "answer": 1
@@ -3286,8 +3532,10 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
   "type": "fill_blank",
   "code": [
    "fun main() {",
-   " val values = generateSequence(1) { it + 1 }.___(5).toList()",
-   " println(values)",
+   "  val values = generateSequence(1) {",
+   "    it + 1",
+   "  }.___(5).toList()",
+   "  println(values)",
    "}"
   ],
   "chips": [
@@ -3312,9 +3560,11 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   " val eventIds = (1..3).asSequence().map { println(\"map:$it\")",
-   " it * 2 }",
-   " println(\"worker ready\")",
+   "  val eventIds = (1..3).asSequence().map {",
+   "    println(\"map:$it\")",
+   "    it * 2",
+   "  }",
+   "  println(\"worker ready\")",
    "}"
   ],
   "options": [
@@ -3360,11 +3610,15 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   " val scores = sequenceOf(48, 72, 65, 80, 54)",
-   " .filter { it >= 70 }",
-   " .map { it * 2 }",
-   " .toList()",
-   " println(\"$scores:${scores.sum()}\")",
+   "  val scores = sequenceOf(48, 72, 65, 80, 54)",
+   "    .filter {",
+   "      it >= 70",
+   "    }",
+   "    .map {",
+   "      it * 2",
+   "    }",
+   "    .toList()",
+   "  println(\"$scores:${scores.sum()}\")",
    "}"
   ],
   "options": [
@@ -3423,10 +3677,10 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val source = generateSequence(1) {",
-   " it + \"x\"",
-   " }",
-   " println(source.take(2).toList())",
+   "  val source = generateSequence(1) {",
+   "    it + \"x\"",
+   "  }",
+   "  println(source.take(2).toList())",
    "}"
   ],
   "errorLine": 2,
@@ -3446,8 +3700,8 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   " val source: Sequence<Int> = listOf(1, 2, 3)",
-   " println(source.first())",
+   "  val source: Sequence<Int> = listOf(1, 2, 3)",
+   "  println(source.first())",
    "}"
   ],
   "errorLine": 1,
@@ -3513,16 +3767,24 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   " val tags = listOf(\" ALERT:disk \", \"debug:sync\")",
-   " val routed = tags.asSequence().map { it.trim().uppercase() }.filter { it.startsWith(\"ALERT\") }.toList()",
-   " println(routed)",
+   "  val tags = listOf(\" ALERT:disk \", \"debug:sync\")",
+   "  val routed = tags.asSequence().map {",
+   "    it.trim().uppercase()",
+   "  }.filter {",
+   "    it.startsWith(\"ALERT\")",
+   "  }.toList()",
+   "  println(routed)",
    "}"
   ],
   "b": [
    "fun main() {",
-   " val tags = listOf(\" ALERT:disk \", \"debug:sync\")",
-   " val routed = tags.asSequence().filter { it.startsWith(\"ALERT\") }.map { it.trim().uppercase() }.toList()",
-   " println(routed)",
+   "  val tags = listOf(\" ALERT:disk \", \"debug:sync\")",
+   "  val routed = tags.asSequence().filter {",
+   "    it.startsWith(\"ALERT\")",
+   "  }.map {",
+   "    it.trim().uppercase()",
+   "  }.toList()",
+   "  println(routed)",
    "}"
   ],
   "answer": 0
@@ -3541,11 +3803,15 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   " val urgentIds = generateSequence(1) { it + 1 }",
-   " .take(4)",
-   " .filter { it > 10 }",
-   " .toList()",
-   " println(urgentIds.firstOrNull() ?: \"no urgent event\")",
+   "  val urgentIds = generateSequence(1) {",
+   "    it + 1",
+   "  }",
+   "    .take(4)",
+   "    .filter {",
+   "      it > 10",
+   "    }",
+   "    .toList()",
+   "  println(urgentIds.firstOrNull() ?: \"no urgent event\")",
    "}"
   ],
   "options": [

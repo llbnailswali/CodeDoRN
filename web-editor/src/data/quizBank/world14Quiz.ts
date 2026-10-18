@@ -1,8 +1,8 @@
-import { QuizQuestion } from '../../utils/quizQuestions';
+import { QuizQuestion, formatQuizCodeQuestion } from '../../utils/quizQuestions';
 
 // Statically authored World 14 bank. Questions are independent from lesson Predict stages.
 
-export const WORLD_14_QUIZ: QuizQuestion[] = [
+const WORLD_14_QUIZ_SOURCE: QuizQuestion[] = [
   {
     "id": "w14q-what-sequences-are-1",
     "worldId": "world-14",
@@ -916,6 +916,7 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
       "println(view.sum())"
     ],
     "options": ["3\n3", "3\n0", "3\n6", "3\n1"],
+    "monoOptions": true,
     "answer": 0
   },
   {
@@ -1494,10 +1495,16 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
     "hint": "Use filter gates later stage to check whether each option's operation, return type, and evaluation timing fit the stated task.",
     "type": "single_choice",
     "code": [
-      "val result = sequenceOf(1, 2, 3, 4).filter { it % 2 == 0 }.map { println(\"mapped$it\")",
-      " it * 10 }.toList()"
+      "val result = sequenceOf(1, 2, 3, 4)",
+      "  .filter { it % 2 == 0 }",
+      "  .map {",
+      "    println(\"mapped$it\")",
+      "    it * 10",
+      "  }",
+      "  .toList()"
     ],
     "options": ["mapped1\nmapped2\nmapped3\nmapped4", "mapped2\nmapped4", "mapped2\nmapped3", "mapped1\nmapped3"],
+    "monoOptions": true,
     "answer": 1
   },
   {
@@ -1686,11 +1693,12 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
     "type": "find_error",
     "code": [
       "fun main() {",
-      " val values = generateSequence(1) { it + 1 }.take(\"2\")",
-      " println(values.toList())",
+      "  val values = generateSequence(1) { it + 1 }",
+      "    .take(\"2\")",
+      "  println(values.toList())",
       "}"
     ],
-    "errorLine": 1,
+    "errorLine": 2,
     "errorNote": "take expects an Int count, not String."
   },
   {
@@ -2861,7 +2869,7 @@ export const WORLD_14_QUIZ: QuizQuestion[] = [
   }
 ];
 
-export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
+const WORLD_14_BOSS_QUIZ_SOURCE: QuizQuestion[] = [
   {
     "id": "w14q-boss-1",
     "worldId": "world-14",
@@ -3169,3 +3177,8 @@ export const WORLD_14_BOSS_QUIZ: QuizQuestion[] = [
     "answer": 1
   }
 ];
+
+// The snippets above were authored with one-space indents and lambdas split mid-expression; formatQuizCodeQuestion lays them out
+// by brace depth (as Worlds 1-12 and 15 are) and keeps the line each find-the-error question points at.
+export const WORLD_14_QUIZ = WORLD_14_QUIZ_SOURCE.map((q) => formatQuizCodeQuestion(q));
+export const WORLD_14_BOSS_QUIZ = WORLD_14_BOSS_QUIZ_SOURCE.map((q) => formatQuizCodeQuestion(q));

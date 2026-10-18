@@ -50,13 +50,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "try {",
-   "println(\"A\")",
-   "println(\"B\")",
-   "}",
-   "catch (e: Exception) {",
-   "println(\"C\")",
-   "}",
+   "  try {",
+   "    println(\"A\")",
+   "    println(\"B\")",
+   "  }",
+   "  catch (e: Exception) {",
+   "    println(\"C\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -82,13 +82,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "try {",
-   "println(\"before\")",
-   "\"bad\".toInt()",
-   "println(\"after\")",
-   "} catch (e: NumberFormatException) {",
-   "println(\"caught\")",
-   "}",
+   "  try {",
+   "    println(\"before\")",
+   "    \"bad\".toInt()",
+   "    println(\"after\")",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"caught\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -114,10 +114,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun risky() {",
-   "throw IllegalStateException(\"boom\")",
+   "  throw IllegalStateException(\"boom\")",
    "}",
    "fun main() {",
-   "risky()",
+   "  risky()",
    "}"
   ],
   "options": [
@@ -143,9 +143,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  \"x\".toInt()",
+   "    \"x\".toInt()",
    "  } catch (e: NumberFormatException) {",
-   "  println(\"caught\")",
+   "    println(\"caught\")",
    "  }",
    "  println(\"after\")",
    "}"
@@ -174,9 +174,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  error(\"boom\")",
+   "    error(\"boom\")",
    "  } catch (e: Exception) {",
-   "  println(e.message)",
+   "    println(e.message)",
    "  }",
    "}"
   ],
@@ -225,13 +225,21 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  try { \"x\".toInt() } catch (e: NumberFormatException) { println(\"caught\") }",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"caught\")",
+   "  }",
    "  println(\"done\")",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  try { \"12\".toInt() } catch (e: NumberFormatException) { println(\"caught\") }",
+   "  try {",
+   "    \"12\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"caught\")",
+   "  }",
    "  println(\"done\")",
    "}"
   ],
@@ -285,12 +293,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "try {",
-   "throw IllegalArgumentException(\"bad\")",
-   "}",
-   "catch (e: IllegalArgumentException) {",
-   "println(\"handled\")",
-   "}",
+   "  try {",
+   "    throw IllegalArgumentException(\"bad\")",
+   "  }",
+   "  catch (e: IllegalArgumentException) {",
+   "    println(\"handled\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -316,13 +324,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val n = try {",
-   "\"x\".toInt()",
-   "}",
-   "catch (e: NumberFormatException) {",
-   "7",
-   "}",
-   "println(n)",
+   "  val n = try {",
+   "    \"x\".toInt()",
+   "  }",
+   "  catch (e: NumberFormatException) {",
+   "    7",
+   "  }",
+   "  println(n)",
    "}"
   ],
   "options": [
@@ -348,13 +356,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "try {",
-   "throw IllegalStateException(\"closed\")",
-   "}",
-   "catch (e: IllegalArgumentException) {",
-   "println(\"handled\")",
-   "}",
-   "println(\"after\")",
+   "  try {",
+   "    throw IllegalStateException(\"closed\")",
+   "  }",
+   "  catch (e: IllegalArgumentException) {",
+   "    println(\"handled\")",
+   "  }",
+   "  println(\"after\")",
    "}"
   ],
   "options": [
@@ -380,9 +388,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  \"x\".toInt()",
+   "    \"x\".toInt()",
    "  } catch (e: IllegalArgumentException) {",
-   "  println(\"handled\")",
+   "    println(\"handled\")",
    "  }",
    "}"
   ],
@@ -409,9 +417,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  println(10 / 0)",
+   "    println(10 / 0)",
    "  } catch (e: Exception) {",
-   "  println(\"math error\")",
+   "    println(\"math error\")",
    "  }",
    "}"
   ],
@@ -461,12 +469,20 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  try { \"x\".toInt() } catch (e: IllegalStateException) { println(\"state\") }",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: IllegalStateException) {",
+   "    println(\"state\")",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  try { \"x\".toInt() } catch (e: NumberFormatException) { println(\"number\") }",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"number\")",
+   "  }",
    "}"
   ],
   "answer": 1
@@ -519,12 +535,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "try {",
-   "println(\"work\")",
-   "}",
-   "finally {",
-   "println(\"close\")",
-   "}",
+   "  try {",
+   "    println(\"work\")",
+   "  }",
+   "  finally {",
+   "    println(\"close\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -550,15 +566,15 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "try {",
-   "\"x\".toInt()",
-   "}",
-   "catch (e: NumberFormatException) {",
-   "println(\"recover\")",
-   "}",
-   "finally {",
-   "println(\"close\")",
-   "}",
+   "  try {",
+   "    \"x\".toInt()",
+   "  }",
+   "  catch (e: NumberFormatException) {",
+   "    println(\"recover\")",
+   "  }",
+   "  finally {",
+   "    println(\"close\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -584,12 +600,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val x = try {",
-   "9",
-   "} finally {",
-   "println(\"cleanup\")",
-   "}",
-   "println(x)",
+   "  val x = try {",
+   "    9",
+   "  } finally {",
+   "    println(\"cleanup\")",
+   "  }",
+   "  println(x)",
    "}"
   ],
   "options": [
@@ -616,10 +632,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  println(\"work\")",
-   "  error(\"boom\")",
+   "    println(\"work\")",
+   "    error(\"boom\")",
    "  } finally {",
-   "  println(\"cleanup\")",
+   "    println(\"cleanup\")",
    "  }",
    "}"
   ],
@@ -645,14 +661,14 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun f():Int {",
-   "try {",
-   "return 7",
-   "} finally {",
-   "println(\"cleanup\")",
-   "}",
+   "  try {",
+   "    return 7",
+   "  } finally {",
+   "    println(\"cleanup\")",
+   "  }",
    "}",
    "fun main() {",
-   "println(f())",
+   "  println(f())",
    "}"
   ],
   "options": [
@@ -701,13 +717,21 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  try { println(\"work\") } finally { println(\"close\") }",
+   "  try {",
+   "    println(\"work\")",
+   "  } finally {",
+   "    println(\"close\")",
+   "  }",
    "  println(\"done\")",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  try { println(\"work\") } catch (e: Exception) { println(\"close\") }",
+   "  try {",
+   "    println(\"work\")",
+   "  } catch (e: Exception) {",
+   "    println(\"close\")",
+   "  }",
    "  println(\"done\")",
    "}"
   ],
@@ -761,14 +785,14 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "try {",
-   "println(\"A\")",
-   "throw Exception(\"x\")",
-   "println(\"B\")",
-   "}",
-   "catch (e: Exception) {",
-   "println(\"C\")",
-   "}",
+   "  try {",
+   "    println(\"A\")",
+   "    throw Exception(\"x\")",
+   "    println(\"B\")",
+   "  }",
+   "  catch (e: Exception) {",
+   "    println(\"C\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -794,13 +818,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "val name: String? = null",
-   "try {",
-   "val value = name ?: throw IllegalArgumentException(\"missing\")",
-   "println(value)",
-   "} catch (e: IllegalArgumentException) {",
-   "println(\"fallback\")",
-   "}",
+   "  val name: String? = null",
+   "  try {",
+   "    val value = name ?: throw IllegalArgumentException(\"missing\")",
+   "    println(value)",
+   "  } catch (e: IllegalArgumentException) {",
+   "    println(\"fallback\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -826,7 +850,7 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun setAge(age: Int) {",
-   "  if (age < 0) throw IllegalArgumentException(\"negative age\")",
+   "    if (age < 0) throw IllegalArgumentException(\"negative age\")",
    "  }",
    "}"
   ],
@@ -852,12 +876,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun validate(age: Int) {",
-   "if (age < 0) throw IllegalArgumentException(\"negative age\")",
-   "println(\"ok\")",
+   "  if (age < 0) throw IllegalArgumentException(\"negative age\")",
+   "  println(\"ok\")",
    "}",
    "fun main() {",
-   "validate(-1)",
-   "println(\"done\")",
+   "  validate(-1)",
+   "  println(\"done\")",
    "}"
   ],
   "options": [
@@ -937,7 +961,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "b": [
    "fun main() {",
    "  val name: String? = null",
-   "  try { println(name ?: throw IllegalArgumentException(\"missing\")) } catch (e: IllegalArgumentException) { println(e.message) }",
+   "  try {",
+   "    println(name ?: throw IllegalArgumentException(\"missing\"))",
+   "  } catch (e: IllegalArgumentException) {",
+   "    println(e.message)",
+   "  }",
    "}"
   ],
   "answer": 1
@@ -990,15 +1018,15 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "try {",
-   "throw NumberFormatException(\"x\")",
-   "}",
-   "catch (e: NumberFormatException) {",
-   "println(\"number\")",
-   "}",
-   "catch (e: IllegalArgumentException) {",
-   "println(\"argument\")",
-   "}",
+   "  try {",
+   "    throw NumberFormatException(\"x\")",
+   "  }",
+   "  catch (e: NumberFormatException) {",
+   "    println(\"number\")",
+   "  }",
+   "  catch (e: IllegalArgumentException) {",
+   "    println(\"argument\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -1024,15 +1052,15 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "try {",
-   "throw IllegalStateException(\"x\")",
-   "}",
-   "catch (e: NumberFormatException) {",
-   "println(\"number\")",
-   "}",
-   "catch (e: IllegalStateException) {",
-   "println(\"state\")",
-   "}",
+   "  try {",
+   "    throw IllegalStateException(\"x\")",
+   "  }",
+   "  catch (e: NumberFormatException) {",
+   "    println(\"number\")",
+   "  }",
+   "  catch (e: IllegalStateException) {",
+   "    println(\"state\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -1058,16 +1086,16 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun risky() {",
-   "  throw IllegalStateException(\"boom\")",
+   "    throw IllegalStateException(\"boom\")",
    "  }",
    "  try {",
-   "  risky()",
+   "    risky()",
    "  }",
    "  catch (e: Exception) {",
-   "  println(\"general\")",
+   "    println(\"general\")",
    "  }",
    "  catch (e: IllegalArgumentException) {",
-   "  println(\"specific\")",
+   "    println(\"specific\")",
    "  }",
    "}"
   ],
@@ -1094,11 +1122,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  throw IllegalArgumentException(\"bad\")",
+   "    throw IllegalArgumentException(\"bad\")",
    "  } catch (e: NumberFormatException) {",
-   "  println(\"number\")",
+   "    println(\"number\")",
    "  } catch (e: IllegalArgumentException) {",
-   "  println(\"argument\")",
+   "    println(\"argument\")",
    "  }",
    "}"
   ],
@@ -1126,11 +1154,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  \"x\".toInt()",
+   "    \"x\".toInt()",
    "  } catch (e: Exception) {",
-   "  println(\"general\")",
+   "    println(\"general\")",
    "  } catch (e: NumberFormatException) {",
-   "  println(\"specific\")",
+   "    println(\"specific\")",
    "  }",
    "}"
   ],
@@ -1158,11 +1186,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  \"x\".toInt()",
+   "    \"x\".toInt()",
    "  } catch (e: NumberFormatException) {",
-   "  println(\"N\")",
+   "    println(\"N\")",
    "  } catch (e: Exception) {",
-   "  println(\"E\")",
+   "    println(\"E\")",
    "  }",
    "}"
   ],
@@ -1212,12 +1240,24 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  try { \"x\".toInt() } catch (e: NumberFormatException) { println(\"number\") } catch (e: Exception) { println(\"other\") }",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"number\")",
+   "  } catch (e: Exception) {",
+   "    println(\"other\")",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  try { \"x\".toInt() } catch (e: IllegalArgumentException) { println(\"argument\") } catch (e: Exception) { println(\"other\") }",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: IllegalArgumentException) {",
+   "    println(\"argument\")",
+   "  } catch (e: Exception) {",
+   "    println(\"other\")",
+   "  }",
    "}"
   ],
   "answer": 0
@@ -1270,12 +1310,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val x = try {",
-   "10 / 2",
-   "} catch (e: ArithmeticException) {",
-   "-1",
-   "}",
-   "println(x)",
+   "  val x = try {",
+   "    10 / 2",
+   "  } catch (e: ArithmeticException) {",
+   "    -1",
+   "  }",
+   "  println(x)",
    "}"
   ],
   "options": [
@@ -1301,12 +1341,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val x = try {",
-   "\"bad\".toInt()",
-   "} catch (e: NumberFormatException) {",
-   "99",
-   "}",
-   "println(x)",
+   "  val x = try {",
+   "    \"bad\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    99",
+   "  }",
+   "  println(x)",
    "}"
   ],
   "options": [
@@ -1332,12 +1372,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val x = try {",
-   "3",
-   "} finally {",
-   "println(\"F\")",
-   "}",
-   "println(x)",
+   "  val x = try {",
+   "    3",
+   "  } finally {",
+   "    println(\"F\")",
+   "  }",
+   "  println(x)",
    "}"
   ],
   "options": [
@@ -1363,13 +1403,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun parse(text: String): Int = try {",
-   "text.toInt()",
+   "  text.toInt()",
    "} catch (e: NumberFormatException) {",
-   "-1",
+   "  -1",
    "}",
    "fun main() {",
-   "println(parse(\"12\"))",
-   "println(parse(\"x\"))",
+   "  println(parse(\"12\"))",
+   "  println(parse(\"x\"))",
    "}"
   ],
   "options": [
@@ -1396,11 +1436,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  val x = try {",
-   "  \"x\".toInt()",
+   "    \"x\".toInt()",
    "  } catch (e: NumberFormatException) {",
-   "  0",
+   "    0",
    "  } finally {",
-   "  println(\"done\")",
+   "    println(\"done\")",
    "  }",
    "  println(x)",
    "}"
@@ -1452,13 +1492,21 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "a": [
    "fun main() {",
    "  var n = 0",
-   "  try {\"x\".toInt()} catch (e: NumberFormatException) {7}",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    7",
+   "  }",
    "  println(n)",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  val n = try {\"x\".toInt()} catch (e: NumberFormatException) {7}",
+   "  val n = try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    7",
+   "  }",
    "  println(n)",
    "}"
   ],
@@ -1513,12 +1561,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "class InvalidSku: Exception(\"bad sku\")",
    "fun main() {",
-   "try {",
-   "throw InvalidSku()",
-   "}",
-   "catch (e: InvalidSku) {",
-   "println(e.message)",
-   "}",
+   "  try {",
+   "    throw InvalidSku()",
+   "  }",
+   "  catch (e: InvalidSku) {",
+   "    println(e.message)",
+   "  }",
    "}"
   ],
   "options": [
@@ -1545,12 +1593,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "class Limit(val max: Int) : Exception()",
    "fun main() {",
-   "try {",
-   "throw Limit(5)",
-   "}",
-   "catch (e: Limit) {",
-   "println(e.max)",
-   "}",
+   "  try {",
+   "    throw Limit(5)",
+   "  }",
+   "  catch (e: Limit) {",
+   "    println(e.max)",
+   "  }",
    "}"
   ],
   "options": [
@@ -1604,11 +1652,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
    "open class AppFailure(message: String) : Exception(message)",
    "class MissingUser: AppFailure(\"missing user\")",
    "fun main() {",
-   "try {",
-   "throw MissingUser()",
-   "} catch (e: AppFailure) {",
-   "println(e.message)",
-   "}",
+   "  try {",
+   "    throw MissingUser()",
+   "  } catch (e: AppFailure) {",
+   "    println(e.message)",
+   "  }",
    "}"
   ],
   "options": [
@@ -1685,12 +1733,20 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "a": [
    "fun main() {",
    "  class OrderFailure(val orderId: String):Exception()",
-   "  try {throw OrderFailure(\"A7\")} catch (e: OrderFailure) {println(e.orderId)}",
+   "  try {",
+   "    throw OrderFailure(\"A7\")",
+   "  } catch (e: OrderFailure) {",
+   "    println(e.orderId)",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  try {throw Exception(\"A7\")} catch (e: Exception) {println(e::class.simpleName)}",
+   "  try {",
+   "    throw Exception(\"A7\")",
+   "  } catch (e: Exception) {",
+   "    println(e::class.simpleName)",
+   "  }",
    "}"
   ],
   "answer": 0
@@ -1743,10 +1799,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun boom() {",
-   "throw Exception(\"x\")",
+   "  throw Exception(\"x\")",
    "}",
    "fun main() {",
-   "boom()",
+   "  boom()",
    "}"
   ],
   "options": [
@@ -1797,9 +1853,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun parse(text: String): Int = try {",
-   "  text.toInt()",
+   "    text.toInt()",
    "  } catch (e: NumberFormatException) {",
-   "  0",
+   "    0",
    "  }",
    "}"
   ],
@@ -1827,7 +1883,7 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
    "fun main() {",
    "  @Throws(java.io.IOException::class)",
    "  fun load() {",
-   "  throw java.io.IOException()",
+   "    throw java.io.IOException()",
    "  }",
    "}"
   ],
@@ -1854,8 +1910,8 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun withdraw(balance: Int, amount: Int): Int {",
-   "  if (amount > balance) throw IllegalStateException(\"insufficient funds\")",
-   "  return balance - amount",
+   "    if (amount > balance) throw IllegalStateException(\"insufficient funds\")",
+   "    return balance - amount",
    "  }",
    "}"
   ],
@@ -1911,7 +1967,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "b": [
    "fun main() {",
    "  fun load():String = throw Exception(\"offline\")",
-   "  try {load()} catch (e: Exception) {println(e.message)}",
+   "  try {",
+   "    load()",
+   "  } catch (e: Exception) {",
+   "    println(e.message)",
+   "  }",
    "}"
   ],
   "answer": 1
@@ -1964,9 +2024,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val r = Result.success(8)",
-   "println(r.isSuccess)",
-   "println(r.getOrNull())",
+   "  val r = Result.success(8)",
+   "  println(r.isSuccess)",
+   "  println(r.getOrNull())",
    "}"
   ],
   "options": [
@@ -1992,9 +2052,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val r = Result.failure<Int>(IllegalStateException(\"offline\"))",
-   "println(r.getOrNull())",
-   "println(r.exceptionOrNull()?.message)",
+   "  val r = Result.failure<Int>(IllegalStateException(\"offline\"))",
+   "  println(r.getOrNull())",
+   "  println(r.exceptionOrNull()?.message)",
    "}"
   ],
   "options": [
@@ -2020,8 +2080,8 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val r = Result.failure<Int>(Exception(\"x\"))",
-   "println(r.getOrDefault(10))",
+   "  val r = Result.failure<Int>(Exception(\"x\"))",
+   "  println(r.getOrDefault(10))",
    "}"
   ],
   "options": [
@@ -2047,12 +2107,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "val r = Result.success(3)",
-   "println(r.fold({",
-   "\"ok:$it\"",
-   "}, {",
-   "\"bad\"",
-   "}))",
+   "  val r = Result.success(3)",
+   "  println(r.fold({",
+   "    \"ok:$it\"",
+   "  }, {",
+   "    \"bad\"",
+   "  }))",
    "}"
   ],
   "options": [
@@ -2130,7 +2190,7 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  println(Result.failure<Int>(Exception()).getOrElse {",
-   "  9",
+   "    9",
    "  })",
    "}"
   ],
@@ -2238,11 +2298,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val r = runCatching {",
-   "2 + 3",
-   "}",
-   "println(r.isSuccess)",
-   "println(r.getOrNull())",
+   "  val r = runCatching {",
+   "    2 + 3",
+   "  }",
+   "  println(r.isSuccess)",
+   "  println(r.getOrNull())",
    "}"
   ],
   "options": [
@@ -2268,10 +2328,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val r = runCatching {",
-   "\"bad\".toInt()",
-   "}",
-   "println(r.isFailure)",
+   "  val r = runCatching {",
+   "    \"bad\".toInt()",
+   "  }",
+   "  println(r.isFailure)",
    "}"
   ],
   "options": [
@@ -2297,12 +2357,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val n = runCatching {",
-   "\"x\".toInt()",
-   "}.getOrElse {",
-   "7",
-   "}",
-   "println(n)",
+   "  val n = runCatching {",
+   "    \"x\".toInt()",
+   "  }.getOrElse {",
+   "    7",
+   "  }",
+   "  println(n)",
    "}"
   ],
   "options": [
@@ -2329,10 +2389,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun risky() {",
-   "  throw IllegalStateException(\"boom\")",
+   "    throw IllegalStateException(\"boom\")",
    "  }",
    "  val r = runCatching {",
-   "  risky()",
+   "    risky()",
    "  }",
    "}"
   ],
@@ -2359,7 +2419,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  println(\"before\")",
-   "  val r = runCatching { error(\"boom\") }",
+   "  val r = runCatching {",
+   "    error(\"boom\")",
+   "  }",
    "  println(\"after\")",
    "  println(r.isFailure)",
    "}"
@@ -2387,7 +2449,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "  val e = runCatching { \"x\".toInt() }.exceptionOrNull()",
+   "  val e = runCatching {",
+   "    \"x\".toInt()",
+   "  }.exceptionOrNull()",
    "  println(e is NumberFormatException)",
    "}"
   ],
@@ -2441,7 +2505,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   ],
   "b": [
    "fun main() {",
-   "  println(runCatching { \"x\".toInt() }.isFailure)",
+   "  println(runCatching {",
+   "    \"x\".toInt()",
+   "  }.isFailure)",
    "}"
   ],
   "answer": 1
@@ -2494,10 +2560,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "val r = Result.success(2).onSuccess {",
-   "println(\"seen:$it\")",
-   "}",
-   "println(r.isSuccess)",
+   "  val r = Result.success(2).onSuccess {",
+   "    println(\"seen:$it\")",
+   "  }",
+   "  println(r.isSuccess)",
    "}"
   ],
   "options": [
@@ -2523,10 +2589,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "Result.failure<Int>(Exception(\"down\"))",
-   ".onFailure {",
-   "println(it.message)",
-   "}",
+   "  Result.failure<Int>(Exception(\"down\"))",
+   "    .onFailure {",
+   "      println(it.message)",
+   "    }",
    "}"
   ],
   "options": [
@@ -2553,8 +2619,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  val value = Result.failure<Int>(Exception(\"bad\"))",
-   "  .onFailure { println(\"log: ${it.message}\") }",
-   "  .getOrDefault(6)",
+   "    .onFailure {",
+   "      println(\"log: ${it.message}\")",
+   "    }",
+   "    .getOrDefault(6)",
    "  println(value)",
    "}"
   ],
@@ -2581,12 +2649,12 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "val r = Result.failure<Int>(Exception(\"x\"))",
-   "println(r.fold({",
-   "\"ok\"",
-   "}, {",
-   "\"error:${it.message}\"",
-   "}))",
+   "  val r = Result.failure<Int>(Exception(\"x\"))",
+   "  println(r.fold({",
+   "    \"ok\"",
+   "  }, {",
+   "    \"error:${it.message}\"",
+   "  }))",
    "}"
   ],
   "options": [
@@ -2611,7 +2679,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "  val r = Result.failure<Int>(Exception(\"x\")).onSuccess { println(\"seen\") }",
+   "  val r = Result.failure<Int>(Exception(\"x\")).onSuccess {",
+   "    println(\"seen\")",
+   "  }",
    "  println(r.isFailure)",
    "}"
   ],
@@ -2638,7 +2708,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "  println(Result.success(\"x\").mapCatching { it.toInt() }.isFailure)",
+   "  println(Result.success(\"x\").mapCatching {",
+   "    it.toInt()",
+   "  }.isFailure)",
    "}"
   ],
   "options": [
@@ -2665,8 +2737,8 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  val r = Result.failure<Int>(Exception(\"x\")).map {",
-   "  println(\"mapped\")",
-   "  it + 1",
+   "    println(\"mapped\")",
+   "    it + 1",
    "  }",
    "  println(r.isFailure)",
    "}"
@@ -2695,7 +2767,7 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  println(Result.failure<Int>(Exception()).recover {",
-   "  10",
+   "    10",
    "  }.getOrNull())",
    "}"
   ],
@@ -2744,13 +2816,17 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  val r = Result.failure<Int>(Exception(\"x\")).onFailure {println(\"reported\")}",
+   "  val r = Result.failure<Int>(Exception(\"x\")).onFailure {",
+   "    println(\"reported\")",
+   "  }",
    "  println(r.isFailure)",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  val r = Result.failure<Int>(Exception(\"x\")).recover {0}",
+   "  val r = Result.failure<Int>(Exception(\"x\")).recover {",
+   "    0",
+   "  }",
    "  println(r.isFailure)",
    "}"
   ],
@@ -2805,7 +2881,7 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  val n = runCatching {",
-   "  \"bad\".toInt()",
+   "    \"bad\".toInt()",
    "  }.getOrDefault(0)",
    "}"
   ],
@@ -2832,7 +2908,7 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun first(items: List<String>): String = items[0]",
    "fun main() {",
-   "println(first(emptyList()))",
+   "  println(first(emptyList()))",
    "}"
   ],
   "options": [
@@ -2964,10 +3040,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  try {",
-   "  throw IllegalStateException(\"x\")",
+   "    throw IllegalStateException(\"x\")",
    "  } catch (e: IllegalStateException) {",
-   "  println(\"logged\")",
-   "  throw e",
+   "    println(\"logged\")",
+   "    throw e",
    "  }",
    "}"
   ],
@@ -3078,11 +3154,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "try {",
-   "\"x\".toInt()",
-   "} catch (e: NumberFormatException) {",
-   "}",
-   "println(\"done\")",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "  }",
+   "  println(\"done\")",
    "}"
   ],
   "options": [
@@ -3107,10 +3183,10 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "val r = runCatching {",
-   "\"x\".toInt()",
-   "}",
-   "println(\"success\")",
+   "  val r = runCatching {",
+   "    \"x\".toInt()",
+   "  }",
+   "  println(\"success\")",
    "}"
   ],
   "options": [
@@ -3160,7 +3236,9 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "single_choice",
   "code": [
    "fun main() {",
-   "  val port = runCatching { \"80x\".toInt() }.getOrNull()",
+   "  val port = runCatching {",
+   "    \"80x\".toInt()",
+   "  }.getOrNull()",
    "  println(port ?: 0)",
    "}"
   ],
@@ -3187,15 +3265,15 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun risky() {",
-   "  throw IllegalStateException(\"boom\")",
+   "    throw IllegalStateException(\"boom\")",
    "  }",
    "  fun useDefault() {",
-   "  println(\"default\")",
+   "    println(\"default\")",
    "  }",
    "  try {",
-   "  risky()",
+   "    risky()",
    "  } catch (e: Exception) {",
-   "  useDefault()",
+   "    useDefault()",
    "  }",
    "}"
   ],
@@ -3222,13 +3300,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun load() {",
-   "  throw IllegalStateException(\"boom\")",
+   "    throw IllegalStateException(\"boom\")",
    "  }",
    "  try {",
-   "  load()",
+   "    load()",
    "  } catch (e: Exception) {",
-   "  println(e.message)",
-   "  throw e",
+   "    println(e.message)",
+   "    throw e",
    "  }",
    "}"
   ],
@@ -3277,14 +3355,22 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  val n = try {\"x\".toInt()} catch (e: NumberFormatException) {println(\"invalid\");0}",
+   "  val n = try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"invalid\")",
+   "    0",
+   "  }",
    "  println(n)",
    "}"
   ],
   "b": [
    "fun main() {",
    "  var n = 0",
-   "  try {\"x\".toInt()} catch (e: NumberFormatException) {}",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "  }",
    "  println(n)",
    "}"
   ],
@@ -3364,8 +3450,8 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "code": [
    "fun main() {",
    "  fun order(id: String): String {",
-   "  if (id.isBlank()) throw IllegalArgumentException(\"id required\")",
-   "  return id",
+   "    if (id.isBlank()) throw IllegalArgumentException(\"id required\")",
+   "    return id",
    "  }",
    "}"
   ],
@@ -3544,13 +3630,21 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  try {throw Exception(\"retry in 3\") } catch (e: Exception) {println(e.message?.length)}",
+   "  try {",
+   "    throw Exception(\"retry in 3\")",
+   "  } catch (e: Exception) {",
+   "    println(e.message?.length)",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
    "  class Retryable(val seconds: Int):Exception()",
-   "  try {throw Retryable(3)} catch (e: Retryable) {println(e.seconds)}",
+   "  try {",
+   "    throw Retryable(3)",
+   "  } catch (e: Retryable) {",
+   "    println(e.seconds)",
+   "  }",
    "}"
   ],
   "answer": 1
@@ -3591,12 +3685,24 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  try {\"x\".toInt()} catch (e: NumberFormatException) {println(\"recover\")} finally {println(\"close\")}",
+   "  try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"recover\")",
+   "  } finally {",
+   "    println(\"close\")",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  try {\"12\".toInt()} catch (e: NumberFormatException) {println(\"recover\")} finally {println(\"close\")}",
+   "  try {",
+   "    \"12\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    println(\"recover\")",
+   "  } finally {",
+   "    println(\"close\")",
+   "  }",
    "}"
   ],
   "answer": 0
@@ -3640,7 +3746,15 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "  try {println(\"A\");error(\"x\");println(\"B\")} catch (e: IllegalStateException) {println(\"C\")} finally {println(\"D\")}",
+   "  try {",
+   "    println(\"A\")",
+   "    error(\"x\")",
+   "    println(\"B\")",
+   "  } catch (e: IllegalStateException) {",
+   "    println(\"C\")",
+   "  } finally {",
+   "    println(\"D\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -3689,13 +3803,21 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  val n = try {\"bad\".toInt()} catch (e: IllegalStateException) {9}",
+   "  val n = try {",
+   "    \"bad\".toInt()",
+   "  } catch (e: IllegalStateException) {",
+   "    9",
+   "  }",
    "  println(n)",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  val n = try {\"bad\".toInt()} catch (e: NumberFormatException) {9}",
+   "  val n = try {",
+   "    \"bad\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    9",
+   "  }",
    "  println(n)",
    "}"
   ],
@@ -3740,7 +3862,13 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "  val n = try {\"x\".toInt()} catch (e: NumberFormatException) {4} catch (e: Exception) {8}",
+   "  val n = try {",
+   "    \"x\".toInt()",
+   "  } catch (e: NumberFormatException) {",
+   "    4",
+   "  } catch (e: Exception) {",
+   "    8",
+   "  }",
    "  println(n)",
    "}"
   ],
@@ -3894,13 +4022,21 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  val r = runCatching {\"x\".toInt()}.recover {0}",
+   "  val r = runCatching {",
+   "    \"x\".toInt()",
+   "  }.recover {",
+   "    0",
+   "  }",
    "  println(r.isFailure)",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  val r = runCatching {\"x\".toInt()}.onFailure {println(\"reported\")}",
+   "  val r = runCatching {",
+   "    \"x\".toInt()",
+   "  }.onFailure {",
+   "    println(\"reported\")",
+   "  }",
    "  println(r.isFailure)",
    "}"
   ],
@@ -3945,7 +4081,11 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "  val r = Result.success(\"x\").mapCatching {it.toInt()}.recover {6}",
+   "  val r = Result.success(\"x\").mapCatching {",
+   "    it.toInt()",
+   "  }.recover {",
+   "    6",
+   "  }",
    "  println(r.getOrThrow())",
    "}"
   ],
@@ -3995,12 +4135,19 @@ export const WORLD_15_QUIZ: QuizQuestion[] = [
   "a": [
    "fun main() {",
    "  class InvalidOrder(val id: String):Exception()",
-   "  try {throw InvalidOrder(\"O9\")} catch (e: InvalidOrder) {println(e.id)}",
+   "  try {",
+   "    throw InvalidOrder(\"O9\")",
+   "  } catch (e: InvalidOrder) {",
+   "    println(e.id)",
+   "  }",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  try {throw Exception(\"O9\")} catch (e: Exception) {}",
+   "  try {",
+   "    throw Exception(\"O9\")",
+   "  } catch (e: Exception) {",
+   "  }",
    "  println(\"ok\")",
    "}"
   ],
@@ -4099,7 +4246,11 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "type": "fill_blank",
   "code": [
    "fun main() {",
-   "  val quantity = runCatching {\"bad\".toInt()}.___ { 1 }",
+   "  val quantity = runCatching {",
+   "    \"bad\".toInt()",
+   "  }.___ {",
+   "    1",
+   "  }",
    "  println(quantity)",
    "}"
   ],
@@ -4126,9 +4277,16 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "code": [
    "class InvalidOrder: Exception()",
    "fun main() {",
-   "  try {println(\"validate\");throw InvalidOrder()}",
-   "  catch (e: InvalidOrder) {println(\"reject\")}",
-   "  finally {println(\"close\")}",
+   "  try {",
+   "    println(\"validate\")",
+   "    throw InvalidOrder()",
+   "  }",
+   "  catch (e: InvalidOrder) {",
+   "    println(\"reject\")",
+   "  }",
+   "  finally {",
+   "    println(\"close\")",
+   "  }",
    "}"
   ],
   "options": [
@@ -4175,7 +4333,9 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "  val r = runCatching {\"x\".toInt()}",
+   "  val r = runCatching {",
+   "    \"x\".toInt()",
+   "  }",
    "  println(r.isFailure)",
    "  println(r.getOrDefault(2))",
    "}"
@@ -4203,7 +4363,11 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "fun main() {",
-   "  val status = Result.success(\"O7\").fold({\"accepted:$it\"}, {\"rejected\"})",
+   "  val status = Result.success(\"O7\").fold({",
+   "    \"accepted:$it\"",
+   "  }, {",
+   "    \"rejected\"",
+   "  })",
    "  println(status)",
    "}"
   ],
@@ -4231,7 +4395,9 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "code": [
    "class OrderFailure(message: String):Exception(message)",
    "class PaymentFailure: OrderFailure(\"payment\")",
-   "fun main() { println(\"ready\") }"
+   "fun main() {",
+   "  println(\"ready\")",
+   "}"
   ],
   "errorLine": 1,
   "errorNote": "OrderFailure is final and cannot be inherited."
@@ -4250,11 +4416,15 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "type": "find_error",
   "code": [
    "fun main() {",
-   "  val quantity: Int = try {1} catch (e: Exception) {\"unknown\"}",
+   "  val quantity: Int = try {",
+   "    1",
+   "  } catch (e: Exception) {",
+   "    \"unknown\"",
+   "  }",
    "  println(quantity)",
    "}"
   ],
-  "errorLine": 1,
+  "errorLine": 4,
   "errorNote": "The catch branch String makes the expression incompatible with Int."
  },
  {
@@ -4317,13 +4487,21 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "type": "code_comparison",
   "a": [
    "fun main() {",
-   "  val r = runCatching {\"x\".toInt()}.onFailure {println(\"invalid\")}",
+   "  val r = runCatching {",
+   "    \"x\".toInt()",
+   "  }.onFailure {",
+   "    println(\"invalid\")",
+   "  }",
    "  println(r.isFailure)",
    "}"
   ],
   "b": [
    "fun main() {",
-   "  val r = runCatching {\"x\".toInt()}.recover {0}",
+   "  val r = runCatching {",
+   "    \"x\".toInt()",
+   "  }.recover {",
+   "    0",
+   "  }",
    "  println(r.isFailure)",
    "}"
   ],
@@ -4343,11 +4521,23 @@ export const WORLD_15_BOSS_QUIZ: QuizQuestion[] = [
   "type": "predict_output",
   "code": [
    "class OrderFailure(val id: String, cause: Throwable):Exception(\"invalid order\", cause)",
-   "fun load(id: String):Int = try {\"bad\".toInt()} catch (e: NumberFormatException) {throw OrderFailure(id, e)}",
+   "fun load(id: String):Int = try {",
+   "  \"bad\".toInt()",
+   "} catch (e: NumberFormatException) {",
+   "  throw OrderFailure(id, e)",
+   "}",
    "fun main() {",
-   "  val status = runCatching {load(\"O8\")}",
-   "    .onFailure {println((it as OrderFailure).id)}",
-   "    .fold({\"accepted:$it\"}, {\"rejected:${it.cause is NumberFormatException}\"})",
+   "  val status = runCatching {",
+   "    load(\"O8\")",
+   "  }",
+   "    .onFailure {",
+   "      println((it as OrderFailure).id)",
+   "    }",
+   "    .fold({",
+   "      \"accepted:$it\"",
+   "    }, {",
+   "      \"rejected:${it.cause is NumberFormatException}\"",
+   "    })",
    "  println(status)",
    "}"
   ],

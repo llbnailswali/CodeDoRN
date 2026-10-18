@@ -108,10 +108,29 @@ export function formatQuizCodeQuestion(question: QuizQuestion, indentSpaces = 2)
     let buffer = '';
     let quoted = false;
     let escaped = false;
+    // Open parentheses, innermost last. One that ends its line (`fun order(`) is "hanging": the lines inside it get one extra
+    // level, as Kotlin style indents a multi-line parameter or argument list. A `(` mid-line (`println(xs.map {`) adds nothing.
+    const parens: boolean[] = [];
+    let lineHang = 0; // hanging parentheses open where the current output line starts
+    let lastChar = '';
+    // A chained call on its own line (`.take(2)`, `?.let {`, `?: default`) continues the line above, so it sits one level deeper; a block it
+    // opens keeps that extra level for its body and its closing brace. `braces` holds each open brace's extra level.
+    const braces: number[] = [];
+    let closerExtra = 0; // the extra level of the brace just closed, for the `}` line itself
+    const braceExtra = () => braces.reduce((sum, n) => sum + n, 0);
+    // `{` after text gets one space (`map {`), but none straight after `(` or `[` (`fold({`).
+    const opener = () => { const before = buffer.trimEnd(); return /[(\[]$/.test(before) || !before ? `${before}{` : `${before} {`; };
+    const isChained = (text: string) => /^(\?\.|\?:|\.(?!\.))/.test(text);
+    const lineExtra = (text: string) => (isChained(text) ? 1 : 0) + closerExtra;
     const flush = () => {
       const text = buffer.trim();
-      if (text) expanded.push(`${' '.repeat(Math.max(0, depth) * indentSpaces)}${text}`);
+      if (text) expanded.push(`${' '.repeat(Math.max(0, depth + lineHang + braceExtra() + lineExtra(text)) * indentSpaces)}${text}`);
+      closerExtra = 0;
       buffer = '';
+    };
+    const add = (char: string) => {
+      if (!buffer.trim() && char.trim()) lineHang = parens.filter(Boolean).length;
+      buffer += char;
     };
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       originalLineStarts[lineIndex] = expanded.length;
@@ -125,27 +144,38 @@ export function formatQuizCodeQuestion(question: QuizQuestion, indentSpaces = 2)
         const char = lineText[charIndex];
         if (quoted) {
           buffer += char;
+          lastChar = char;
           if (escaped) escaped = false;
           else if (char === '\\') escaped = true;
           else if (char === '"') quoted = false;
           continue;
         }
-        if (char === '"') { quoted = true; buffer += char; continue; }
+        if (char.trim()) lastChar = char;
+        if (char === '"') { quoted = true; add(char); continue; }
+        if (char === '(') { parens.push(false); add(char); continue; }
+        if (char === ')') { parens.pop(); add(char); continue; }
         if (char === '{') {
-          // A lambda header such as `{ n ->` at the end of a line stays on that line.
+          // A lambda header such as `{ n ->` or `{ acc, value -> acc + value }` keeps its parameters and arrow on the opening line;
+          // the body (if any) goes on the next line. Splitting `{` from `acc, value ->` is legal Kotlin but reads badly.
           const rest = lineText.slice(charIndex + 1);
-          if (/^\s*[A-Za-z_][\w, :<>?]*->\s*$/.test(rest)) { buffer = `${buffer.trimEnd()} {${rest.trimEnd()}`; flush(); depth++; break; }
-          buffer = `${buffer.trimEnd()} {`; flush(); depth++; continue;
+          if (!buffer.trim()) lineHang = parens.filter(Boolean).length;
+          const header = rest.match(/^\s*[A-Za-z_][\w, :<>?]*->/);
+          const opensExtra = lineExtra(buffer.trim());
+          if (header) { buffer = `${opener()}${header[0].trimEnd()}`; flush(); depth++; braces.push(opensExtra); charIndex += header[0].length; continue; }
+          buffer = opener(); flush(); depth++; braces.push(opensExtra); continue;
         }
         if (char === '}') {
           // The closer sits at its opener's depth; text after it on the same line (`else {`, `)`) stays with it.
           flush(); depth = Math.max(0, depth - 1);
+          closerExtra = braces.pop() ?? 0;
+          lineHang = parens.filter(Boolean).length;
           buffer = '}';
           continue;
         }
         if (char === ';') { flush(); continue; }
-        buffer += char;
+        add(char);
       }
+      if (lastChar === '(' && parens.length) parens[parens.length - 1] = true;
       flush();
     }
     fields[key] = expanded;
