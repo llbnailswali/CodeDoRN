@@ -4,24 +4,24 @@ export const CONTENT_STATS = {
  "lessons": 273,
  "stages": {
   "learn": {
-   "lessons": 196,
-   "items": 196
+   "lessons": 210,
+   "items": 210
   },
   "explore": {
-   "lessons": 195,
-   "items": 988
+   "lessons": 209,
+   "items": 1050
   },
   "predict": {
-   "lessons": 196,
-   "items": 1004
+   "lessons": 210,
+   "items": 1063
   },
   "writeRun": {
-   "lessons": 191,
-   "items": 191
+   "lessons": 205,
+   "items": 205
   },
   "debug": {
-   "lessons": 192,
-   "items": 192
+   "lessons": 206,
+   "items": 206
   }
  },
  "quizQuestions": 2135,

@@ -365,7 +365,7 @@ export const CURRICULUM_WORLDS: CurriculumWorld[] = [
   "title": "Concurrency Arena",
   "subtitle": "Concurrency",
   "lessonCount": 14,
-  "available": false,
+  "available": true,
   "lessons": [
    "Threads",
    "Shared mutable state",

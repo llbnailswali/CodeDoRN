@@ -289,6 +289,7 @@ export function App({ dark = true }: { dark?: boolean }) {
         onGap={setGap}
         onToggleTheme={toggleTheme}
         onTempReset={tab === 'quiz' ? confirmResetQuiz : undefined}
+        offWhite
         topInset={topInset}
       />
       <View style={{ flex: 1 }}>

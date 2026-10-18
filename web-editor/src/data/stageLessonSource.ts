@@ -29,6 +29,7 @@ const lessonModules: Record<number, () => Promise<Mod>> = {
   15: () => import('./curriculum/world15LessonsData'),
   16: () => import('./curriculum/world16LessonsData'),
   17: () => import('./curriculum/world17LessonsData'),
+  18: () => import('./curriculum/world18LessonsData'),
 };
 
 const practiceModules: Record<number, () => Promise<Mod>> = {

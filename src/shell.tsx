@@ -64,9 +64,9 @@ export function Icon({ name, color, size, exact, filled }: { name: string; size?
 // The app shell shared by every tab: top bar and bottom tab bar
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'LEARN', showGap = true, title, onBack, onTempReset }: { p: Palette; gap?: number; onGap?: (v: number) => void; onToggleTheme: () => void; topInset: number; badge?: string; showGap?: boolean; title?: string; onBack?: () => void; onTempReset?: () => void }) {
+export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'LEARN', showGap = true, title, onBack, onTempReset, offWhite = false }: { p: Palette; /** Day mode: the off-white bar of the main tabs (a pushed screen with its own page colour leaves this off). */ offWhite?: boolean; gap?: number; onGap?: (v: number) => void; onToggleTheme: () => void; topInset: number; badge?: string; showGap?: boolean; title?: string; onBack?: () => void; onTempReset?: () => void }) {
   return (
-    <View style={{ paddingTop: topInset, backgroundColor: p.page, borderBottomWidth: BW, borderBottomColor: p.headerBorder, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: p.isDark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
+    <View style={{ paddingTop: topInset, backgroundColor: offWhite && !p.isDark ? OFFWHITE_BAR.bg : p.page, borderBottomWidth: BW, borderBottomColor: offWhite && !p.isDark ? OFFWHITE_BAR.border : p.headerBorder, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: p.isDark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
       <View style={s.headerInner}>
         <View style={s.headerLeft}>
           {title !== undefined ? (
@@ -142,13 +142,21 @@ export const TABS = [
 
 export type TabId = 'learn' | 'quiz' | 'practice' | 'profile';
 
+// Day mode: the top toolbar and the bottom tab bar use the cards' off-white and border instead of the blue-grey page colour.
+const OFFWHITE_BAR = { bg: '#FAFAF7', border: '#E1E6EC' };
+
+// Height of the tab row itself, and how much of the phone's bottom safe-area inset (the gesture bar) is kept as padding under it. The strip
+// used 64 and the whole inset, which read as extra space under the icons; the tabs are 44 tall, so 58 leaves 7 above and below them.
+const NAV_ROW_HEIGHT = 58;
+const NAV_INSET_TRIM = 8;
+
 export function BottomNav({ p, active: activeTab = 'learn', onSelect }: { p: Palette; active?: TabId; onSelect?: (tab: TabId) => void }) {
   const insets = useSafeAreaInsets();
   return (
     <View>
       <ShadowStack r={0} shadows={navShadows(p.isDark)} />
-      <View style={{ backgroundColor: p.page, borderTopWidth: BW, borderTopColor: p.navBorder }}>
-        <View style={[s.navInner, { paddingBottom: insets.bottom, height: 64 + insets.bottom }]}>
+      <View style={{ backgroundColor: p.isDark ? p.page : OFFWHITE_BAR.bg, borderTopWidth: BW, borderTopColor: p.isDark ? p.navBorder : OFFWHITE_BAR.border }}>
+        <View style={[s.navInner, { paddingBottom: Math.max(insets.bottom - NAV_INSET_TRIM, 0), height: NAV_ROW_HEIGHT + Math.max(insets.bottom - NAV_INSET_TRIM, 0) }]}>
           {TABS.map((tab) => {
             const active = tab.id === activeTab;
             const color = active ? (p.isDark ? INDIGO_400 : '#4F46E5') : p.isDark ? '#94A3B8' : '#475569';
@@ -156,7 +164,8 @@ export function BottomNav({ p, active: activeTab = 'learn', onSelect }: { p: Pal
               <Pressable
                 key={tab.id}
                 onPress={() => onSelect?.(tab.id as TabId)}
-                android_ripple={{ color: p.isDark ? 'rgba(129,140,248,0.55)' : 'rgba(79,70,229,0.45)', borderless: false, foreground: true }}
+                // A neutral slate tint that follows the theme (it sits on the pressed highlight, #E8EAF0 by day and #151B28 by night), not the strong indigo.
+                android_ripple={{ color: p.isDark ? 'rgba(148,163,184,0.22)' : 'rgba(71,85,105,0.18)', borderless: false, foreground: true }}
                 style={({ pressed }) => [
                   s.navItem,
                   (active || pressed) && { backgroundColor: p.isDark ? '#151B28' : '#E8EAF0', borderWidth: BW, borderColor: p.isDark ? 'rgba(255,255,255,0.04)' : 'transparent', overflow: 'hidden' },

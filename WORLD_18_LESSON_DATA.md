@@ -1,0 +1,44 @@
+# World 18 — Concurrency Arena: lesson data gathered
+
+Status: research and authoring brief. The 14 catalog entries are still placeholders; this document does not mark them authored or verified.
+
+## Scope and constraints
+
+`CODEDO_MASTER_PLAN.md` defines 13 topics and the **Concurrent Data Processor** boss. `masterCurriculumCatalog.ts` already has matching IDs in that order. `data_gathering_progress.md` records **0 / 14** five-stage lessons. Authoring must follow `LESSON_QUALITY_STANDARD.md`: derive activity counts from concept coverage, verify actual programs, and avoid treating a fixed output as evidence of concurrency.
+
+The teaching runner currently has a deterministic coroutine model. Its `launch`/`async` blocks run to completion without interleaving, and `delay` does not create a real scheduling race. `KotlinMutex` models lock state, `withLock`, `tryLock`, and non-reentrancy; `KotlinAtomicNumber` models counter operations. These are useful for basic API and state reasoning, but cannot establish thread safety, fairness, throughput, visibility, race frequency, or real deadlock behavior. JVM `Thread`, `synchronized`, and `@Volatile` have no evident implementation in the runner. Probe each proposed activity before registration; use a real Kotlin/JVM environment for race demonstrations. Do not write deterministic expected output for an intentionally racy program.
+
+## Lesson map
+
+Each row gives the practical outcome and distinct scenarios to develop across Learn, Explore, Predict, Write & Run, and Debug. The scenarios are research inputs, not completed stage entries.
+
+| Catalog ID | Learning outcome and scenario data | Boundary / assessment requirement |
+| --- | --- | --- |
+| `world-18-threads` | Distinguish an OS/JVM thread from a coroutine; start a JVM thread, wait with `join`, and explain blocking `Thread.sleep` versus suspending `delay`. Explore a worker whose result is read before and after `join`; predict only ordering guaranteed by `join`. | JVM-specific. The runner needs real thread support or this remains reading/prediction with verified Kotlin examples. Do not promise a fixed order between two independent threads. |
+| `world-18-shared-mutable-state` | Identify which values are shared and which are local in two workers updating one counter. Contrast immutable inputs and per-worker totals with a shared `var`. Trace read–modify–write as three logical steps. | A sequential simulator cannot prove a shared counter is safe. Use an interleaving diagram and a real JVM stress run for the lost-update behavior. |
+| `world-18-thread-safety` | Define the operation's invariant (for example, balance never negative and total remains conserved). Compare a safe atomic counter, a protected multi-field object, and a read-only value. Explain visibility versus compound-operation atomicity. | `@Volatile` makes a JVM field visible; it does not make `counter++` atomic. Assess the whole invariant, not merely whether a final sample happened to match. |
+| `world-18-race-conditions` | Trace two interleavings of `read; add; write`: one yields 2 and one loses an update. Distinguish a data race from scheduling-dependent output, and make the bug reproducible using a controlled barrier or injected scheduler in real Kotlin. | Do not label every unordered print sequence a data race. A single successful run is no proof of safety. |
+| `world-18-synchronization` | Protect a JVM critical section with `synchronized(lock)`, choose a stable shared lock, and keep the invariant check and update inside the same section. Compare locking only the write against locking the full read–check–write transaction. | JVM-specific and blocking. Keep this distinct from coroutine `Mutex`; avoid holding a blocking monitor across suspension. |
+| `world-18-mutex` | Use `Mutex.withLock` around a coroutine shared-state update; contrast `lock`/`unlock` with exception-safe `withLock`; explain that waiting suspends and that the mutex is non-reentrant. | Runner can check API shape and lock state only. Its nested-lock error is a simulator diagnostic, not how real `Mutex.lock()` normally completes. Never present the runner's lack of overlap as contention evidence. |
+| `world-18-atomic-operations` | Use `AtomicInteger.incrementAndGet`, `getAndIncrement`, and `compareAndSet`; predict return values and retry a conditional update. Explain why one atomic counter does not automatically protect an invariant spanning two fields. | JVM `java.util.concurrent.atomic` is platform-specific. Runner methods are deterministic stand-ins; use JVM testing for concurrent claims. |
+| `world-18-thread-confinement` | Give one owner thread or dispatcher sole authority to mutate state. Compare coarse-grained ownership with switching context for every increment; have workers send requests and the owner update state. | A dispatcher label in the runner is not a real worker thread. Test execution and performance claims outside the simulator. |
+| `world-18-coroutine-concurrency` | Launch two child tasks in an owning scope; show that `async` returns a `Deferred`, `await` obtains a value, and `coroutineScope` waits for children. Contrast concurrent waiting with parallel CPU execution. | Reuse World 16 concepts but focus on shared-state hazards. Deterministic runner order cannot prove parallel execution or expose lost updates. |
+| `world-18-concurrent-access-patterns` | Choose among immutable snapshots, atomic scalar, mutex-protected aggregate, and single-owner message processing for concrete state shapes. Show that a check and update must share one protection boundary. | Compare correctness requirements before speed. Avoid asserting any method is universally fastest. |
+| `world-18-deadlock-concepts` | Draw a wait-for cycle for two locks acquired in opposite order; repair with consistent lock order, one lock, or a design without nested locks. Distinguish deadlock from slow work and starvation. | Real hangs need time-bounded external tests. Runner's immediate non-reentrant error models a hazard but is not evidence of JVM deadlock detection. |
+| `world-18-avoiding-shared-mutable-state` | Partition inputs, compute local results, and combine immutable outputs after children finish. Compare this with protecting a shared accumulator. | Assess that workers do not mutate the same object, not only the final printed sum. |
+| `world-18-structured-concurrency-vs-uncontrolled-c` | Compare `coroutineScope` child ownership, completion, failure and cancellation with a detached `GlobalScope.launch` task. Repair a function that returns while detached work is still active. | Avoid an example whose observed output depends on scheduling; check lifecycle relationships. Global scope is a cautionary example, not a default builder. |
+| `world-18-boss` | Build a small processor: partition input records, process them in owned child tasks, combine results safely, and preserve an invariant such as processed count and total value. Debug a separate implementation whose read–modify–write spans the wrong protection boundary. | Use meaningful varied inputs and semantic checks. Real concurrency testing is required for the race; a sequentially correct output alone cannot pass the boss. |
+
+## Dependency and authoring order
+
+World 16 provides builders, jobs, cancellation, and scopes. World 17 provides Flow but is not a prerequisite for this world's core examples. Teach the shared-state problem before remedies: threads → shared state → safety → races → synchronization → mutex/atomics/confinement → pattern selection → deadlock/avoidance → ownership → boss. `synchronized`, `AtomicInteger`, and JVM threads need platform labels; coroutine `Mutex` comes from `kotlinx.coroutines.sync`.
+
+For each lesson, make a concept-level map using the columns required by `LESSON_QUALITY_STANDARD.md`, then decide the number of distinct activities. Where the runner cannot execute the required behavior, keep the Kotlin explanation accurate and explicitly gate or defer editor assessment. Do not turn the catalog placeholders into completed lessons until stage data and actual verification exist.
+
+## Primary sources
+
+- [Kotlin: Coroutines basics](https://kotlinlang.org/docs/coroutines-basics.html) — threads versus coroutines and structured scopes.
+- [Kotlin: Shared mutable state and concurrency](https://kotlinlang.org/docs/shared-mutable-state-and-concurrency.html) — volatile limitation, atomics, confinement, and mutex.
+- [Kotlin: Coroutine context and dispatchers](https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html) — context and execution placement.
+- [Kotlin: Mutex API](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.sync/-mutex/) — suspension and non-reentrancy.
+- [Kotlin: Coroutines and channels, structured concurrency](https://kotlinlang.org/docs/coroutines-and-channels.html#structured-concurrency) — scope ownership and detached work.

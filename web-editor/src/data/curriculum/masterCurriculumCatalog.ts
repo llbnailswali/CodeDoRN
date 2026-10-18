@@ -2345,7 +2345,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-threads"
       },
       {
         "id": "world-18-shared-mutable-state",
@@ -2355,7 +2356,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-shared-mutable-state"
       },
       {
         "id": "world-18-thread-safety",
@@ -2365,7 +2367,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-thread-safety"
       },
       {
         "id": "world-18-race-conditions",
@@ -2375,7 +2378,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-race-conditions"
       },
       {
         "id": "world-18-synchronization",
@@ -2385,7 +2389,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-synchronization"
       },
       {
         "id": "world-18-mutex",
@@ -2395,7 +2400,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-mutex"
       },
       {
         "id": "world-18-atomic-operations",
@@ -2405,7 +2411,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-atomic-operations"
       },
       {
         "id": "world-18-thread-confinement",
@@ -2415,7 +2422,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-thread-confinement"
       },
       {
         "id": "world-18-coroutine-concurrency",
@@ -2425,7 +2433,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-coroutine-concurrency"
       },
       {
         "id": "world-18-concurrent-access-patterns",
@@ -2435,7 +2444,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-concurrent-access-patterns"
       },
       {
         "id": "world-18-deadlock-concepts",
@@ -2445,7 +2455,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-deadlock-concepts"
       },
       {
         "id": "world-18-avoiding-shared-mutable-state",
@@ -2455,7 +2466,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-avoiding-shared-mutable-state"
       },
       {
         "id": "world-18-structured-concurrency-vs-uncontrolled-c",
@@ -2465,7 +2477,8 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "durationMinutes": 3,
         "xpReward": 20,
         "description": "Placeholder -- lesson content not yet authored. See CODEDO_MASTER_PLAN.md for the intended topic scope.",
-        "questionsCount": 0
+        "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-structured-concurrency-vs-uncontrolled-c"
       },
       {
         "id": "world-18-boss",
@@ -2476,6 +2489,7 @@ export const CODEDO_MASTER_WORLDS: MasterWorldEntry[] = [
         "xpReward": 50,
         "description": "Build a program that safely processes shared data concurrently and deliberately debug a race-condition bug.",
         "questionsCount": 0,
+        "fiveStageLessonKey": "world-18-boss",
         "isBoss": true
       }
     ]

@@ -19,7 +19,7 @@ export const COMPLETED_WORLDS = 0;
 export const TOTAL_WORLDS = 22;
 // Match the web's progression rule: only the current world is available until earlier worlds are completed.
 export const UNLOCK_ALL = false;
-export const UNLOCK_THROUGH = 17;
+export const UNLOCK_THROUGH = 18;
 export const SHOW_LEVEL_STRIPS = true;
 // Height of a world node's text column in the web (chip 19.96 + title 19.35 + 2 + tag 19.96), so every row has the web's exact stride.
 // TEMPORARY performance test: false hides the moving light streaks on the trail in both Homes (old and new).
@@ -420,7 +420,7 @@ export function StandardNode({
       }}
     >
       <Pressable
-        onPress={() => { if (!locked && world.order <= 17) onOpenWorld?.(world.order); }}
+        onPress={() => { if (!locked) onOpenWorld?.(world.order); }}
         android_ripple={{ color: p.isDark ? 'rgba(129,140,248,0.55)' : 'rgba(79,70,229,0.45)', borderless: false, foreground: true }}
         style={{ flexDirection: left ? 'row' : 'row-reverse', alignItems: 'center', gap: 10, opacity: locked ? 0.65 : 1, borderRadius: 12, overflow: 'hidden' }}
       >

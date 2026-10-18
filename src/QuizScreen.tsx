@@ -1,6 +1,6 @@
 import React from 'react';
-import { Animated, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { Animated, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { BW, Icon, MAIN, fz } from './shell';
 import { accentFor, lh } from './parts';
 import { ShadowStack } from './shadows';
@@ -63,7 +63,7 @@ const flatSurface = (dark: boolean) => (dark ? cardSurface(dark) : { backgroundC
 const cardShadow = (dark: boolean) => (dark ? [{ dy: 4, blur: 6, rgb: '0,0,0', alpha: 0.3 }] : [{ dy: 1, blur: 3, rgb: '0,0,0', alpha: 0.1 }]);
 
 const QUIZ_MODES: QuizMode[] = [
-  { id: 'speed-round', badge: 'TIMED', title: 'Speed Round', description: 'Answer as many questions as you can before the timer runs out.', detail: '30s to 10 min · No question limit', action: 'Start', icon: 'bolt', tone: '#FACC15', tone2: '#F97316', toneLight: '#A23F99', kind: 'speed' },
+  { id: 'speed-round', badge: 'TIMED', title: 'Speed Round', description: 'Answer as many questions as you can before the timer runs out.', detail: '30s to 10 min · No question limit', action: 'Start', icon: 'bolt', tone: '#FACC15', tone2: '#F97316', toneLight: '#B45309', kind: 'speed' },
   { id: 'survival', badge: '3 LIVES', title: 'Survival Ladder', description: 'Three hearts, no timer. Every 5 correct answers climbs a level, and the questions get harder.', detail: 'No timer · 3 lives', action: 'Start', icon: 'favorite', tone: '#FB7185', tone2: '#F43F5E', toneLight: '#E11D48', kind: 'survival' },
   { id: 'high-stakes', badge: 'BET', title: 'High Stakes', description: 'Hard questions only. Bet coins on how sure you are before you check each answer.', detail: '8 hard questions · Start with 100 coins', action: 'Start', icon: 'coin', tone: '#FBBF24', tone2: '#F59E0B', toneLight: '#B45309', kind: 'stakes' },
   { id: 'quick-mix', badge: 'RANDOM', title: 'Quick Mix', description: "A fresh mix of questions from concepts you've learned.", detail: '10 questions · ~5 min', action: 'Start', icon: 'shuffle', tone: '#2DD4BF', toneLight: '#008E83', tone2: '#3B82F6', kind: 'quick' },
@@ -106,6 +106,25 @@ function ModeIcon({ name, color, size = 18 }: { name: string; color: string; siz
 }
 
 // A diagonal wash of the card's own colour across the whole card (stronger at the top-left, still tinted at the bottom-right).
+// The old Speed Round card's day-mode background, from the colour spec: white, #FFFCF4, #FFF1D5 on a diagonal (top-left to bottom-right).
+function SpeedDayGradient({ id }: { id: string }) {
+  const [size, setSize] = React.useState({ w: 0, h: 0 });
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {size.w > 0 && (
+        <Svg width={size.w} height={size.h}>
+          <Defs>
+            <LinearGradient id={id} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={size.w} y2={size.h}>
+              <Stop offset="0" stopColor="#FFFFFF" /><Stop offset="0.5" stopColor="#FFFCF4" /><Stop offset="1" stopColor="#FFF1D5" />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width={size.w} height={size.h} fill={`url(#${id})`} />
+        </Svg>
+      )}
+    </View>
+  );
+}
+
 function ModeGradient({ id, tone, tone2, dark, strength = 1 }: { id: string; tone: string; tone2: string; dark: boolean; strength?: number }) {
   // Svg percentage sizes do not fill an absolutely positioned box reliably, so measure the card and draw at its pixel size.
   const [size, setSize] = React.useState({ w: 0, h: 0 });
@@ -223,30 +242,144 @@ function SpeedDurationDialog({ mode, dark, onClose, onStart }: { mode: QuizMode 
   );
 }
 
-// The Speed Round card's badge: a live countdown that loops from 1:00, so this card reads as timed at a glance.
-// The ring drains with the seconds and the clock pulses through the last ten.
-function SpeedClock({ ink, dark }: { ink: string; dark: boolean }) {
-  const [left, setLeft] = React.useState(60);
+// The title size of every card in the Ways to Play rail (the Speed Round card uses it too).
+const MODE_TITLE = 15;
+
+// ---- Speed Round: the kit's PNG illustrations and icons (codedo_speed_round_kit) and its colours.
+// The bolt sits at 38 inside its 42 tile: the reference's bolt is about 65% of the tile's height. Dark mode has no background image (the kit's
+// carries a golden glow at the bottom-right that the reference lacks), so its surface is drawn.
+const SPEED_IMG = {
+  dark: { bolt: require('../assets/speed/dark/bolt.png') },
+  light: { bolt: require('../assets/speed/light/bolt.png') },
+  trophy: require('../assets/speed/trophy.png'),
+};
+const SPEED_COLORS = {
+  dark: {
+    border: 'rgba(148,163,184,0.22)', surface: '#171E2B', text: '#FFFFFF', muted: '#9AA6BA', value: '#FACC15',
+    tile: { borderColor: '#A98A33', backgroundColor: 'rgba(82,66,29,0.45)' }, trophyTile: { backgroundColor: 'rgba(51,65,85,0.35)', borderColor: 'rgba(148,163,184,0.16)' },
+    footer: 'rgba(11,17,27,0.2)', footerLine: 'rgba(148,163,184,0.2)', onStart: '#241A03',
+    urgent: { text: '#FB7185', border: 'rgba(251,113,133,0.6)', fill: 'rgba(120,34,57,0.28)' },
+    streak: '251,191,36', streakAlpha: 0.22, streakGrey: '148,163,184', boltGlow: '250,204,21', startGlow: '255,200,55',
+  },
+  light: {
+    border: '#E2E8F0', surface: '#FFFFFF', text: '#10172A', muted: '#64748B', value: '#B77906',
+    tile: { borderColor: '#F1CB7A', backgroundColor: 'rgba(255,243,213,0.75)' }, trophyTile: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
+    footer: 'rgba(255,255,255,0.2)', footerLine: '#E2E8F0', onStart: '#291C00',
+    urgent: { text: '#E11D48', border: '#FB7185', fill: '#FFF0F2' },
+    streak: '245,158,11', streakAlpha: 0.14, streakGrey: '148,163,184', boltGlow: '245,158,11', startGlow: '245,158,11',
+  },
+};
+
+// A soft glow around a rounded box. Android cannot colour or blur a shadow, so it is drawn: rounded rectangles that widen and fade, outermost
+// first, which stack up to a halo that is brightest at the box's edge. `dy` pushes it down a little, as the reference's glow is stronger below.
+function BoxGlow({ w, h, r, rgb, alpha, layers = 7, step = 2.2, dy = 1.5, u }: { w: number; h: number; r: number; rgb: string; alpha: number; layers?: number; step?: number; dy?: number; u: number }) {
+  const pad = layers * step * u;
+  return (
+    <Svg pointerEvents="none" width={w * u + 2 * pad} height={h * u + 2 * pad} style={{ position: 'absolute', left: -pad, top: -pad + dy * u }}>
+      {Array.from({ length: layers }, (_, i) => {
+        const g = (layers - i) * step * u;
+        return <Rect key={i} x={pad - g} y={pad - g} width={w * u + 2 * g} height={h * u + 2 * g} rx={r * u + g} fill={`rgba(${rgb},${alpha})`} />;
+      })}
+    </Svg>
+  );
+}
+
+// The countdown pill, as in the reference: always the rose "running out" look, with the three rays fanned out past its top-right corner. The
+// digits count down from 0:10 and loop, pulsing once a second so the card feels alive. (The rays were measured from the reference: one steep
+// stroke above the corner, one at 45 degrees beside it and one nearly flat lower down, in dp from the pill's top-right corner.)
+function SpeedTimer({ colors, u, inline = false }: { colors: typeof SPEED_COLORS.dark; u: number; /** In normal flow (the old card's header row) instead of pinned to the card's top-right corner. */ inline?: boolean }) {
+  const [left, setLeft] = React.useState(10);
   const pulse = React.useRef(new Animated.Value(1)).current;
+  const rays = React.useRef(new Animated.Value(1)).current;
   React.useEffect(() => {
-    const tick = setInterval(() => setLeft((n) => (n <= 1 ? 60 : n - 1)), 1000);
+    const tick = setInterval(() => setLeft((n) => (n <= 1 ? 10 : n - 1)), 1000);
     return () => clearInterval(tick);
   }, []);
   React.useEffect(() => {
-    if (left > 10) return;
-    pulse.setValue(1.12);
+    pulse.setValue(1.06);
     Animated.timing(pulse, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-  }, [left, pulse]);
-  const r = 8, c = 2 * Math.PI * r;
-  const hot = left <= 10 ? (dark ? '#FB7185' : '#E11D48') : ink;
+    rays.setValue(1);
+    Animated.timing(rays, { toValue: 0.45, duration: 900, useNativeDriver: true }).start();
+  }, [left, pulse, rays]);
+  const c = colors.urgent;
   return (
-    <Animated.View style={[s.speedClock, { borderColor: `${hot}55`, backgroundColor: `${hot}14`, transform: [{ scale: pulse }] }]}>
-      <Svg width={20} height={20} viewBox="0 0 20 20">
-        <Circle cx={10} cy={10} r={r} stroke={`${hot}33`} strokeWidth={2.5} fill="none" />
-        <Circle cx={10} cy={10} r={r} stroke={hot} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeDasharray={`${c} ${c}`} strokeDashoffset={c * (1 - left / 60)} transform="rotate(-90 10 10)" />
-      </Svg>
-      <Text style={[s.speedClockText, { color: hot }]}>{left === 60 ? '1:00' : `0:${String(left).padStart(2, '0')}`}</Text>
+    <Animated.View style={inline ? { flexShrink: 0, transform: [{ scale: pulse }] } : { position: 'absolute', right: 16.4 * u, top: 17.4 * u, transform: [{ scale: pulse }] }}>
+      <View style={{ height: 24 * u, paddingLeft: 7 * u, paddingRight: 9 * u, flexDirection: 'row', alignItems: 'center', gap: 5 * u, borderRadius: 12.5 * u, borderWidth: 1.1, borderColor: c.border, backgroundColor: c.fill, shadowColor: c.text, shadowOpacity: 0.25, shadowRadius: 8 * u, shadowOffset: { width: 0, height: 0 } }}>
+        <Svg width={16 * u} height={16 * u} viewBox="0 0 24 24" fill="none" stroke={c.text} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><Circle cx={12} cy={13.5} r={8} /><Path d="M12 5.5V3M9.5 2.6H14.5M12 13.5V9.6M12 13.5L14.4 15.2" /></Svg>
+        <Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(11.5 * MAIN), lineHeight: lh(11.5, 1.3), color: c.text, includeFontPadding: false, fontVariant: ['tabular-nums'] }}>{`0:${String(left).padStart(2, '0')}`}</Text>
+      </View>
+      <Animated.View pointerEvents="none" style={{ position: 'absolute', right: -9 * u, top: -6 * u, opacity: rays }}>
+        <Svg width={11.5 * u} height={13 * u} viewBox="-3 -7 14 16" fill="none" stroke={c.text} strokeWidth={1.5} strokeLinecap="round"><Path d="M-1.8 -1.2L0.9 -5.2M1.6 3.2L6.8 -1.2M3.4 7.7L8.9 6.1" /></Svg>
+      </Animated.View>
     </Animated.View>
+  );
+}
+
+// The icon tile of the new design: a ringed tile with a glossy illustration and faint glows. The bolt is the kit's picture; the heart (Survival Ladder) and
+// the coin (High Stakes) are drawn in the same style, in the same tile, so the three cards match. `size` is the tile's side in dp (42 * u on the new Speed
+// Round card, 36 in a standard card's header, where it takes the place of the 36 icon); everything inside scales with it.
+type TileArt = 'bolt' | 'heart' | 'coin';
+const TILE_TONES: Record<TileArt, { glow: string; dark: { borderColor: string; backgroundColor: string }; light: { borderColor: string; backgroundColor: string } }> = {
+  bolt: { glow: '250,204,21', dark: SPEED_COLORS.dark.tile, light: SPEED_COLORS.light.tile },
+  coin: { glow: '250,204,21', dark: SPEED_COLORS.dark.tile, light: SPEED_COLORS.light.tile },
+  heart: { glow: '251,113,133', dark: { borderColor: '#A94B63', backgroundColor: 'rgba(96,30,48,0.45)' }, light: { borderColor: '#F4B4C0', backgroundColor: 'rgba(255,228,233,0.75)' } },
+};
+const HEART_PATH = 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z';
+const COIN_STAR = 'M12.00 8.50L12.91 10.95L15.52 11.06L13.47 12.68L14.17 15.19L12.00 13.75L9.83 15.19L10.53 12.68L8.48 11.06L11.09 10.95Z';
+
+function ModeArtTile({ dark, size, art = 'bolt', onTint = false }: { dark: boolean; size: number; art?: TileArt; /** Day mode on the old Speed Round card: the spec's #FFF4D8 fill, with the same thin ring as the new design. */ onTint?: boolean }) {
+  const k = size / 42;
+  const tone = TILE_TONES[art];
+  const img = dark ? SPEED_IMG.dark : SPEED_IMG.light;
+  const sparks = dark ? 'rgba(234,179,8,0.7)' : 'rgba(217,119,6,0.7)';
+  return (
+    <View style={[{ width: size, height: size, borderRadius: 11 * k, borderWidth: 1.2, alignItems: 'center', justifyContent: 'center' }, dark ? tone.dark : tone.light, !dark && onTint && art === 'bolt' && { backgroundColor: '#FFF4D8' }]}>
+      <BoxGlow w={42} h={42} r={11} rgb={tone.glow} alpha={0.004} layers={10} step={1.5} dy={2.5} u={k} />
+      <Svg pointerEvents="none" width={90 * k} height={90 * k} style={{ position: 'absolute', left: -24 * k, top: -24 * k }}>
+        <Defs><RadialGradient id={`tile-glow-${art}`} cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor={`rgb(${tone.glow})`} stopOpacity={dark ? 0.05 : 0.035} /><Stop offset="0.45" stopColor={`rgb(${tone.glow})`} stopOpacity={dark ? 0.02 : 0.012} /><Stop offset="1" stopColor={`rgb(${tone.glow})`} stopOpacity="0" /></RadialGradient></Defs>
+        <Circle cx={45 * k} cy={45 * k} r={40 * k} fill={`url(#tile-glow-${art})`} />
+      </Svg>
+      {art === 'bolt' ? (
+        <Image source={img.bolt} resizeMode="contain" style={{ width: 38 * k, height: 38 * k }} />
+      ) : (
+        <View style={{ width: 38 * k, height: 38 * k }}>
+          <Svg width="100%" height="100%" viewBox="0 0 100 100" fill={art === 'heart' ? (dark ? 'rgba(251,113,133,0.7)' : 'rgba(225,29,72,0.55)') : sparks}>
+            <Path d="M18 34L23 35L20 38Z" opacity={0.75} /><Path d="M17 68L23 65L19 72Z" opacity={0.8} /><Path d="M82 34L85 38L79 37Z" opacity={0.7} /><Path d="M76 64L80 68L74 67Z" opacity={0.6} /><Path d="M52 86L54 89L51 88Z" opacity={0.8} />
+          </Svg>
+          <View style={{ position: 'absolute', left: '17%', top: '17%', width: '66%', height: '66%' }}>
+            <Svg width="100%" height="100%" viewBox="0 0 24 24">
+              {art === 'heart' ? (
+                <>
+                  <Defs><LinearGradient id="tile-heart" x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#FF9AAA" /><Stop offset="0.55" stopColor="#F43F5E" /><Stop offset="1" stopColor="#BE123C" /></LinearGradient></Defs>
+                  <Path d={HEART_PATH} fill="url(#tile-heart)" stroke="#FFB3C1" strokeWidth={0.8} strokeLinejoin="round" />
+                  <Path d="M5.6 7.2C6.4 5.9 7.9 5.4 9.2 5.9" fill="none" stroke="#FFFFFF" strokeOpacity={0.65} strokeWidth={1.3} strokeLinecap="round" />
+                </>
+              ) : (
+                <>
+                  <Defs><LinearGradient id="tile-coin" x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#FEF08A" /><Stop offset="0.55" stopColor="#EAB308" /><Stop offset="1" stopColor="#B45309" /></LinearGradient></Defs>
+                  <Circle cx={12} cy={12} r={10} fill="url(#tile-coin)" stroke="#FDE68A" strokeWidth={0.8} />
+                  <Circle cx={12} cy={12} r={7.2} fill="none" stroke="#B45309" strokeOpacity={0.45} strokeWidth={0.9} />
+                  <Path d={COIN_STAR} fill="#FFFFFF" fillOpacity={0.95} />
+                  <Path d="M6.2 8.2C7.2 6.4 9 5.5 10.8 5.5" fill="none" stroke="#FFFFFF" strokeOpacity={0.6} strokeWidth={1.2} strokeLinecap="round" />
+                </>
+              )}
+            </Svg>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// The new design's trophy: the kit's trophy picture on a small rounded tile. `size` is the tile's side in dp (28 * u on the new card, 28 in the old
+// card's footer); the picture is 24/28 of it.
+function SpeedTrophyTile({ dark, size }: { dark: boolean; size: number }) {
+  const k = size / 28;
+  const colors = dark ? SPEED_COLORS.dark : SPEED_COLORS.light;
+  return (
+    <View style={[{ width: size, height: size, borderRadius: 8 * k, borderWidth: 1, alignItems: 'center', justifyContent: 'center' }, colors.trophyTile]}>
+      <Image source={SPEED_IMG.trophy} resizeMode="contain" style={{ width: 24 * k, height: 24 * k }} />
+    </View>
   );
 }
 
@@ -350,9 +483,10 @@ function SurvivalHearts({ ink, count = SURVIVAL_LIVES }: { ink: string; count?: 
   );
 }
 
-function QuizModeRail({ dark, missed, bests = {}, survivalBonus = 0, onStart }: { dark: boolean; missed: number; /** A banked bonus heart (earned by sharing) adds a fourth heart to the Survival card. */ survivalBonus?: number; /** A "Best" line per mode kind, shown in place of the card's usual detail once there is a record. */ bests?: Partial<Record<QuizMode['kind'], string>>; onStart: (mode: QuizMode) => void }) {
+function QuizModeRail({ dark, missed, bests = {}, survivalBonus = 0, speedBest = null, onStart }: { dark: boolean; missed: number; /** The Speed Round card's best score: a label ("Best 30s:") and a value ("190 points"). */ speedBest?: { label: string; value: string } | null; /** A banked bonus heart (earned by sharing) adds a fourth heart to the Survival card. */ survivalBonus?: number; /** A "Best" line per mode kind, shown in place of the card's usual detail once there is a record. */ bests?: Partial<Record<QuizMode['kind'], string>>; onStart: (mode: QuizMode) => void }) {
   const { width } = useWindowDimensions();
-  const cardWidth = width * 0.8;
+  const cardWidth = width * 0.9; // the rail's cards; the next one still peeks in after the 12 px gap
+
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [lockedMode, setLockedMode] = React.useState<QuizMode | null>(null);
   // Locked cards go last, so a new learner sees the modes that work first.
@@ -365,7 +499,8 @@ function QuizModeRail({ dark, missed, bests = {}, survivalBonus = 0, onStart }: 
   const muted = dark ? '#94A3B8' : '#52647B';
   return (
     <View style={s.modeSection}>
-      <View style={s.modeHeading}><View><Text style={[s.h2, { color: title }]}>Ways to Play</Text><Text style={[s.sub, { color: muted }]}>Pick a mode that fits your mood.</Text></View></View>
+      <View style={s.modeHeading}><View><Text style={[s.h2, { color: title }]}>Ways to Play</Text><Text style={[s.sub, { color: muted }]}>Pick a mode that fits your mood.</Text></View>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -380,17 +515,31 @@ function QuizModeRail({ dark, missed, bests = {}, survivalBonus = 0, onStart }: 
       >
         {modes.map((mode) => {
           const ink = dark ? mode.tone : mode.toneLight;
-          const cardMuted = muted;
+          // The old Speed Round card in day mode follows its own colour spec (white to cream card, #E9D9B7 border, #172B4D title, #64748B text).
+          const oldSpeedDay = mode.kind === 'speed' && !dark;
+          const cardMuted = oldSpeedDay ? '#64748B' : muted;
           const unavailable = isModeLocked(mode, missed);
+          // The trophy footer's score: Speed Round has its own label and value; the other modes split their "Best: ..." line.
+          const otherBest = bests[mode.kind]?.replace(/^🏆\s*/, '').split(/:\s*(.+)/);
+          const trophyBest = mode.kind === 'speed' ? speedBest : otherBest && otherBest[1] ? { label: `${otherBest[0]}:`, value: otherBest[1] } : null;
           const detail = unavailable ? lockedDetail(mode) : mode.kind === 'review' ? `${missed} to revisit` : bests[mode.kind] ?? mode.detail;
           return (
             <View key={mode.id} style={{ width: cardWidth }}>
             <ShadowStack r={12} shadows={cardShadow(dark)} />
-            <Pressable accessibilityHint={unavailable ? lockedCopy(mode).body : undefined} onPress={() => (unavailable ? setLockedMode(mode) : onStart(mode))} style={[s.modeCard, cardSurface(dark), { borderColor: `${ink}55` }, unavailable && { opacity: 0.58 }]}>
-              <ModeGradient id={`grad-${mode.id}`} tone={ink} tone2={mode.tone2} dark={dark} strength={0.45} />
-              <View style={s.modeCardTop}><View style={s.modeHead}><View style={[s.modeIcon, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><ModeIcon name={mode.icon} color={ink} /></View><Text numberOfLines={2} style={[s.modeTitle, { color: title }]}>{mode.title}</Text></View>{mode.kind === 'speed' ? <SpeedClock ink={ink} dark={dark} /> : mode.kind === 'survival' ? <SurvivalHearts ink={ink} count={SURVIVAL_LIVES + survivalBonus} /> : mode.kind === 'stakes' ? <StakesCoin ink={ink} /> : cardWidth >= 260 && <View style={[s.modeBadge, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><Text style={[s.modeBadgeText, { color: ink }]}>{mode.id === 'daily' ? todayLabel() : mode.badge}</Text></View>}</View>
+            <Pressable accessibilityHint={unavailable ? lockedCopy(mode).body : undefined} onPress={() => (unavailable ? setLockedMode(mode) : onStart(mode))} style={[s.modeCard, cardSurface(dark), { borderColor: oldSpeedDay ? '#E9D9B7' : `${ink}55` }, unavailable && { opacity: 0.58 }]}>
+              {() => (<>
+              {mode.kind === 'speed' && !dark
+                ? <SpeedDayGradient id={`grad-${mode.id}`} />
+                : <ModeGradient id={`grad-${mode.id}`} tone={ink} tone2={mode.tone2} dark={dark} strength={0.45} />}
+              <View style={s.modeCardTop}><View style={s.modeHead}>{mode.kind === 'speed' ? <ModeArtTile dark={dark} size={36} art="bolt" onTint /> : mode.kind === 'survival' ? <ModeArtTile dark={dark} size={36} art="heart" /> : mode.kind === 'stakes' ? <ModeArtTile dark={dark} size={36} art="coin" /> : <View style={[s.modeIcon, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><ModeIcon name={mode.icon} color={ink} /></View>}<Text numberOfLines={2} style={[s.modeTitle, { color: oldSpeedDay ? '#172B4D' : title }]}>{mode.title}</Text></View>{mode.kind === 'speed' ? <SpeedTimer colors={dark ? SPEED_COLORS.dark : SPEED_COLORS.light} u={1} inline /> : mode.kind === 'survival' ? <SurvivalHearts ink={ink} count={SURVIVAL_LIVES + survivalBonus} /> : mode.kind === 'stakes' ? <StakesCoin ink={ink} /> : cardWidth >= 260 && <View style={[s.modeBadge, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><Text style={[s.modeBadgeText, { color: ink }]}>{mode.id === 'daily' ? todayLabel() : mode.badge}</Text></View>}</View>
               <Text numberOfLines={2} style={[s.modeDescription, { color: cardMuted }]}>{mode.description}</Text>
-              <View style={[s.modeFooter, { borderTopColor: dark ? '#283247' : '#E2E8F0', backgroundColor: dark ? 'rgba(8,12,22,0.4)' : 'rgba(255,255,255,0.7)' }]}><DetailText text={detail} color={cardMuted} /><View style={s.modeAction}><Text style={[s.modeActionText, { color: ink }]}>{unavailable ? (mode.kind === 'soon' ? 'Soon' : 'Locked') : mode.action}</Text><Icon name="arrow_forward" size={18} exact color={ink} /></View></View>
+              <View style={[s.modeFooter, (mode.kind === 'speed' || mode.kind === 'survival' || mode.kind === 'stakes') && { paddingVertical: 8 }, { borderTopColor: oldSpeedDay ? '#E8E2D7' : dark ? '#283247' : '#E2E8F0', backgroundColor: oldSpeedDay ? '#FFFFFF' : dark ? 'rgba(8,12,22,0.4)' : 'rgba(255,255,255,0.7)' }]}>{(mode.kind === 'speed' || mode.kind === 'survival' || mode.kind === 'stakes') && !unavailable
+                ? <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>{/* the new design's trophy and score: a small muted label over a bold coloured value */}
+                    <SpeedTrophyTile dark={dark} size={28} />
+                    <Text numberOfLines={1} style={{ flex: 1, fontFamily: FONT.body, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.35), color: cardMuted, includeFontPadding: false }}>{trophyBest ? trophyBest.label : 'Your best:'}{' '}<Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(11.5 * MAIN), color: trophyBest ? (dark ? '#FACC15' : '#B77906') : cardMuted }}>{trophyBest ? trophyBest.value : '—'}</Text></Text>
+                  </View>
+                : <DetailText text={detail} color={cardMuted} />}<View style={s.modeAction}><Text style={[s.modeActionText, { color: ink }]}>{unavailable ? (mode.kind === 'soon' ? 'Soon' : 'Locked') : mode.action}</Text><Icon name="arrow_forward" size={18} exact color={ink} /></View></View>
+              </>)}
             </Pressable>
             </View>
           );
@@ -522,12 +671,14 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
   const [bests, setBests] = React.useState<Partial<Record<QuizMode['kind'], string>>>({});
   // The bonus heart banked by sharing a Survival result, re-read whenever a session closes.
   const [survivalBonus, setSurvivalBonus] = React.useState(0);
+  const [speedBest, setSpeedBest] = React.useState<{ label: string; value: string } | null>(null);
   React.useEffect(() => {
     if (sessionOpen) return;
     let alive = true;
     Promise.all([loadSpeedHeadline(), loadSurvivalBestRun(), loadStakesBest(), loadSurvivalBonus()]).then(([speed, survival, stakes, bonus]) => {
       if (!alive) return;
       setSurvivalBonus(bonus);
+      setSpeedBest(speed ? { label: `Best ${SPEED_DURATIONS.find((d) => d.seconds === speed.limit)?.label ?? `${speed.limit}s`}:`, value: `${speed.best} points` } : null);
       const speedLabel = speed && (SPEED_DURATIONS.find((d) => d.seconds === speed.limit)?.label ?? `${speed.limit}s`);
       setBests({
         ...(speed ? { speed: `🏆 Best ${speedLabel}: ${speed.best} points` } : {}),
@@ -562,7 +713,7 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
         ListHeaderComponent={
           <>
             <View style={[s.band, { backgroundColor: bands.modes, paddingTop: 20, paddingBottom: 14 }]}>
-              <QuizModeRail dark={isDark} missed={missed} bests={bests} survivalBonus={survivalBonus} onStart={(mode) => {
+              <QuizModeRail dark={isDark} missed={missed} bests={bests} survivalBonus={survivalBonus} speedBest={speedBest} onStart={(mode) => {
                 if (mode.id === 'quick-mix' && onOpenSession) onOpenSession(sessions['quick-mix'], 'Quick quiz');
                 else if (mode.id === 'daily' && onOpenSession) onOpenSession(sessions.daily, 'Daily challenge');
                 else if (mode.kind === 'speed') setSpeedMode(mode);
@@ -637,7 +788,7 @@ const s = StyleSheet.create({
   modeBadge: { flexShrink: 0, maxWidth: 190, borderWidth: BW, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
   modeBadgeText: { fontFamily: FONT.mono.b, fontSize: fz(8.5 * MAIN), letterSpacing: 0.05 * 8.5 * MAIN, includeFontPadding: false },
   modeIcon: { width: 36, height: 36, borderRadius: 11, borderWidth: BW, borderColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
-  modeTitle: { flexShrink: 1, fontFamily: FONT.outfit.b, fontSize: fz(13.5 * MAIN), lineHeight: lh(13.5, 1.35), letterSpacing: -0.025 * 13.5 * MAIN, includeFontPadding: false },
+  modeTitle: { flexShrink: 1, fontFamily: FONT.outfit.b, fontSize: fz(MODE_TITLE * MAIN), lineHeight: lh(MODE_TITLE, 1.35), letterSpacing: -0.025 * MODE_TITLE * MAIN, includeFontPadding: false },
   modeDescription: { minHeight: lh(11.5, 1.4) * 2, fontFamily: FONT.body, fontSize: fz(11.5 * MAIN), lineHeight: lh(11.5, 1.4), includeFontPadding: false },
   modeFooter: { marginHorizontal: -16, marginBottom: -16, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: BW, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   modeDetail: { flex: 1, fontFamily: FONT.body, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.35), includeFontPadding: false },
