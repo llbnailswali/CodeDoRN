@@ -16,8 +16,9 @@ import { BottomNav, Header, TabId } from './shell';
 import { DARK, FONT, LIGHT } from './theme';
 import { ProfileScreen } from './ProfileScreen';
 import { StatsScreen } from './StatsScreen';
+import { BadgesScreen } from './BadgesScreen';
 import { QuizPass, QuizProgress, buildSession, buildTypeSession, getQuizBoss, getQuizSets, getQuizWorldBank, getQuizWorlds, quizPassStatus } from './quizData';
-import { buildStakesRound } from './stakes';
+import { buildStakesRound, loadStakesShield } from './stakes';
 import { SURVIVAL_LIVES, loadSurvivalBonus } from './survival';
 import { QuizQuestion } from './quizQuestions';
 import { PRACTICE_TASKS } from './practiceTasks';
@@ -70,7 +71,7 @@ export function App({ dark = true }: { dark?: boolean }) {
   // The World whose task list is open (it is a full screen over the shell, like the web's separate route).
   const [taskWorld, setTaskWorld] = React.useState<{ order: number; mode: 'writeRun' | 'debug'; single?: boolean } | null>(null);
   // A quiz being played (full screen over the shell). `world` is absent for the Quick quiz.
-  const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[]; label?: string; timeLimitSeconds?: number; /** Counts toward the current pass (sets and the full quiz), unlike a review or a quick quiz. */ track?: boolean; /** Practice on a finished set: nothing is saved, so it stays finished. */ explore?: boolean; /** Starting page and already-passed question IDs when resuming an ordered quiz. */ startIndex?: number; lockedQuestionIds?: string[]; total?: number; /** New on every start, so "Play Again" remounts the session. */ runId?: number; /** Survival Ladder: `questions` is the pool to climb through. */ survival?: boolean; /** High Stakes: bet on every answer. */ stakes?: boolean; /** Survival Ladder: hearts for this climb (3, or 4 with the bonus heart earned by sharing). */ survivalLives?: number } | null>(null);
+  const [quiz, setQuiz] = React.useState<{ world?: { order: number; title: string }; questions: import('./quizQuestions').QuizQuestion[]; label?: string; timeLimitSeconds?: number; /** Counts toward the current pass (sets and the full quiz), unlike a review or a quick quiz. */ track?: boolean; /** Practice on a finished set: nothing is saved, so it stays finished. */ explore?: boolean; /** Starting page and already-passed question IDs when resuming an ordered quiz. */ startIndex?: number; lockedQuestionIds?: string[]; total?: number; /** New on every start, so "Play Again" remounts the session. */ runId?: number; /** Survival Ladder: `questions` is the pool to climb through. */ survival?: boolean; /** High Stakes: bet on every answer. */ stakes?: boolean; stakesShield?: boolean; /** Survival Ladder: hearts for this climb (3, or 4 with the bonus heart earned by sharing). */ survivalLives?: number } | null>(null);
   const [quizHub, setQuizHub] = React.useState<{ order: number; title: string } | null>(null);
   // Lifetime results per question (never reset by a retake) and the questions answered in the current pass through the ordered quizzes.
   // Both are saved on the device, each answer as it is given, so a quiz can be left at any point and continued later.
@@ -99,6 +100,7 @@ export function App({ dark = true }: { dark?: boolean }) {
   // The World whose lessons are listed (the Curriculum screen).
   const [curriculumWorld, setCurriculumWorld] = React.useState<number | null>(null);
   const [statsOpen, setStatsOpen] = React.useState(false);
+  const [badgesOpen, setBadgesOpen] = React.useState(false);
   // The lesson being played (the five-stage screen, full screen over everything).
   const [lesson, setLesson] = React.useState<{ world: number; title: string } | null>(null);
   const p = isDark ? DARK : LIGHT;
@@ -141,6 +143,10 @@ export function App({ dark = true }: { dark?: boolean }) {
         setQuizHub(null);
         return true;
       }
+      if (badgesOpen) {
+        setBadgesOpen(false);
+        return true;
+      }
       if (statsOpen) {
         setStatsOpen(false);
         return true;
@@ -156,7 +162,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       return false;
     });
     return () => sub.remove();
-  }, [helpOpen, quizHub, taskWorld, quiz, curriculumWorld, statsOpen]);
+  }, [helpOpen, quizHub, taskWorld, quiz, curriculumWorld, statsOpen, badgesOpen]);
 
   // The Learn, Quiz and Practice tabs stay mounted (hidden when not shown), so each keeps its scroll position and nothing is re-measured.
   const selectTab = React.useCallback((nextTab: TabId) => {
@@ -234,7 +240,10 @@ export function App({ dark = true }: { dark?: boolean }) {
     const bonus = await loadSurvivalBonus(); // one extra heart if the last result was shared
     setQuiz({ questions: getQuizWorlds().flatMap((w) => w.questions), label: 'Survival Ladder', survival: true, survivalLives: SURVIVAL_LIVES + bonus, runId: Date.now() });
   }, []);
-  const startStakes = React.useCallback(() => setQuiz({ questions: buildStakesRound(getQuizWorlds(), quizProgress), label: 'High Stakes', stakes: true, runId: Date.now() }), [quizProgress]);
+  const startStakes = React.useCallback(async () => {
+    const stakesShield = await loadStakesShield();
+    setQuiz({ questions: buildStakesRound(getQuizWorlds(), quizProgress), label: 'High Stakes', stakes: true, stakesShield, runId: Date.now() });
+  }, [quizProgress]);
   const openQuizType = React.useCallback((filter: import('./quizData').QuizFilter, label: string) => {
     const questions = buildTypeSession(getQuizWorlds(), filter);
     if (questions.length) setQuiz({ questions, label });
@@ -273,16 +282,18 @@ export function App({ dark = true }: { dark?: boolean }) {
 
   // Full-screen screens sit on top of the ones below them. A covered screen is switched to display: none, so Android neither lays it out
   // nor draws it on every frame (the Home journey alone is hundreds of views plus a large SVG), while its state and scroll position stay.
-  const baseCovered = statsOpen || curriculumWorld !== null || lesson !== null || taskWorld !== null || quiz !== null || quizHub !== null;
+  const baseCovered = statsOpen || badgesOpen || curriculumWorld !== null || lesson !== null || taskWorld !== null || quiz !== null || quizHub !== null;
   const curriculumCovered = lesson !== null || taskWorld !== null || quiz !== null;
   const quizHubCovered = quiz !== null;
 
+  const tp = isDark ? p : { ...p, page: '#F9F7F3' };
+
   return (
-    <View style={{ flex: 1, backgroundColor: p.page }}>
+    <View style={{ flex: 1, backgroundColor: tp.page }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={{ flex: 1, display: baseCovered ? 'none' : 'flex' }}>
       <Header
-        p={p}
+        p={tp}
         badge={BADGES[tab]}
         showGap={tab === 'learn'}
         gap={gap}
@@ -295,7 +306,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       <View style={{ flex: 1 }}>
         <View pointerEvents={tab === 'learn' ? 'auto' : 'none'} style={show('learn')}>
           <HomeListContent
-            p={p}
+            p={tp}
             gap={gap}
             journeyVariant={journeyVariant}
             onOpenWorld={openCurriculumWorld}
@@ -306,17 +317,22 @@ export function App({ dark = true }: { dark?: boolean }) {
           />
         </View>
         <View pointerEvents={tab === 'quiz' ? 'auto' : 'none'} style={show('quiz')}>
-          <QuizContent p={p} progress={quizProgress} onOpenQuiz={openQuizCard} onOpenType={openQuizType} onOpenSession={(questions, label) => setQuiz({ questions, label })} onOpenSpeedRound={startSpeedRound} onOpenSurvival={startSurvival} onOpenStakes={startStakes} sessionOpen={quiz !== null} showAccentBorder={showAccentBorder} />
+          <QuizContent p={tp} progress={quizProgress} onOpenQuiz={openQuizCard} onOpenType={openQuizType} onOpenSession={(questions, label) => setQuiz({ questions, label })} onOpenSpeedRound={startSpeedRound} onOpenSurvival={startSurvival} onOpenStakes={startStakes} sessionOpen={quiz !== null} showAccentBorder={showAccentBorder} />
         </View>
         <View pointerEvents={tab === 'practice' ? 'auto' : 'none'} style={show('practice')}>
-          <PracticeContent p={p} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} showAccentBorder={showAccentBorder} />
+          <PracticeContent p={tp} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} onOpenAchievements={() => setBadgesOpen(true)} showAccentBorder={showAccentBorder} />
         </View>
         <View pointerEvents={tab === 'profile' ? 'auto' : 'none'} style={show('profile')}>
-          <ProfileScreen p={p} quizProgress={quizProgress} journeyVariant={journeyVariant} onJourneyVariant={setJourneyVariant} onToggleTheme={toggleTheme} onOpenStats={() => setStatsOpen(true)} showAccentBorder={showAccentBorder} onAccentBorder={setShowAccentBorder} />
+          <ProfileScreen p={tp} quizProgress={quizProgress} journeyVariant={journeyVariant} onJourneyVariant={setJourneyVariant} onToggleTheme={toggleTheme} onOpenStats={() => setStatsOpen(true)} onOpenBadges={() => setBadgesOpen(true)} showAccentBorder={showAccentBorder} onAccentBorder={setShowAccentBorder} />
         </View>
       </View>
       <BottomNav p={p} active={tab} onSelect={selectTab} />
       </View>
+      {badgesOpen && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: tp.page }]}>
+          <BadgesScreen p={tp} topInset={topInset} onBack={() => setBadgesOpen(false)} onGoTab={(next) => { setBadgesOpen(false); selectTab(next); }} />
+        </View>
+      )}
       {statsOpen && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: p.page }]}>
           <StatsScreen p={p} topInset={topInset} onBack={() => setStatsOpen(false)} onToggleTheme={toggleTheme} quizProgress={quizProgress} />
@@ -371,7 +387,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       )}
       {quiz !== null && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 110, backgroundColor: p.page }]}>
-          <QuizSessionScreen key={`${quiz.label}-${quiz.startIndex ?? 0}-${quiz.runId ?? 0}`} p={p} world={quiz.world} label={quiz.label} questions={quiz.questions} timeLimitSeconds={quiz.timeLimitSeconds} nextLabel={nextAfterQuiz?.label} onNext={nextAfterQuiz && quiz.world ? () => startOrdered(quiz.world!, nextAfterQuiz.questions, nextAfterQuiz.label) : undefined} startIndex={quiz.startIndex} lockedQuestionIds={quiz.lockedQuestionIds} totalOverride={quiz.total} topInset={topInset} bottomInset={safeAreaInsets.bottom} onExit={() => setQuiz(null)} survival={quiz.survival} survivalLives={quiz.survivalLives} stakes={quiz.stakes} onPlayAgain={quiz.stakes ? startStakes : quiz.survival ? startSurvival : quiz.timeLimitSeconds ? () => startSpeedRound(quiz.timeLimitSeconds!) : undefined} onAnswer={(question, correct) => { if (!quiz.explore) recordAnswer(question, correct, !!quiz.track); }} />
+          <QuizSessionScreen key={`${quiz.label}-${quiz.startIndex ?? 0}-${quiz.runId ?? 0}`} p={p} world={quiz.world} label={quiz.label} questions={quiz.questions} timeLimitSeconds={quiz.timeLimitSeconds} nextLabel={nextAfterQuiz?.label} onNext={nextAfterQuiz && quiz.world ? () => startOrdered(quiz.world!, nextAfterQuiz.questions, nextAfterQuiz.label) : undefined} startIndex={quiz.startIndex} lockedQuestionIds={quiz.lockedQuestionIds} totalOverride={quiz.total} topInset={topInset} bottomInset={safeAreaInsets.bottom} onExit={() => setQuiz(null)} survival={quiz.survival} survivalLives={quiz.survivalLives} stakes={quiz.stakes} stakesShield={quiz.stakesShield} onPlayAgain={quiz.stakes ? startStakes : quiz.survival ? startSurvival : quiz.timeLimitSeconds ? () => startSpeedRound(quiz.timeLimitSeconds!) : undefined} onAnswer={(question, correct) => { if (!quiz.explore) recordAnswer(question, correct, !!quiz.track); }} />
         </View>
       )}
       {quizHub !== null && (

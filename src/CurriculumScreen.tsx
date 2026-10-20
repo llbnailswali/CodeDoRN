@@ -369,7 +369,7 @@ export const CurriculumScreen = React.memo(function CurriculumScreen({
               highlightTerms={LESSON_TITLE_HIGHLIGHTS[world.order]?.[index]}
               index={index}
               count={world.lessons.length}
-              status={index < completed ? 'completed' : index === completed && completed < total ? 'current' : 'upcoming'}
+              status={index < completed ? 'completed' : 'current'}
               dark={dark}
               onPress={() => onOpenLesson?.(world.order, title)}
             />

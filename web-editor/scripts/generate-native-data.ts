@@ -70,7 +70,7 @@ export const CURRICULUM_WORLDS: CurriculumWorld[] = `;
     title: w.title,
     subtitle: w.subtitle,
     lessonCount: w.lessons.length,
-    available: w.lessons.some((l) => !!l.fiveStageLessonKey),
+    available: true,
     lessons: w.lessons.filter((l) => l.skill !== 'boss').map((l) => l.title),
     boss: w.bossTitle || null,
   }));

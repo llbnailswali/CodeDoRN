@@ -3,12 +3,21 @@ import type { QuizProgress, QuizWorld } from './quizData';
 import type { QuizQuestion } from './quizQuestions';
 
 /**
- * High Stakes: 8 hard questions, no timer, 100 coins to start. After picking an answer the learner bets on how sure they are, and only
+ * High Stakes: 10 challenging questions, no timer, 100 coins to start. After picking an answer the learner bets on how sure they are, and only
  * then can check it. The payouts make honest betting pay best: Sure wins when you are right more than about 60% of the time, Think so
  * at 50-60%, Guessing below that.
  */
 export const STAKES_START = 100;
-export const STAKES_ROUND = 8;
+export const STAKES_ROUND = 10;
+export const STAKES_SHIELD_SAVINGS = 10;
+const STAKES_SHIELD_KEY = 'codedo.stakes.safetyShield';
+
+/** One banked shield for the next High Stakes run; spent on its first wrong bet. */
+export async function loadStakesShield(): Promise<boolean> {
+  try { return (await AsyncStorage.getItem(STAKES_SHIELD_KEY)) === '1'; } catch { return false; }
+}
+export const grantStakesShield = () => AsyncStorage.setItem(STAKES_SHIELD_KEY, '1');
+export const spendStakesShield = () => AsyncStorage.removeItem(STAKES_SHIELD_KEY).catch(() => {});
 
 export type BetId = 'sure' | 'think' | 'guess';
 export const BETS: { id: BetId; emoji: string; label: string; win: number; lose: number }[] = [
@@ -30,7 +39,7 @@ export function reachedWorldOrder(worlds: QuizWorld[], progress: QuizProgress) {
   return Math.max(1, ...answered);
 }
 
-/** Eight hard questions from reached Worlds; topped up with medium ones from the same Worlds if there are not enough hard ones. */
+/** Ten hard questions from reached Worlds; topped up with medium ones from the same Worlds if there are not enough hard ones. */
 export function buildStakesRound(worlds: QuizWorld[], progress: QuizProgress): QuizQuestion[] {
   const reached = reachedWorldOrder(worlds, progress);
   const pool = worlds.filter((w) => w.order <= reached).flatMap((w) => w.questions);

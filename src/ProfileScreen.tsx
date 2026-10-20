@@ -1,122 +1,88 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { BW, Icon, fz } from './shell';
+import { BADGES, RARITY_COLOR, BadgeDef, UNLOCKED_FOR_TESTING } from './badges';
 import { FONT, Palette } from './theme';
 import { QuizProgress, quizProgressStats } from './quizData';
 import type { JourneyVariant } from './App';
 
-const AVATAR_COLOR = '#6366F1';
-const PROFILE_NAME = 'Alex Vance';
+const INDIGO = '#4338CA';
 
-const initialsOf = (name: string) => {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-};
-
-export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress, journeyVariant, onJourneyVariant, onToggleTheme, onOpenStats, showAccentBorder, onAccentBorder }: {
-  p: Palette; quizProgress: QuizProgress; journeyVariant: JourneyVariant; onJourneyVariant: (variant: JourneyVariant) => void; onToggleTheme: () => void; onOpenStats: () => void; showAccentBorder: boolean; onAccentBorder: (visible: boolean) => void;
+export const ProfileScreen = React.memo(function ProfileScreen({ p, quizProgress, journeyVariant, onJourneyVariant, onToggleTheme, onOpenStats, onOpenBadges, showAccentBorder, onAccentBorder }: {
+  p: Palette; quizProgress: QuizProgress; journeyVariant: JourneyVariant; onJourneyVariant: (variant: JourneyVariant) => void; onToggleTheme: () => void; onOpenStats: () => void; onOpenBadges: () => void; showAccentBorder: boolean; onAccentBorder: (visible: boolean) => void;
 }) {
   const dark = p.isDark;
-  const title = dark ? '#F1F5F9' : '#2E3040';
-  const muted = dark ? '#94A3B8' : '#64748B';
-  const panel = dark ? { backgroundColor: '#151B28', borderColor: 'rgba(255,255,255,0.10)' } : { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' };
-  const row = dark ? { backgroundColor: '#0F1422', borderColor: 'rgba(255,255,255,0.06)' } : { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' };
-
+  const text = dark ? '#F8FAFC' : '#202126';
+  const muted = dark ? '#A7B0C0' : '#5D5D6F';
+  const surface = dark ? '#171B25' : '#FFFFFF';
+  const soft = dark ? '#202633' : '#EFEEEC';
+  const border = dark ? 'rgba(255,255,255,0.09)' : '#EEECE8';
+  const page = dark ? p.page : '#F9F7F3';
+  const bandA = dark ? 'rgba(148,163,184,0.05)' : 'rgba(120,98,60,0.05)';
+  const bandB = dark ? 'rgba(148,163,184,0.09)' : 'rgba(120,98,60,0.10)';
   const stats = React.useMemo(() => quizProgressStats(quizProgress), [quizProgress]);
-
-  return <ScrollView style={{ flex: 1, backgroundColor: p.page }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-    {/* Account */}
-    <View style={[s.profile, panel]}>
-      <View style={[s.avatar, { backgroundColor: AVATAR_COLOR }]}><Text style={s.avatarText}>{initialsOf(PROFILE_NAME)}</Text></View>
-      <View style={{ flex: 1 }}>
-        <Text style={[s.name, { color: title }]} numberOfLines={1}>{PROFILE_NAME}</Text>
-        <Text style={[s.sub, { color: muted }]}>Junior Kotlin Developer</Text>
+  const answered = stats.answeredQuestions;
+  const accuracy = stats.accuracy ?? 0;
+  return <ScrollView style={{ flex: 1, backgroundColor: page }} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+    <View style={[s.band, { backgroundColor: bandA }]}>
+    <View style={[s.card, { backgroundColor: surface, borderColor: border }]}>
+      <View style={s.identityRow}>
+        <View style={s.avatarWrap}><View style={[s.avatar, { backgroundColor: soft, borderColor: border }]}><Text style={s.seedling}>🌱</Text></View><View style={s.camera}><SettingsIcon name="camera" size={13} color="#FFFFFF" /></View></View>
+        <View style={{ flex: 1, minWidth: 0 }}><Text style={[s.name, { color: text }]}>New Coder</Text><Text style={[s.handle, { color: muted }]}>@coder_409</Text><View style={[s.level, { backgroundColor: soft }]}><Text style={[s.levelText, { color: muted }]}>Level 1 • Code Explorer</Text></View></View>
+        <Pressable style={[s.edit, { borderColor: border }]}><SettingsIcon name="pencil" size={16} color={text} /><Text style={[s.editText, { color: text }]}>Edit</Text></Pressable>
       </View>
     </View>
-    {/* Stats: opens the learner insights screen */}
-    <Pressable onPress={onOpenStats} accessibilityRole="button" accessibilityLabel="Stats" style={[s.row, row]}>
-      <Icon name="insights" size={20} exact color="#818CF8" />
-      <View style={{ flex: 1 }}><Text style={[s.rowTitle, { color: title }]}>Stats</Text><Text style={[s.sub, { color: muted }]}>Your quiz progress and available learning content</Text></View>
-      <Icon name="chevron_right" size={20} exact color={muted} />
-    </Pressable>
-
-    {/* Quiz progress (only what the app really records) */}
-    <Section title="Quiz progress" titleColor={muted}>
-      <View style={s.statGrid}>
-        <Stat label="Questions answered" value={String(stats.answeredQuestions)} row={row} title={title} muted={muted} />
-        <Stat label="Accuracy" value={stats.accuracy === null ? '-' : `${stats.accuracy}%`} row={row} title={title} muted={muted} />
-        <Stat label="To review" value={String(stats.toReview)} row={row} title={title} muted={muted} />
-      </View>
-    </Section>
-    <Section title="Card styling" titleColor={muted}>
-      <View style={[s.row, row]}>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.rowTitle, { color: title }]}>Color accent border</Text>
-          <Text style={[s.sub, { color: muted }]}>Show the colored left edge on Quiz and Practice cards</Text>
-        </View>
-        <Pressable onPress={() => onAccentBorder(!showAccentBorder)} style={[s.variant, showAccentBorder && { backgroundColor: '#6366F1' }]}>
-          <Text style={[s.variantText, { color: showAccentBorder ? '#FFFFFF' : muted }]}>{showAccentBorder ? 'On' : 'Off'}</Text>
-        </Pressable>
-      </View>
-    </Section>
-
-    {/* Theme */}
-    <Section title="Appearance" titleColor={muted}>
-      <View style={[s.row, row]}>
-        <Icon name={dark ? 'dark_mode' : 'light_mode'} size={20} exact color="#818CF8" />
-        <View style={{ flex: 1 }}><Text style={[s.rowTitle, { color: title }]}>Theme</Text><Text style={[s.sub, { color: muted }]}>{dark ? 'Obsidian Night Mode' : 'Silk Neumorphic Light'}</Text></View>
-        <View style={s.sizeGroup}>{(['Dark', 'Light'] as const).map((mode) => { const on = (mode === 'Dark') === dark; return <Pressable key={mode} onPress={() => { if (!on) onToggleTheme(); }} style={[s.mode, on && { backgroundColor: '#6366F1' }]}><Text style={{ color: on ? '#FFF' : muted, fontFamily: FONT.outfit.b, fontSize: fz(11) }}>{mode}</Text></Pressable>; })}</View>
-      </View>
-    </Section>
-    <Section title="Learning path" titleColor={muted}>
-      <View style={[s.pathPicker, row]}>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.rowTitle, { color: title }]}>Chip shape</Text>
-          <Text style={[s.sub, { color: muted }]}>Choose the shape of the Quiz, Write and Debug chips</Text>
-        </View>
-        <View style={s.variantGroup}>
-          {([
-            ['milestones', 'Square'],
-            ['milestonesCircle', 'Circle'],
-            ['milestonesDiamond', 'Diamond'],
-            ['milestonesPill', 'Pill'],
-          ] as const).map(([variant, label]) => {
-            const selected = journeyVariant === variant;
-            return <Pressable key={variant} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => onJourneyVariant(variant)} style={[s.variant, selected && { backgroundColor: '#6366F1' }]}>
-              <Text style={[s.variantText, { color: selected ? '#FFFFFF' : muted }]}>{label}</Text>
-            </Pressable>;
-          })}
-        </View>
-      </View>
-    </Section>
+    <View style={s.statsGrid}>
+      <QuickStat label="STREAK" value="0" suffix="Days" note="Start today" icon="streak" iconColor="#B42318" noteColor="#B42318" surface={surface} border={border} text={text} muted={muted} />
+      <QuickStat label="SOLVED" value={String(answered)} suffix="" note="Challenges" icon="solved" iconColor={INDIGO} surface={surface} border={border} text={text} muted={muted} />
+      <QuickStat label="BADGES" value={String(UNLOCKED_FOR_TESTING.size)} suffix={`/ ${BADGES.length}`} note="Unlocked" icon="badges" iconColor="#46654F" surface={surface} border={border} text={text} muted={muted} />
+    </View>
+    </View>
+    <View style={[s.band, { backgroundColor: bandB }]}>
+    <View style={[s.card, { backgroundColor: surface, borderColor: border }]}>
+      <View style={s.titleRow}><View><Text style={[s.cardTitle, { color: text }]}>Kotlin Fundamentals</Text><Text style={[s.caption, { color: muted }]}>Track 1 · Beginner</Text></View><Text style={[s.percent, { color: muted }]}>{answered ? `${accuracy}%` : '0%'}</Text></View>
+      <View style={[s.progressTrack, { backgroundColor: soft }]}><View style={[s.progressFill, { width: answered ? `${Math.max(2, accuracy)}%` : '2%' }]} /></View>
+      <View style={[s.metrics, { borderColor: border }]}><Metric label="Worlds" value="0 / 10" text={text} muted={muted} /><Metric label="Lessons" value="0" text={text} muted={muted} divided /><Metric label="Practice" value="0" text={text} muted={muted} /></View>
+      <View style={[s.startBanner, { backgroundColor: soft }]}><View style={{ flex: 1 }}><Text style={[s.startTitle, { color: text }]}>World 1: Kotlin Awakening</Text><Text style={[s.startSub, { color: muted }]} numberOfLines={1}>Start your very first 2-minute lesson</Text></View><View style={s.startButton}><Text style={s.startButtonText}>Start Lesson</Text><Icon name="arrow_forward" size={15} exact color="#FFFFFF" /></View></View>
+    </View>
+    <View style={[s.card, { backgroundColor: surface, borderColor: border }]}><SectionHeader title="Achievements" tag={`${UNLOCKED_FOR_TESTING.size} / ${BADGES.length}`} action="View All" onAction={onOpenBadges} text={text} muted={muted} /><ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.badgeScroll} contentContainerStyle={s.badgeRow}>{BADGES.slice(0, 6).map((b, i) => <Badge key={b.id} badge={b} next={i === 0} dark={dark} text={text} muted={muted} soft={soft} border={border} />)}</ScrollView></View>
+    <View style={[s.card, { backgroundColor: surface, borderColor: border }]}><SectionHeader title="Coding Activity" subtitle="Past 4 weeks" action="Details" text={text} muted={muted} /><View style={[s.activity, { backgroundColor: soft }]}>{['W1', 'W2', 'W3', 'Today'].map((week, i) => <View key={week} style={s.week}><Text style={[s.weekText, { color: i === 3 ? INDIGO : muted }]}>{week}</Text><View style={s.dotRow}>{[0, 1, 2, 3].map((dot) => <View key={dot} style={[s.dot, { backgroundColor: i === 3 && dot === 3 ? INDIGO : dark ? '#303847' : '#E3E1E0' }, i === 3 && dot === 3 && s.todayDot]} />)}</View></View>)}</View><Text style={[s.activityHint, { color: muted }]}>Start your first streak today by completing a quick challenge</Text></View>
+    </View>
+    <View style={[s.band, { backgroundColor: bandA }]}>
+    <View style={[s.settingsCard, { backgroundColor: surface, borderColor: border }]}><Text style={[s.settingsTitle, { color: text }]}>SETTINGS</Text><SettingRow icon="analytics" label="Learning Statistics" text={text} muted={muted} onPress={onOpenStats} /><SettingRow icon="notifications" label="Notifications & Reminders" text={text} muted={muted} /><SettingRow icon="tune" label="App Preferences" text={text} muted={muted} onPress={onToggleTheme} /><SettingRow icon="help" label="Help & Feedback" text={text} muted={muted} /><SettingRow icon="info" label="About CodeDo" text={text} muted={muted} detail="v2.4" /><View style={[s.preference, { borderTopColor: border }]}><Text style={[s.preferenceLabel, { color: muted }]}>Accent borders</Text><Pressable onPress={() => onAccentBorder(!showAccentBorder)} style={[s.toggle, { backgroundColor: showAccentBorder ? INDIGO : soft }]}><Text style={[s.toggleText, { color: showAccentBorder ? '#FFFFFF' : muted }]}>{showAccentBorder ? 'On' : 'Off'}</Text></Pressable></View><View style={s.shapeRow}>{(['milestones', 'milestonesCircle', 'milestonesDiamond', 'milestonesPill'] as const).map((variant, index) => <Pressable key={variant} onPress={() => onJourneyVariant(variant)} style={[s.shape, { backgroundColor: journeyVariant === variant ? INDIGO : soft }]}><Text style={[s.shapeText, { color: journeyVariant === variant ? '#FFFFFF' : muted }]}>{['Square', 'Circle', 'Diamond', 'Pill'][index]}</Text></Pressable>)}</View></View>
+    <Pressable style={s.logout}><Icon name="replay" size={19} exact color="#B42318" /><Text style={s.logoutText}>Log Out of CodeDo</Text></Pressable>
+    </View>
   </ScrollView>;
 });
 
-function Stat({ label, value, row, title, muted }: { label: string; value: string; row: object; title: string; muted: string }) {
-  return <View style={[s.stat, row]}><Text style={[s.statValue, { color: title }]}>{value}</Text><Text style={[s.sub, { color: muted }]}>{label}</Text></View>;
+function QuickStat({ label, value, suffix, note, icon, iconColor, noteColor, surface, border, text, muted }: { label: string; value: string; suffix: string; note: string; icon: string; iconColor: string; noteColor?: string; surface: string; border: string; text: string; muted: string }) { return <View style={[s.quickStat, { backgroundColor: surface, borderColor: border }]}><View style={s.statTop}><Text style={[s.statLabel, { color: muted }]}>{label}</Text><SettingsIcon name={icon} size={18} color={iconColor} /></View><Text style={[s.statValue, { color: text }]}>{value} <Text style={[s.statSuffix, { color: muted }]}>{suffix}</Text></Text><Text style={[s.statNote, { color: noteColor ?? muted }]}>{note}</Text></View>; }
+function Metric({ label, value, text, muted, divided = false }: { label: string; value: string; text: string; muted: string; divided?: boolean }) { return <View style={[s.metric, divided && s.metricDivided]}><Text style={[s.metricLabel, { color: muted }]}>{label}</Text><Text style={[s.metricValue, { color: text }]}>{value}</Text></View>; }
+function SectionHeader({ title, subtitle, tag, action, onAction, text, muted }: { title: string; subtitle?: string; tag?: string; action?: string; onAction?: () => void; text: string; muted: string }) { return <View style={s.sectionHead}><View style={s.headingGroup}><Text style={[s.cardTitle, { color: text }]}>{title}</Text>{tag && <View style={s.tag}><Text style={[s.tagText, { color: muted }]}>{tag}</Text></View>}{subtitle && <Text style={[s.caption, { color: muted }]}>{subtitle}</Text>}</View>{action && <Pressable onPress={onAction} hitSlop={8} style={s.action}><Text style={s.actionText}>{action}</Text><Icon name="chevron_right" size={16} exact color={INDIGO} /></Pressable>}</View>; }
+function Badge({ badge, next, dark, text, muted, soft, border }: { badge: BadgeDef; next?: boolean; dark: boolean; text: string; muted: string; soft: string; border: string }) {
+  const rarity = RARITY_COLOR[badge.rarity][dark ? 'dark' : 'light'];
+  return <View style={[s.badge, { backgroundColor: next ? 'rgba(238,238,255,0.5)' : soft, borderColor: next ? '#C9C5FF' : border }]}>
+    <View style={[s.badgeIcon, { backgroundColor: next ? '#E4E2FF' : dark ? '#2A3140' : '#E9E7E6' }]}><Text style={[s.badgeEmoji, !next && { opacity: 0.4 }]}>{badge.emoji}</Text>{!next && <View style={s.badgeLock}><Icon name="lock" size={10} exact color="#7C7D8C" /></View>}</View>
+    <Text style={[s.badgeTitle, { color: text }]} numberOfLines={1}>{badge.title}</Text>
+    <Text style={[s.badgeSub, { color: muted }]} numberOfLines={3}>{badge.condition}</Text>
+    <Text style={[s.badgeRarity, { color: rarity }]}>{badge.rarity.toUpperCase()}</Text>
+  </View>;
 }
-function Section({ title, titleColor, children }: { title: string; titleColor: string; children: React.ReactNode }) { return <View style={s.section}><Text style={[s.sectionTitle, { color: titleColor }]}>{title.toUpperCase()}</Text>{children}</View>; }
+const SETTINGS_ICON_PATHS: Record<string, string> = {
+  analytics: 'M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3ZM8 17v-2M12 17v-5M16 17v-8',
+  notifications: 'M6 10a6 6 0 0 1 12 0c0 4.5 1.5 5.5 2 6.5H4c.5-1 2-2 2-6.5ZM12 3v1M10 19.5a2 2 0 0 0 4 0',
+  tune: 'M3 7h7M14 7h7M10 4.5v5M14 4.5v5M3 12h2M9 12h12M5 9.5v5M9 9.5v5M3 17h9M16 17h5M12 14.5v5M16 14.5v5',
+  help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17v.01',
+  streak: 'M12 3c1 3.5 5.5 5.5 5.5 10a5.5 5.5 0 0 1-11 0c0-2.2 1-3.6 2.2-4.8.2 1.8 1 2.8 2 3 0-3-.7-5 1.3-8.2ZM12 18a2.2 2.2 0 0 0 2.2-2.2c0-1.6-2.2-2.6-2.2-4.3-1.1 1.1-2.2 2.700-2.200 4.300A2.200 2.200 0 0 0 12 18Z',
+  solved: 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM3 8h18M7 12l3 2-3 2M12 16h4',
+  badges: 'M7 3h10v5l-5 3-5-3V3ZM12 14l1.200 2.500 2.800.400-2 2 .500 2.800-2.500-1.300-2.500 1.300.500-2.800-2-2 2.800-.400L12 14Z',
+  camera: 'M4 8.5A1.500 1.500 0 0 1 5.500 7h2l1.200-2h6.600l1.200 2h2A1.500 1.500 0 0 1 20 8.500v9a1.500 1.500 0 0 1-1.500 1.500h-13A1.500 1.500 0 0 1 4 17.500v-9ZM12 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
+  pencil: 'M4 20l1-4L16.500 4.500a1.800 1.800 0 0 1 2.500 0l.5.500a1.800 1.800 0 0 1 0 2.500L8 19l-4 1ZM14.500 6.500l3 3',
+  info: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 11v6M12 7.5v.01',
+};
+function SettingsIcon({ name, color, size = 22 }: { name: string; color: string; size?: number }) { return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d={SETTINGS_ICON_PATHS[name] ?? SETTINGS_ICON_PATHS.info} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /></Svg>; }
+function SettingRow({ icon, label, detail, text, muted, onPress }: { icon: string; label: string; detail?: string; text: string; muted: string; onPress?: () => void }) { return <Pressable onPress={onPress} style={s.setting}><SettingsIcon name={icon} color={muted} /><Text style={[s.settingLabel, { color: text }]}>{label}</Text>{detail ? <Text style={[s.detail, { color: muted }]}>{detail}</Text> : <Icon name="chevron_right" size={20} exact color={muted} />}</Pressable>; }
 
 const s = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 40, gap: 14 },
-  profile: { borderWidth: BW, borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatar: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#FFFFFF', fontFamily: FONT.outfit.b, fontSize: fz(22) },
-  name: { fontFamily: FONT.outfit.b, fontSize: fz(18), marginBottom: 2 },
-  sub: { fontFamily: FONT.body, fontSize: fz(11), lineHeight: fz(16) },
-  section: { borderRadius: 16, padding: 14, gap: 10 },
-  sectionTitle: { fontFamily: FONT.outfit.b, fontSize: fz(11), letterSpacing: 1 },
-  row: { minHeight: 58, borderWidth: BW, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  rowTitle: { fontFamily: FONT.outfit.b, fontSize: fz(12), marginBottom: 2 },
-  label: { fontFamily: FONT.outfit.b, fontSize: fz(11), marginBottom: 6 },
-  statGrid: { flexDirection: 'row', gap: 8 },
-  stat: { flex: 1, borderWidth: BW, borderRadius: 12, padding: 12, gap: 2 },
-  statValue: { fontFamily: FONT.outfit.b, fontSize: fz(22) },
-  sizeGroup: { flexDirection: 'row', gap: 3, padding: 3, borderRadius: 8, borderWidth: BW, borderColor: '#CBD5E1' },
-  mode: { paddingHorizontal: 10, height: 26, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  pathPicker: { minHeight: 82, alignItems: 'flex-start' },
-  variantGroup: { width: '100%', flexDirection: 'row', gap: 6, marginTop: 8 },
-  variant: { flex: 1, minHeight: 30, borderRadius: 7, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  variantText: { fontFamily: FONT.outfit.b, fontSize: fz(10) },
+  content: { paddingBottom: 36 }, band: { padding: 18, gap: 16 }, card: { borderWidth: BW, borderRadius: 24, padding: 20, shadowColor: '#3A3226', shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 2 }, identityRow: { flexDirection: 'row', alignItems: 'center', gap: 13 }, avatarWrap: { width: 64, height: 64 }, avatar: { width: 62, height: 62, borderRadius: 31, borderWidth: 2, alignItems: 'center', justifyContent: 'center' }, seedling: { fontSize: 29 }, camera: { position: 'absolute', right: 0, bottom: 0, width: 23, height: 23, borderRadius: 12, backgroundColor: INDIGO, borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }, name: { fontFamily: FONT.outfit.b, fontSize: fz(16), lineHeight: fz(20) }, handle: { fontFamily: FONT.body, fontSize: fz(13), marginTop: 1 }, level: { alignSelf: 'flex-start', marginTop: 7, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 7 }, levelText: { fontFamily: FONT.outfit.sb, fontSize: fz(10) }, edit: { height: 42, paddingHorizontal: 13, borderWidth: BW, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }, editText: { fontFamily: FONT.outfit.sb, fontSize: fz(12) }, statsGrid: { flexDirection: 'row', gap: 10 }, quickStat: { flex: 1, minHeight: 116, padding: 14, borderRadius: 20, borderWidth: BW, shadowColor: '#3A3226', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 }, statTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }, statLabel: { fontFamily: FONT.outfit.md, fontSize: fz(10), letterSpacing: 0.8 }, statValue: { fontFamily: FONT.outfit.b, fontSize: fz(22), lineHeight: fz(25) }, statSuffix: { fontFamily: FONT.body, fontSize: fz(11) }, statNote: { fontFamily: FONT.body, fontSize: fz(10), marginTop: 3 }, titleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 13 }, cardTitle: { fontFamily: FONT.outfit.b, fontSize: fz(13), lineHeight: fz(18) }, caption: { fontFamily: FONT.body, fontSize: fz(11), marginTop: 2 }, percent: { fontFamily: FONT.outfit.sb, fontSize: fz(12), marginTop: 8 }, progressTrack: { height: 7, borderRadius: 8, overflow: 'hidden' }, progressFill: { height: '100%', borderRadius: 8, backgroundColor: INDIGO }, metrics: { flexDirection: 'row', marginTop: 15, marginBottom: 15, borderTopWidth: BW, borderBottomWidth: BW, paddingVertical: 10 }, metric: { flex: 1, alignItems: 'center' }, metricDivided: { borderLeftWidth: BW, borderRightWidth: BW, borderColor: '#E9E7E5' }, metricLabel: { fontFamily: FONT.body, fontSize: fz(10) }, metricValue: { fontFamily: FONT.outfit.b, fontSize: fz(13), marginTop: 5 }, startBanner: { borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }, startTitle: { fontFamily: FONT.outfit.b, fontSize: fz(12) }, startSub: { fontFamily: FONT.body, fontSize: fz(10), marginTop: 4 }, startButton: { backgroundColor: INDIGO, height: 39, paddingHorizontal: 13, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 5 }, startButtonText: { color: '#FFFFFF', fontFamily: FONT.outfit.sb, fontSize: fz(11) }, sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }, headingGroup: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }, tag: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 12, backgroundColor: '#ECEAE9' }, tagText: { fontFamily: FONT.outfit.sb, fontSize: fz(10) }, action: { flexDirection: 'row', alignItems: 'center' }, actionText: { color: INDIGO, fontFamily: FONT.outfit.sb, fontSize: fz(11) }, badgeScroll: { marginHorizontal: -20 }, badgeRow: { paddingHorizontal: 20, gap: 10 }, badge: { width: 124, minHeight: 168, borderRadius: 16, borderWidth: BW, padding: 12, alignItems: 'center', gap: 4 }, badgeEmoji: { fontSize: 24 }, badgeLock: { position: 'absolute', right: -2, bottom: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }, badgeRarity: { fontFamily: FONT.outfit.b, fontSize: fz(9), letterSpacing: 0.6, marginTop: 'auto' }, badgeIcon: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }, next: { color: INDIGO, fontFamily: FONT.outfit.b, fontSize: fz(10), letterSpacing: 0.5, backgroundColor: '#FFFFFF', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 5, overflow: 'hidden', marginTop: 4 }, badgeProgress: { fontFamily: FONT.body, fontSize: fz(10), marginTop: 4 }, badgeTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(12), textAlign: 'center' }, badgeSub: { fontFamily: FONT.body, fontSize: fz(10), textAlign: 'center', minHeight: 40 }, activity: { flexDirection: 'row', borderRadius: 14, paddingVertical: 13, paddingHorizontal: 9, justifyContent: 'space-between' }, week: { alignItems: 'center', flex: 1, gap: 9 }, weekText: { fontFamily: FONT.outfit.md, fontSize: fz(10) }, dotRow: { flexDirection: 'row', gap: 4 }, dot: { width: 10, height: 10, borderRadius: 5 }, todayDot: { width: 12, height: 12, borderWidth: 2, borderColor: '#C7C4FF', marginTop: -1 }, activityHint: { textAlign: 'center', fontFamily: FONT.body, fontSize: fz(10), marginTop: 13 }, settingsCard: { borderWidth: BW, borderRadius: 24, padding: 10, shadowColor: '#3A3226', shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 2 }, settingsTitle: { fontFamily: FONT.outfit.b, fontSize: fz(12), letterSpacing: 0.8, paddingHorizontal: 7, paddingTop: 9, paddingBottom: 5 }, setting: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 8 }, settingLabel: { flex: 1, fontFamily: FONT.outfit.md, fontSize: fz(12) }, detail: { fontFamily: FONT.body, fontSize: fz(10) }, preference: { marginTop: 4, paddingTop: 10, borderTopWidth: BW, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 }, preferenceLabel: { fontFamily: FONT.body, fontSize: fz(10) }, toggle: { minWidth: 42, paddingVertical: 5, borderRadius: 8, alignItems: 'center' }, toggleText: { fontFamily: FONT.outfit.b, fontSize: fz(10) }, shapeRow: { flexDirection: 'row', gap: 6, padding: 8 }, shape: { flex: 1, borderRadius: 7, paddingVertical: 7, alignItems: 'center' }, shapeText: { fontFamily: FONT.outfit.sb, fontSize: fz(9) }, logout: { height: 57, borderWidth: BW, borderColor: '#F9BBB6', borderRadius: 15, backgroundColor: '#FFF0EE', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }, logoutText: { color: '#B42318', fontFamily: FONT.outfit.sb, fontSize: fz(12) },
 });

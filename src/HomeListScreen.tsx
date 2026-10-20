@@ -299,7 +299,7 @@ function WorldBlock({ order, ...r }: { order: number } & Omit<RowProps, 'item' |
   const node = order === 15 ? (
     <BossNode p={p} world={world} completed={completed} anchors={NO_ANCHORS} onOpenWorld={onOpenWorld} />
   ) : order === 22 ? (
-    <FinalCard p={p} world={world} completed={completed} anchors={NO_ANCHORS} />
+    <FinalCard p={p} world={world} completed={completed} anchors={NO_ANCHORS} onOpenWorld={onOpenWorld} />
   ) : order === currentOrder ? (
     <CurrentCard p={p} world={world} paddingTop={worldPaddingTop(order)} gap={gap + 14} anchors={NO_ANCHORS} onOpenWorld={onOpenWorld} />
   ) : (
@@ -333,12 +333,15 @@ function WorldBlock({ order, ...r }: { order: number } & Omit<RowProps, 'item' |
 /** One list item: a band strip or a row of worlds, each over its own slice of the trail. */
 const ListRow = React.memo(function ListRow(props: RowProps) {
   const { item, geo, p, progress } = props;
+  // Each chapter sits on its own faint tint over the page (the middle chapter a little deeper), as on the Quiz tab.
+  const chapter = item.type === 'band' ? item.chapter : item.spec.worlds[0] <= 8 ? 1 : item.spec.worlds[0] <= 15 ? 2 : 3;
+  const tint = p.isDark ? (chapter === 2 ? 'rgba(148,163,184,0.09)' : 'rgba(148,163,184,0.05)') : (chapter === 2 ? 'rgba(120,98,60,0.10)' : 'rgba(120,98,60,0.05)');
   const slice = <TrailSlice geo={geo} top={item.top} height={item.height} isDark={p.isDark} page={p.page} progress={progress} />;
   if (item.type === 'band') {
     const { currentOrder } = props;
     return (
       <View
-        style={{ height: item.height }}
+        style={{ height: item.height, backgroundColor: tint }}
         onLayout={SHOW_LEVEL_STRIPS ? (e) => props.onBandLayout(item.chapter, e.nativeEvent.layout.height) : undefined}
       >
         {!SHOW_LEVEL_STRIPS ? null : (
@@ -358,7 +361,7 @@ const ListRow = React.memo(function ListRow(props: RowProps) {
   }
   const { spec } = item;
   return (
-    <View style={{ height: item.height }} onLayout={() => props.onPreparedRow?.(item.key)}>
+    <View style={{ height: item.height, backgroundColor: tint }} onLayout={() => props.onPreparedRow?.(item.key)}>
       {slice}
       {/* CACHE_ROWS (off): caching this static layer as a GPU bitmap was measured on device and made scrolling WORSE (median frame
           61ms vs 53ms, 668 slow bitmap uploads vs 91), because every newly mounted row has to be rasterized and uploaded. */}
@@ -401,7 +404,7 @@ export const HomeListContent = React.memo(function HomeListContent({
   const listRef = React.useRef<FlatList<Item>>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const requiredPreparedRows = React.useMemo(() => {
-    const rowItems = geo.items.filter((item): item is RowItem => item.type === 'row');
+    const rowItems = geo.items.slice(0, INITIAL_ITEMS).filter((item): item is RowItem => item.type === 'row');
     return rowItems.map((item) => item.key);
   }, [geo.items]);
   const [prepared, setPrepared] = React.useState(false);
@@ -561,9 +564,9 @@ export const HomeListContent = React.memo(function HomeListContent({
           keyExtractor={(item: Item) => item.key}
           renderItem={renderItem}
           getItemLayout={getItemLayout}
-          // Mount every journey row under the preparation overlay before
-          // revealing Home, keeping the warmed cells available for scrolling.
-          initialNumToRender={geo.items.length}
+          // Mount only the first screens before revealing Home. Mounting all 22 worlds in one go kept the JS thread busy for a long time,
+          // so taps (including the tab bar) did nothing until it finished. The rest mount in small batches as they come near the screen.
+          initialNumToRender={INITIAL_ITEMS}
           // Keep three screens ahead/behind, but spread expensive world-row
           // mounts across batches instead of mounting three together mid-scroll.
           windowSize={7}
@@ -588,6 +591,8 @@ export const HomeListContent = React.memo(function HomeListContent({
   );
 });
 
+/** List items (a band strip, then rows of two worlds) mounted before Home is revealed: about the first two screens. */
+const INITIAL_ITEMS = 4;
 const EMPTY_COUNTS: Record<number, number> = {};
 /** One full trip of the light streaks (HomeScreen's Trail uses the same 7s). */
 const STREAK_LOOP_MS = 7000;

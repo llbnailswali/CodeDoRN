@@ -11,7 +11,7 @@ import type { QuizQuestion } from './quizQuestions';
 import { CURRICULUM_WORLDS } from './curriculumData';
 import { loadSpeedBests, loadSpeedHeadline } from './speedRoundHistory';
 import { SURVIVAL_LIVES, loadSurvivalBestRun, loadSurvivalBonus } from './survival';
-import { loadStakesBest } from './stakes';
+import { STAKES_SHIELD_SAVINGS, loadStakesBest, loadStakesShield } from './stakes';
 
 // The Quiz tab, rebuilt in React Native to look like the web one (src/components/QuizView.tsx). Sizes are the web's CSS pixels, read from
 // the running app. UI only, with sample data: there is no quiz logic behind it, and the progress numbers below are made up so that every
@@ -65,7 +65,7 @@ const cardShadow = (dark: boolean) => (dark ? [{ dy: 4, blur: 6, rgb: '0,0,0', a
 const QUIZ_MODES: QuizMode[] = [
   { id: 'speed-round', badge: 'TIMED', title: 'Speed Round', description: 'Answer as many questions as you can before the timer runs out.', detail: '30s to 10 min · No question limit', action: 'Start', icon: 'bolt', tone: '#FACC15', tone2: '#F97316', toneLight: '#B45309', kind: 'speed' },
   { id: 'survival', badge: '3 LIVES', title: 'Survival Ladder', description: 'Three hearts, no timer. Every 5 correct answers climbs a level, and the questions get harder.', detail: 'No timer · 3 lives', action: 'Start', icon: 'favorite', tone: '#FB7185', tone2: '#F43F5E', toneLight: '#E11D48', kind: 'survival' },
-  { id: 'high-stakes', badge: 'BET', title: 'High Stakes', description: 'Hard questions only. Bet coins on how sure you are before you check each answer.', detail: '8 hard questions · Start with 100 coins', action: 'Start', icon: 'coin', tone: '#FBBF24', tone2: '#F59E0B', toneLight: '#B45309', kind: 'stakes' },
+  { id: 'high-stakes', badge: 'BET', title: 'High Stakes', description: 'Challenging questions. Bet coins on how sure you are before you check each answer.', detail: '10 questions · Start with 100 coins', action: 'Start', icon: 'coin', tone: '#FBBF24', tone2: '#F59E0B', toneLight: '#B45309', kind: 'stakes' },
   { id: 'quick-mix', badge: 'RANDOM', title: 'Quick Mix', description: "A fresh mix of questions from concepts you've learned.", detail: '10 questions · ~5 min', action: 'Start', icon: 'shuffle', tone: '#2DD4BF', toneLight: '#008E83', tone2: '#3B82F6', kind: 'quick' },
   { id: 'mistakes', badge: 'REVIEW', title: 'Mistake Replay', description: 'Revisit questions you previously answered incorrectly.', detail: '5–15 questions', action: 'Review', icon: 'replay', tone: '#FDBA74', toneLight: '#C0522B', tone2: '#F43F5E', kind: 'review' },
   { id: 'daily', badge: 'TODAY', title: 'Daily Challenge', description: 'A new set of questions each day to keep your skills sharp.', detail: '10 questions · ~5 min', action: 'Start', icon: 'rocket_launch', tone: '#60A5FA', toneLight: '#0079C8', tone2: '#8B5CF6', kind: 'quick' },
@@ -397,7 +397,7 @@ const MODE_RULES: Partial<Record<QuizMode['kind'], ModeRules>> = {
     { icon: '🏆', text: 'The run ends with your **last heart**. Your **best climb** is saved.' },
   ] },
   stakes: { kicker: 'HIGH STAKES', title: 'Bet on what you know', cta: 'Place my bets', rules: [
-    { icon: '🧠', text: '**8 hard questions**, **no timer**. Think before you answer.' },
+    { icon: '🧠', text: '**10 challenging questions**, **no timer**. Think before you answer.' },
     { icon: '🪙', text: 'You start with **100 coins**.' },
     { icon: '🎯', text: 'Pick an answer, then **bet how sure you are** before you check it.' },
     { icon: '🙂', text: '**Sure**: **+30** if right, **−30** if wrong' },
@@ -407,10 +407,12 @@ const MODE_RULES: Partial<Record<QuizMode['kind'], ModeRules>> = {
   ] },
 };
 
-function ModeRulesDialog({ mode, dark, bonusHearts = 0, onClose, onStart }: { mode: QuizMode | null; dark: boolean; /** Extra hearts earned by sharing: Survival's first rule says so. */ bonusHearts?: number; onClose: () => void; onStart: () => void }) {
+function ModeRulesDialog({ mode, dark, bonusHearts = 0, stakesShield = false, onClose, onStart }: { mode: QuizMode | null; dark: boolean; /** A Safety Shield earned by sharing: High Stakes' rules say so. */ stakesShield?: boolean; /** Extra hearts earned by sharing: Survival's first rule says so. */ bonusHearts?: number; onClose: () => void; onStart: () => void }) {
   const base = mode && MODE_RULES[mode.kind];
   const rules = base && mode.kind === 'survival' && bonusHearts > 0
     ? { ...base, rules: [{ icon: '🎁', text: `You start with **${SURVIVAL_LIVES + bonusHearts} hearts**: ${SURVIVAL_LIVES} plus **${bonusHearts} bonus** for sharing. A wrong answer **costs one**.` }, ...base.rules.slice(1)] }
+    : base && mode.kind === 'stakes' && stakesShield
+    ? { ...base, rules: [{ icon: '🛡️', text: `**Safety Shield ready**: it saves up to **${STAKES_SHIELD_SAVINGS} coins** on your first wrong bet.` }, ...base.rules] }
     : base;
   if (!mode || !rules) return null;
   const ink = dark ? mode.tone : mode.toneLight;
@@ -483,7 +485,7 @@ function SurvivalHearts({ ink, count = SURVIVAL_LIVES }: { ink: string; count?: 
   );
 }
 
-function QuizModeRail({ dark, missed, bests = {}, survivalBonus = 0, speedBest = null, onStart }: { dark: boolean; missed: number; /** The Speed Round card's best score: a label ("Best 30s:") and a value ("190 points"). */ speedBest?: { label: string; value: string } | null; /** A banked bonus heart (earned by sharing) adds a fourth heart to the Survival card. */ survivalBonus?: number; /** A "Best" line per mode kind, shown in place of the card's usual detail once there is a record. */ bests?: Partial<Record<QuizMode['kind'], string>>; onStart: (mode: QuizMode) => void }) {
+function QuizModeRail({ dark, missed, bests = {}, survivalBonus = 0, stakesShield = false, speedBest = null, onStart }: { dark: boolean; missed: number; /** The Speed Round card's best score: a label ("Best 30s:") and a value ("190 points"). */ speedBest?: { label: string; value: string } | null; /** A banked bonus heart (earned by sharing) adds a fourth heart to the Survival card. */ survivalBonus?: number; /** A banked Safety Shield (earned by sharing) is shown on the High Stakes card. */ stakesShield?: boolean; /** A "Best" line per mode kind, shown in place of the card's usual detail once there is a record. */ bests?: Partial<Record<QuizMode['kind'], string>>; onStart: (mode: QuizMode) => void }) {
   const { width } = useWindowDimensions();
   const cardWidth = width * 0.9; // the rail's cards; the next one still peeks in after the 12 px gap
 
@@ -531,7 +533,7 @@ function QuizModeRail({ dark, missed, bests = {}, survivalBonus = 0, speedBest =
               {mode.kind === 'speed' && !dark
                 ? <SpeedDayGradient id={`grad-${mode.id}`} />
                 : <ModeGradient id={`grad-${mode.id}`} tone={ink} tone2={mode.tone2} dark={dark} strength={0.45} />}
-              <View style={s.modeCardTop}><View style={s.modeHead}>{mode.kind === 'speed' ? <ModeArtTile dark={dark} size={36} art="bolt" onTint /> : mode.kind === 'survival' ? <ModeArtTile dark={dark} size={36} art="heart" /> : mode.kind === 'stakes' ? <ModeArtTile dark={dark} size={36} art="coin" /> : <View style={[s.modeIcon, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><ModeIcon name={mode.icon} color={ink} /></View>}<Text numberOfLines={2} style={[s.modeTitle, { color: oldSpeedDay ? '#172B4D' : title }]}>{mode.title}</Text></View>{mode.kind === 'speed' ? <SpeedTimer colors={dark ? SPEED_COLORS.dark : SPEED_COLORS.light} u={1} inline /> : mode.kind === 'survival' ? <SurvivalHearts ink={ink} count={SURVIVAL_LIVES + survivalBonus} /> : mode.kind === 'stakes' ? <StakesCoin ink={ink} /> : cardWidth >= 260 && <View style={[s.modeBadge, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><Text style={[s.modeBadgeText, { color: ink }]}>{mode.id === 'daily' ? todayLabel() : mode.badge}</Text></View>}</View>
+              <View style={s.modeCardTop}><View style={s.modeHead}>{mode.kind === 'speed' ? <ModeArtTile dark={dark} size={36} art="bolt" onTint /> : mode.kind === 'survival' ? <ModeArtTile dark={dark} size={36} art="heart" /> : mode.kind === 'stakes' ? <ModeArtTile dark={dark} size={36} art="coin" /> : <View style={[s.modeIcon, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><ModeIcon name={mode.icon} color={ink} /></View>}<Text numberOfLines={2} style={[s.modeTitle, { color: oldSpeedDay ? '#172B4D' : title }]}>{mode.title}</Text></View>{mode.kind === 'speed' ? <SpeedTimer colors={dark ? SPEED_COLORS.dark : SPEED_COLORS.light} u={1} inline /> : mode.kind === 'survival' ? <SurvivalHearts ink={ink} count={SURVIVAL_LIVES + survivalBonus} /> : mode.kind === 'stakes' ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>{stakesShield && <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: `${ink}55`, backgroundColor: `${ink}14` }}><Text style={{ fontFamily: FONT.outfit.b, fontSize: fz(11), color: ink }}>🛡️ Shield</Text></View>}<StakesCoin ink={ink} /></View> : cardWidth >= 260 && <View style={[s.modeBadge, { backgroundColor: `${ink}18`, borderColor: `${ink}55` }]}><Text style={[s.modeBadgeText, { color: ink }]}>{mode.id === 'daily' ? todayLabel() : mode.badge}</Text></View>}</View>
               <Text numberOfLines={2} style={[s.modeDescription, { color: cardMuted }]}>{mode.description}</Text>
               <View style={[s.modeFooter, (mode.kind === 'speed' || mode.kind === 'survival' || mode.kind === 'stakes') && { paddingVertical: 8 }, { borderTopColor: oldSpeedDay ? '#E8E2D7' : dark ? '#283247' : '#E2E8F0', backgroundColor: oldSpeedDay ? '#FFFFFF' : dark ? 'rgba(8,12,22,0.4)' : 'rgba(255,255,255,0.7)' }]}>{(mode.kind === 'speed' || mode.kind === 'survival' || mode.kind === 'stakes') && !unavailable
                 ? <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>{/* the new design's trophy and score: a small muted label over a bold coloured value */}
@@ -653,7 +655,7 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
   // A faint tint behind each section, so the three parts of the page read as separate blocks.
   const bands = isDark
     ? { modes: 'rgba(148,163,184,0.05)', format: 'rgba(148,163,184,0.09)', world: 'rgba(148,163,184,0.05)' }
-    : { modes: 'rgba(100,116,139,0.06)', format: 'rgba(100,116,139,0.11)', world: 'rgba(100,116,139,0.06)' };
+    : { modes: 'rgba(120,98,60,0.05)', format: 'rgba(120,98,60,0.10)', world: 'rgba(120,98,60,0.05)' };
   const quizWorlds = getQuizWorlds();
   // The Quick Mix and Daily Challenge cards pick their questions up front, so a tap starts exactly that set.
   // Quick Mix is re-picked whenever your answers change (so a finished quiz is not offered again); Daily is fixed for the day.
@@ -671,13 +673,16 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
   const [bests, setBests] = React.useState<Partial<Record<QuizMode['kind'], string>>>({});
   // The bonus heart banked by sharing a Survival result, re-read whenever a session closes.
   const [survivalBonus, setSurvivalBonus] = React.useState(0);
+  // The Safety Shield banked by sharing a High Stakes result, re-read the same way.
+  const [stakesShield, setStakesShield] = React.useState(false);
   const [speedBest, setSpeedBest] = React.useState<{ label: string; value: string } | null>(null);
   React.useEffect(() => {
     if (sessionOpen) return;
     let alive = true;
-    Promise.all([loadSpeedHeadline(), loadSurvivalBestRun(), loadStakesBest(), loadSurvivalBonus()]).then(([speed, survival, stakes, bonus]) => {
+    Promise.all([loadSpeedHeadline(), loadSurvivalBestRun(), loadStakesBest(), loadSurvivalBonus(), loadStakesShield()]).then(([speed, survival, stakes, bonus, shield]) => {
       if (!alive) return;
       setSurvivalBonus(bonus);
+      setStakesShield(shield);
       setSpeedBest(speed ? { label: `Best ${SPEED_DURATIONS.find((d) => d.seconds === speed.limit)?.label ?? `${speed.limit}s`}:`, value: `${speed.best} points` } : null);
       const speedLabel = speed && (SPEED_DURATIONS.find((d) => d.seconds === speed.limit)?.label ?? `${speed.limit}s`);
       setBests({
@@ -696,7 +701,7 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
   for (let i = 0; i < worlds.length; i += 2) rows.push(worlds.slice(i, i + 2));
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? p.page : '#E8EDF4' }}>
+    <View style={{ flex: 1, backgroundColor: p.page }}>
       <FlatList
         data={rows}
         keyExtractor={(_, index) => `world-row-${index}`}
@@ -713,7 +718,7 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
         ListHeaderComponent={
           <>
             <View style={[s.band, { backgroundColor: bands.modes, paddingTop: 20, paddingBottom: 14 }]}>
-              <QuizModeRail dark={isDark} missed={missed} bests={bests} survivalBonus={survivalBonus} speedBest={speedBest} onStart={(mode) => {
+              <QuizModeRail dark={isDark} missed={missed} bests={bests} survivalBonus={survivalBonus} stakesShield={stakesShield} speedBest={speedBest} onStart={(mode) => {
                 if (mode.id === 'quick-mix' && onOpenSession) onOpenSession(sessions['quick-mix'], 'Quick quiz');
                 else if (mode.id === 'daily' && onOpenSession) onOpenSession(sessions.daily, 'Daily challenge');
                 else if (mode.kind === 'speed') setSpeedMode(mode);
@@ -742,7 +747,7 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
         contentContainerStyle={{ paddingHorizontal: PAGE_X }}
         showsVerticalScrollIndicator={false}
       />
-      <ModeRulesDialog mode={rulesMode} dark={isDark} bonusHearts={survivalBonus} onClose={() => setRulesMode(null)} onStart={() => { const kind = rulesMode?.kind; setRulesMode(null); if (kind === 'stakes') onOpenStakes?.(); else onOpenSurvival?.(); }} />
+      <ModeRulesDialog mode={rulesMode} dark={isDark} bonusHearts={survivalBonus} stakesShield={stakesShield} onClose={() => setRulesMode(null)} onStart={() => { const kind = rulesMode?.kind; setRulesMode(null); if (kind === 'stakes') onOpenStakes?.(); else onOpenSurvival?.(); }} />
       <SpeedDurationDialog mode={speedMode} dark={isDark} onClose={() => setSpeedMode(null)} onStart={(seconds) => { setSpeedMode(null); onOpenSpeedRound?.(seconds); }} />
     </View>
   );
@@ -759,7 +764,7 @@ const s = StyleSheet.create({
   modeDot: { width: 6, height: 6, borderRadius: 3 },
   modeCard: { flex: 1, minHeight: 146, borderRadius: 12, borderWidth: BW, padding: 16, justifyContent: 'space-between', gap: 8, overflow: 'hidden' },
   modeCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  dialogBackdrop: { flex: 1, backgroundColor: 'rgba(2,6,23,0.6)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  dialogBackdrop: { flex: 1, backgroundColor: 'rgba(2,6,23,0.78)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   dialog: { width: '100%', maxWidth: 360, borderRadius: 24, borderWidth: BW, padding: 22, overflow: 'hidden', alignItems: 'center' },
   dialogIcon: { width: 56, height: 56, borderRadius: 18, borderWidth: BW, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   dialogLock: { position: 'absolute', right: -6, bottom: -6, width: 22, height: 22, borderRadius: 11, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },

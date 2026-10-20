@@ -1,5 +1,5 @@
 import React from 'react';
-import { PixelRatio, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, PixelRatio, Pressable, StyleSheet, Text, View } from 'react-native';
 import { InsetShadow, ShadowSpec, ShadowStack } from './shadows';
 import { FONT, INDIGO_400, Palette } from './theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,12 +35,12 @@ export const navShadows = (dark: boolean): ShadowSpec[] =>
 // Use the font's codepoints so the same icon is rendered on both platforms.
 const MATERIAL_SYMBOL_CODEPOINTS: Record<string, number> = {
   account_tree: 0xe97a, add: 0xe145, architecture: 0xea3b, arrow_back: 0xe5c4, arrow_forward: 0xe5c8, assignment_turned_in: 0xe862,
-  auto_stories: 0xe0c3, autorenew: 0xe863, bolt: 0xea0b, bug_report: 0xe868, cancel: 0xe5c9, category: 0xe574,
+  analytics: 0xeef3, auto_stories: 0xe0c3, autorenew: 0xe863, bolt: 0xea0b, bug_report: 0xe868, cancel: 0xe5c9, category: 0xe574,
   check: 0xe5ca, check_circle: 0xe86c, chevron_right: 0xe5cc, close: 0xe5cd, cloud: 0xe2bd, code: 0xe86f,
   dark_mode: 0xe51c, data_object: 0xf1c9, error: 0xe000, event_available: 0xe614, expand_less: 0xe5ce, expand_more: 0xe5cf,
-  explore: 0xe87a, fast_forward: 0xe01f, function: 0xe24a, hub: 0xe9f4, info: 0xe88e, insights: 0xf092, inventory_2: 0xe1a1,
+  edit: 0xe3c9, explore: 0xe87a, fast_forward: 0xe01f, function: 0xe24a, help_outline: 0xe8fd, hub: 0xe9f4, info: 0xe88e, insights: 0xf092, inventory_2: 0xe1a1,
   light_mode: 0xe518, lightbulb: 0xe90f, lock: 0xe897, memory: 0xe322, menu_book: 0xe02d, military_tech: 0xea3b,
-  play_arrow: 0xe037, person: 0xe7fd, psychology: 0xea4b, refresh: 0xe5d5, remove: 0xe15b, replay: 0xe042,
+  logout: 0xe9ba, notifications: 0xe7f4, photo_camera: 0xe412, play_arrow: 0xe037, person: 0xe7fd, psychology: 0xea4b, refresh: 0xe5d5, remove: 0xe15b, replay: 0xe042,
   rocket_launch: 0xeb9b, school: 0xe80c, science: 0xea4b, security: 0xe32a, shuffle: 0xe043, swap_vert: 0xe8d4,
   terminal: 0xeb8e, touch_app: 0xe913, track_changes: 0xe8e1, tune: 0xe429, view_list: 0xe8ef, visibility: 0xe8f4,
   workspace_premium: 0xe7af, schedule: 0xe8b5, local_fire_department: 0xef55, emoji_events: 0xea23, rule: 0xf1c2,
@@ -82,12 +82,7 @@ export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'L
             </>
           ) : (
             <>
-          <View>
-              <ShadowStack r={12} shadows={raisedShadows(p.isDark)} />
-              <View style={[s.logoBox, { backgroundColor: p.card, borderColor: p.cardBorder }]}>
-                <Text style={[s.logoText, { color: '#7A68F3' }]}>CD</Text>
-              </View>
-            </View>
+          <Image source={require('../assets/branding/codedo-logo.png')} resizeMode="contain" style={{ width: 40, height: 40, borderRadius: 12 }} accessibilityLabel="CodeDo logo" />
             <View style={s.brandRow}>
               <Text style={[s.brand, { color: p.pageText }]}>CodeDo</Text>
               {badge !== '' && (
@@ -143,20 +138,23 @@ export const TABS = [
 export type TabId = 'learn' | 'quiz' | 'practice' | 'profile';
 
 // Day mode: the top toolbar and the bottom tab bar use the cards' off-white and border instead of the blue-grey page colour.
-const OFFWHITE_BAR = { bg: '#FAFAF7', border: '#E1E6EC' };
+const OFFWHITE_BAR = { bg: '#F9F7F3', border: '#E1E6EC' };
 
 // Height of the tab row itself, and how much of the phone's bottom safe-area inset (the gesture bar) is kept as padding under it. The strip
 // used 64 and the whole inset, which read as extra space under the icons; the tabs are 44 tall, so 58 leaves 7 above and below them.
 const NAV_ROW_HEIGHT = 58;
 const NAV_INSET_TRIM = 8;
+// Breathing room under the tab labels, on top of the device's bottom safe area.
+const NAV_EXTRA_PAD = 8;
 
 export function BottomNav({ p, active: activeTab = 'learn', onSelect }: { p: Palette; active?: TabId; onSelect?: (tab: TabId) => void }) {
   const insets = useSafeAreaInsets();
+  const navBottom = Math.max(insets.bottom - NAV_INSET_TRIM, 0) + NAV_EXTRA_PAD;
   return (
     <View>
       <ShadowStack r={0} shadows={navShadows(p.isDark)} />
       <View style={{ backgroundColor: p.isDark ? p.page : OFFWHITE_BAR.bg, borderTopWidth: BW, borderTopColor: p.isDark ? p.navBorder : OFFWHITE_BAR.border }}>
-        <View style={[s.navInner, { paddingBottom: Math.max(insets.bottom - NAV_INSET_TRIM, 0), height: NAV_ROW_HEIGHT + Math.max(insets.bottom - NAV_INSET_TRIM, 0) }]}>
+        <View style={[s.navInner, { paddingBottom: navBottom, height: NAV_ROW_HEIGHT + navBottom }]}>
           {TABS.map((tab) => {
             const active = tab.id === activeTab;
             const color = active ? (p.isDark ? INDIGO_400 : '#4F46E5') : p.isDark ? '#94A3B8' : '#475569';
@@ -193,7 +191,6 @@ const s = StyleSheet.create({
   headerInner: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logoBox: { width: 40, height: 40, borderRadius: 12, borderWidth: BW, alignItems: 'center', justifyContent: 'center' },
-  logoText: { fontFamily: FONT.outfit.xb, fontSize: fz(16), lineHeight: 24, includeFontPadding: false },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   brand: { fontFamily: FONT.outfit.b, fontSize: fz(18), lineHeight: 28, letterSpacing: -0.45, includeFontPadding: false },
   badge: { borderWidth: BW, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },

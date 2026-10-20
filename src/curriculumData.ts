@@ -388,7 +388,7 @@ export const CURRICULUM_WORLDS: CurriculumWorld[] = [
   "title": "Kotlin Blacksmith",
   "subtitle": "Advanced Kotlin Language Features",
   "lessonCount": 16,
-  "available": false,
+  "available": true,
   "lessons": [
    "Delegation & Delegated properties",
    "Custom delegates",
@@ -413,7 +413,7 @@ export const CURRICULUM_WORLDS: CurriculumWorld[] = [
   "title": "JVM Bridge",
   "subtitle": "JVM & Java Interoperability",
   "lessonCount": 10,
-  "available": false,
+  "available": true,
   "lessons": [
    "Java interoperability & Calling Java from Kotlin",
    "Calling Kotlin from Java & Platform types",
@@ -432,7 +432,7 @@ export const CURRICULUM_WORLDS: CurriculumWorld[] = [
   "title": "Performance Lab",
   "subtitle": "Kotlin Performance",
   "lessonCount": 15,
-  "available": false,
+  "available": true,
   "lessons": [
    "Allocation & Object creation costs",
    "Collections and allocation",
@@ -456,7 +456,7 @@ export const CURRICULUM_WORLDS: CurriculumWorld[] = [
   "title": "Production Kotlin",
   "subtitle": "Kotlin Ecosystem & Production Engineering",
   "lessonCount": 22,
-  "available": false,
+  "available": true,
   "lessons": [
    "Kotlin Standard Library & Packages",
    "Imports",

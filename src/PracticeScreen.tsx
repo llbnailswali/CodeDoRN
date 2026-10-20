@@ -128,20 +128,26 @@ function WorldCard({ world, dark, onOpen, showAccentBorder }: { world: PracticeW
   );
 }
 
-export const PracticeContent = React.memo(function PracticeContent({ p, helpLevel, onOpenHelp, onOpenWorld, showAccentBorder = true }: { p: Palette; helpLevel: HelpLevel; onOpenHelp: () => void; onOpenWorld: (order: number) => void; showAccentBorder?: boolean }) {
+export const PracticeContent = React.memo(function PracticeContent({ p, helpLevel, onOpenHelp, onOpenWorld, onOpenAchievements, showAccentBorder = true }: { p: Palette; helpLevel: HelpLevel; onOpenHelp: () => void; onOpenWorld: (order: number) => void; onOpenAchievements?: () => void; showAccentBorder?: boolean }) {
   const dark = p.isDark;
   const t = tokens(dark);
   const helpLabel = HELP_OPTIONS.find((o) => o.level === helpLevel)?.label ?? 'Beginner';
   const slate400 = '#94A3B8';
 
+  // The same faint warm tint as the Quiz tab: the top block sits on a slightly deeper band than the list of Worlds.
+  const bandList = dark ? 'rgba(148,163,184,0.05)' : 'rgba(120,98,60,0.05)';
+  const bandTop = dark ? 'rgba(148,163,184,0.05)' : 'rgba(120,98,60,0.05)';
+
   return (
     <FlatList
+      style={{ backgroundColor: bandList }}
       data={WORLDS}
       keyExtractor={(world) => String(world.order)}
       renderItem={({ item: world }) => <WorldCard world={world} dark={dark} onOpen={onOpenWorld} showAccentBorder={showAccentBorder} />}
       ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
       ListHeaderComponent={
         <>
+      <View style={{ marginHorizontal: -16, marginTop: -8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, backgroundColor: bandTop, marginBottom: 4 }}>
       {/* Heading, with the "Practice help" level picker */}
       <View style={{ paddingTop: 4, gap: 12, marginBottom: 16 }}>
         <View style={s.headingRow}>
@@ -176,6 +182,15 @@ export const PracticeContent = React.memo(function PracticeContent({ p, helpLeve
             </>
           }
         />
+      </View>
+      {onOpenAchievements && <Pressable onPress={onOpenAchievements} style={[s.achievementsCard, t.panel, !dark && { borderColor: '#E1E6EC' }]}>
+        <View style={[s.achievementIcon, { backgroundColor: dark ? '#312E81' : '#EEF2FF' }]}><Icon name="workspace_premium" size={20} exact color={dark ? '#C7D2FE' : '#4F46E5'} /></View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[s.achievementTitle, { color: t.title }]}>Achievements</Text>
+          <Text style={[s.achievementSub, { color: t.muted }]}>Track your learning milestones</Text>
+        </View>
+        <Icon name="chevron_right" size={22} exact color={t.chevron} />
+      </Pressable>}
       </View>
 
       <View style={{ marginBottom: 16 }}>
@@ -216,6 +231,10 @@ const s = StyleSheet.create({
   recSub: { fontFamily: FONT.outfit.md, fontSize: fz(11 * MAIN), lineHeight: lh(11, 1.5), includeFontPadding: false },
   recGrid: { flexDirection: 'row', gap: 8, paddingTop: 2 },
   recBtn: { flex: 1, padding: 10, borderRadius: 8, borderWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  achievementsCard: { minHeight: 70, borderRadius: 12, padding: 14, borderWidth: BW, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  achievementIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  achievementTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(15 * MAIN), includeFontPadding: false },
+  achievementSub: { fontFamily: FONT.body, fontSize: fz(12 * MAIN), includeFontPadding: false },
   // world card
   card: { borderRadius: 12, padding: 16, borderWidth: 0, borderLeftWidth: 2.91, overflow: 'hidden' },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 },

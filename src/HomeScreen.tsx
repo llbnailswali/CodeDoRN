@@ -18,7 +18,7 @@ import {
 export const COMPLETED_WORLDS = 0;
 export const TOTAL_WORLDS = 22;
 // Match the web's progression rule: only the current world is available until earlier worlds are completed.
-export const UNLOCK_ALL = false;
+export const UNLOCK_ALL = true;
 export const UNLOCK_THROUGH = 18;
 export const SHOW_LEVEL_STRIPS = true;
 // Height of a world node's text column in the web (chip 19.96 + title 19.35 + 2 + tag 19.96), so every row has the web's exact stride.
@@ -182,13 +182,14 @@ function bandColors(p: Palette, chapter: 1 | 2 | 3, active: boolean) {
     };
   }
   return {
-    bg: active ? '#FFFFFF' : '#ECEEF4',
-    border: active ? f.c200 : 'rgba(203,213,225,0.8)',
+    // Idle strips are the chapter's own tint (see ListRow in HomeListScreen) over the warm page, as a solid colour so the list never shows through.
+    bg: active ? '#FFFFFF' : chapter === 2 ? '#ECE8E1' : '#F3F0EA',
+    border: active ? f.c200 : 'rgba(120,98,60,0.22)',
     chipText: chapter === 1 ? '#3730A3' : chapter === 2 ? '#6B21A8' : '#9F1239',
     chipBg: active ? f.c50 : '#FFFFFF',
     chipBorder: active ? (chapter === 1 ? '#A5B4FC' : chapter === 2 ? '#D8B4FE' : '#FDA4AF') : f.c200,
     active: f.c700,
-    line: active ? f.c200 : 'rgba(203,213,225,0.8)',
+    line: active ? f.c200 : 'rgba(120,98,60,0.22)',
   };
 }
 
@@ -540,12 +541,13 @@ export function BossNode({ p, world, completed, anchors, onOpenWorld }: { p: Pal
   );
 }
 
-export function FinalCard({ p, world, completed, anchors }: { p: Palette; world: (typeof HOME_WORLDS)[number]; completed: number; anchors: Anchors }) {
+export function FinalCard({ p, world, completed, anchors, onOpenWorld }: { p: Palette; world: (typeof HOME_WORLDS)[number]; completed: number; anchors: Anchors; onOpenWorld?: (order: number) => void }) {
   const open = UNLOCK_ALL || completed >= 21;
   const d = p.isDark;
   return (
     <View style={{ width: '100%', maxWidth: 330, paddingTop: 48, paddingBottom: 16, alignItems: 'center', alignSelf: 'center' }}>
-      <View
+      <Pressable
+        onPress={() => { if (open) onOpenWorld?.(world.order); }}
         ref={anchors.top(world.order)}
         collapsable={false}
         style={[
@@ -610,7 +612,7 @@ export function FinalCard({ p, world, completed, anchors }: { p: Palette; world:
         >
           <Icon name={open ? WORLD_ICONS[21] : 'lock'} size={18} color={open ? (d ? '#818CF8' : '#4338CA') : d ? '#94A3B8' : '#64748B'} />
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }
