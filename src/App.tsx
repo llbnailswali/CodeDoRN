@@ -54,6 +54,7 @@ export function App({ dark = true }: { dark?: boolean }) {
   const [tab, setTab] = React.useState<TabId>('learn');
   const [visitedTabs, setVisitedTabs] = React.useState<Set<TabId>>(() => new Set(['learn']));
   const [gap, setGap] = React.useState(12);
+  const [roadHome, setRoadHome] = React.useState(false);
   const [journeyVariant, setJourneyVariant] = React.useState<JourneyVariant>('milestones');
   const [showAccentBorder, setShowAccentBorder] = React.useState(false);
   const [helpLevel, setHelpLevel] = React.useState<HelpLevel>('beginner');
@@ -301,6 +302,8 @@ export function App({ dark = true }: { dark?: boolean }) {
         onToggleTheme={toggleTheme}
         onTempReset={tab === 'quiz' ? confirmResetQuiz : undefined}
         offWhite
+        roadHome={roadHome}
+        onToggleRoadHome={tab === 'learn' ? () => setRoadHome((on) => !on) : undefined}
         topInset={topInset}
       />
       <View style={{ flex: 1 }}>
@@ -309,6 +312,7 @@ export function App({ dark = true }: { dark?: boolean }) {
             p={tp}
             gap={gap}
             journeyVariant={journeyVariant}
+            road={roadHome}
             onOpenWorld={openCurriculumWorld}
             onOpenActivity={openHomeActivity}
             quizActivityCounts={quizActivityCounts}

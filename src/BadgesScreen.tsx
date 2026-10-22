@@ -10,19 +10,21 @@ import { BadgeHero, ProgressCard } from './BadgeHero';
 
 type Filter = 'All' | BadgeCategory;
 
-const CATEGORIES: BadgeCategory[] = ['First Steps', 'Coding & Debugging', 'Quiz Achievements', 'Consistency & Streaks', 'World & Lesson Mastery', 'Special Achievements', 'Long-Term'];
-const CATEGORY_ICONS: Record<BadgeCategory, string> = { 'First Steps': '🚀', 'Coding & Debugging': '💻', 'Quiz Achievements': '🧠', 'Consistency & Streaks': '🔥', 'World & Lesson Mastery': '👑', 'Special Achievements': '⭐', 'Long-Term': '🏆' };
+const CATEGORIES: BadgeCategory[] = ['Accuracy', 'Coding', 'Quizzes', 'Challenges', 'Consistency', 'Worlds', 'Bosses'];
+const CATEGORY_ICONS: Record<BadgeCategory, string> = { Accuracy: '🎯', Coding: '💻', Quizzes: '🧠', Challenges: '⚡', Consistency: '🔥', Worlds: '🌍', Bosses: '👑' };
+const CATEGORY_SUB: Record<BadgeCategory, string> = { Accuracy: 'Precision & error-free runs', Coding: 'Syntax mastery & tests', Quizzes: 'Knowledge & speed', Challenges: 'Daily & timed trials', Consistency: 'Dedication & milestones', Worlds: 'Explore every world', Bosses: 'Defeat the world bosses' };
+const CATEGORY_TINT: Record<BadgeCategory, string> = { Accuracy: '#EF4444', Coding: '#3B82F6', Quizzes: '#8B5CF6', Challenges: '#F59E0B', Consistency: '#F97316', Worlds: '#10B981', Bosses: '#EAB308' };
 const INDIGO = '#4338CA';
 const GREEN = '#3E8E64';
 // Where the button on a badge's detail sheet leads: the tab where the learner can make progress on that badge.
 const BADGE_ACTION: Record<BadgeCategory, { label: string; tab: TabId }> = {
-  'First Steps': { label: 'Continue Learning', tab: 'learn' },
-  'Coding & Debugging': { label: 'Start Practice', tab: 'practice' },
-  'Quiz Achievements': { label: 'Practice Quiz', tab: 'quiz' },
-  'Consistency & Streaks': { label: "Start Today's Lesson", tab: 'learn' },
-  'World & Lesson Mastery': { label: 'Continue Learning', tab: 'learn' },
-  'Special Achievements': { label: 'Keep Practicing', tab: 'practice' },
-  'Long-Term': { label: 'Keep Practicing', tab: 'practice' },
+  Accuracy: { label: 'Keep Practicing', tab: 'practice' },
+  Coding: { label: 'Start Practice', tab: 'practice' },
+  Quizzes: { label: 'Practice Quiz', tab: 'quiz' },
+  Challenges: { label: 'Try a Challenge', tab: 'quiz' },
+  Consistency: { label: "Start Today's Lesson", tab: 'learn' },
+  Worlds: { label: 'Continue Learning', tab: 'learn' },
+  Bosses: { label: 'Continue Learning', tab: 'learn' },
 };
 // The icon font has no glyphs for these two, so they are drawn.
 function TrophyIcon({ size, color }: { size: number; color: string }) {
@@ -94,7 +96,7 @@ function BadgeTile({ badge, width, dark, unlocked, onPress }: { badge: BadgeDef;
       </View>
       : unlocked
         ? <View style={[s.rarityPill, { backgroundColor: `${rc}${dark ? '2E' : '1C'}` }]}><View style={[s.pillDot, { backgroundColor: rc }]} /><Text style={[s.pillText, { color: rc }]}>{badge.rarity.toUpperCase()}</Text></View>
-        : <View style={[s.rarityPill, { backgroundColor: dark ? '#222836' : '#F1EFEC' }]}><Text style={[s.pillText, { color: dark ? '#7C8599' : '#9AA0B2' }]}>LOCKED</Text></View>}
+        : <View style={[s.rarityPill, { backgroundColor: dark ? '#222836' : '#F1EFEC' }]}><View style={[s.pillDot, { backgroundColor: dark ? '#7C8599' : '#B4B9C8' }]} /><Text style={[s.pillText, { color: dark ? '#7C8599' : '#9AA0B2' }]}>LOCKED</Text></View>}
   </Pressable>;
 }
 
@@ -132,16 +134,16 @@ export function BadgesScreen({ p, topInset, onBack, onGoTab }: { p: Palette; top
   return <View style={{ flex: 1, backgroundColor: p.page }}>
     <Animated.View style={[s.toolbar, { top: topInset, backgroundColor: p.page, shadowOpacity: dark ? 0.4 : 0.08, transform: [{ translateY: toolbarShift }] }]}>
       <View style={s.headerRow}>
-        <Pressable onPress={onBack} accessibilityLabel="Back" hitSlop={10} style={s.back}><Icon name="arrow_back" size={24} exact color={text} /></Pressable>
+        <Pressable onPress={onBack} accessibilityLabel="Back" hitSlop={10} style={[s.back, { backgroundColor: dark ? '#252C3A' : '#FFFFFF', borderColor: dark ? 'rgba(255,255,255,0.1)' : '#E8E8F0' }]}><Icon name="arrow_back" size={22} exact color={text} /></Pressable>
         <Text style={[s.title, { color: text }]}>Achievements</Text>
-        <View style={[s.countPill, { backgroundColor: dark ? '#252C3A' : '#EDEAE7' }]}><Text style={[s.countText, { color: dark ? '#CBD5E1' : '#4B5163' }]}>{UNLOCKED.size}/{BADGES.length}</Text></View>
+        <View style={[s.countPill, { backgroundColor: dark ? 'rgba(99,102,241,0.2)' : '#ECEBFF', borderColor: dark ? 'rgba(129,140,248,0.4)' : '#CFCBFA' }]}><View style={s.countDot} /><Text style={[s.countText, { color: dark ? '#C7D2FE' : INDIGO }]}>{UNLOCKED.size} / {BADGES.length}</Text></View>
       </View>
     </Animated.View>
     <Animated.View style={[s.chipBar, { top: topInset + TOOLBAR_H, backgroundColor: p.page, transform: [{ translateY: toolbarShift }] }]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipScroll} contentContainerStyle={s.chips}>
         {(['All', ...CATEGORIES] as Filter[]).map((category) => {
           const on = filter === category;
-          return <Pressable key={category} onPress={() => setFilter(category)} style={[s.chip, { backgroundColor: on ? INDIGO : dark ? '#252C3A' : '#EDEAE7' }]}>
+          return <Pressable key={category} onPress={() => setFilter(category)} style={[s.chip, { backgroundColor: on ? INDIGO : dark ? '#1C2231' : '#FFFFFF', borderColor: on ? INDIGO : dark ? 'rgba(255,255,255,0.12)' : '#DADCE6' }, on && s.chipOn]}>
             <Text numberOfLines={1} style={[s.chipText, { color: on ? '#FFFFFF' : dark ? '#A7B0C0' : '#5D6275' }]}>{category}</Text>
           </Pressable>;
         })}
@@ -163,7 +165,13 @@ export function BadgesScreen({ p, topInset, onBack, onGoTab }: { p: Palette; top
         const badges = BADGES.filter((badge) => badge.category === category);
         const done = badges.filter((badge) => UNLOCKED.has(badge.id)).length;
         return <View style={s.section}>
-          <View style={s.sectionHead}><View style={s.sectionTitleWrap}><Text style={s.categoryIcon}>{CATEGORY_ICONS[category]}</Text><Text style={[s.sectionTitle, { color: text }]}>{category}</Text></View><Text style={[s.sectionCount, { color: muted }]}>{done}/{badges.length} Unlocked</Text></View>
+          <View style={s.sectionHead}>
+            <View style={s.sectionTitleWrap}>
+              <View style={[s.categoryTile, { backgroundColor: `${CATEGORY_TINT[category]}${dark ? '2A' : '1C'}` }]}><Text style={s.categoryIcon}>{CATEGORY_ICONS[category]}</Text></View>
+              <View style={{ flex: 1 }}><Text style={[s.sectionTitle, { color: text }]}>{category}</Text><Text numberOfLines={1} style={[s.sectionSub, { color: muted }]}>{CATEGORY_SUB[category]}</Text></View>
+            </View>
+            <View style={[s.countChip, { backgroundColor: dark ? '#252C3A' : '#EDEEF3' }]}><Text style={[s.sectionCount, { color: dark ? '#CBD5E1' : '#6B7188' }]}>{done}/{badges.length} Unlocked</Text></View>
+          </View>
           <View style={s.grid}>{badges.map((badge) => <BadgeTile key={badge.id} badge={badge} width={tileWidth} dark={dark} unlocked={UNLOCKED.has(badge.id)} onPress={() => setSelected(badge)} />)}</View>
         </View>;
       }}
@@ -217,32 +225,37 @@ const s = StyleSheet.create({
   stickyShadow: { position: 'absolute', left: 0, right: 0, top: CHIPS_H, height: 12 },
   statusCover: { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30 },
   headerRow: { height: TOOLBAR_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 8, paddingHorizontal: 12 },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: FONT.outfit.b, fontSize: fz(18) },
-  countPill: { borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
-  countText: { fontFamily: FONT.outfit.sb, fontSize: fz(12) },
+  back: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 6, shadowColor: '#3A3226', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  title: { flex: 1, fontFamily: FONT.outfit.b, fontSize: fz(21) },
+  countPill: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, height: 34 },
+  countDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#6C63F0' },
+  countText: { fontFamily: FONT.outfit.sb, fontSize: fz(14) },
   chipBar: { position: 'absolute', left: 0, right: 0, height: CHIPS_H, zIndex: 20, justifyContent: 'center' },
   chipScroll: { flexGrow: 0 },
   chips: { gap: 10, paddingHorizontal: 16, alignItems: 'center' },
-  chip: { borderRadius: 12, paddingHorizontal: 16, height: 38, alignItems: 'center', justifyContent: 'center' },
-  chipText: { fontFamily: FONT.outfit.md, fontSize: fz(13) },
+  chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 20, height: 40, alignItems: 'center', justifyContent: 'center' },
+  chipOn: { shadowColor: INDIGO, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  chipText: { fontFamily: FONT.outfit.md, fontSize: fz(15) },
   content: { paddingHorizontal: 16 },
-  section: { marginTop: 10, marginBottom: 12 },
-  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 2 },
-  sectionTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  section: { marginTop: 10, marginBottom: 14 },
+  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2, gap: 8 },
+  sectionTitleWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  categoryTile: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   categoryIcon: { fontSize: fz(18) },
-  sectionTitle: { fontFamily: FONT.outfit.b, fontSize: fz(16) },
-  sectionCount: { fontFamily: FONT.body, fontSize: fz(12) },
+  sectionTitle: { fontFamily: FONT.outfit.b, fontSize: fz(18) },
+  sectionSub: { fontFamily: FONT.body, fontSize: fz(12.5), marginTop: 1 },
+  countChip: { borderRadius: 999, paddingHorizontal: 12, height: 30, justifyContent: 'center' },
+  sectionCount: { fontFamily: FONT.outfit.sb, fontSize: fz(12.5) },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { borderRadius: 18, alignItems: 'center', paddingHorizontal: 8, paddingTop: 16, paddingBottom: 12 },
-  tileClip: { ...StyleSheet.absoluteFill, borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+  tile: { borderRadius: 22, alignItems: 'center', paddingHorizontal: 8, paddingTop: 22, paddingBottom: 16 },
+  tileClip: { ...StyleSheet.absoluteFill, borderRadius: 22, borderWidth: 1, overflow: 'hidden' },
   tileGlow: { position: 'absolute', width: 170, height: 170, top: -30, alignSelf: 'center' },
-  statusDot: { position: 'absolute', top: 8, right: 8, width: 18, height: 18, borderRadius: 9, backgroundColor: '#3E8E64', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  rarityPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, height: 17, marginTop: 7 },
-  pillDot: { width: 5, height: 5, borderRadius: 3 },
-  pillText: { fontFamily: FONT.outfit.b, fontSize: fz(8.5), letterSpacing: 0.7 },
+  statusDot: { position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#3E8E64', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  rarityPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, height: 24, marginTop: 8 },
+  pillDot: { width: 7, height: 7, borderRadius: 4 },
+  pillText: { fontFamily: FONT.outfit.b, fontSize: fz(10.5), letterSpacing: 0.8 },
   art: { width: 80, height: 80 },
-  tileTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(12), lineHeight: fz(15), textAlign: 'center', marginTop: 8, minHeight: fz(30) },
+  tileTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(13.5), lineHeight: fz(17), textAlign: 'center', marginTop: 10, minHeight: fz(17) },
   progressWrap: { alignSelf: 'stretch', alignItems: 'center', marginTop: 8, gap: 4 },
   track: { alignSelf: 'stretch', height: 5, borderRadius: 3, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3, backgroundColor: INDIGO },

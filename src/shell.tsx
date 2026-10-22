@@ -64,7 +64,7 @@ export function Icon({ name, color, size, exact, filled }: { name: string; size?
 // The app shell shared by every tab: top bar and bottom tab bar
 // ---------------------------------------------------------------------------------------------------------------------
 
-export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'LEARN', showGap = true, title, onBack, onTempReset, offWhite = false }: { p: Palette; /** Day mode: the off-white bar of the main tabs (a pushed screen with its own page colour leaves this off). */ offWhite?: boolean; gap?: number; onGap?: (v: number) => void; onToggleTheme: () => void; topInset: number; badge?: string; showGap?: boolean; title?: string; onBack?: () => void; onTempReset?: () => void }) {
+export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'LEARN', showGap = true, title, onBack, onTempReset, offWhite = false, roadHome, onToggleRoadHome }: { p: Palette; /** Day mode: the off-white bar of the main tabs (a pushed screen with its own page colour leaves this off). */ offWhite?: boolean; gap?: number; onGap?: (v: number) => void; onToggleTheme: () => void; topInset: number; badge?: string; showGap?: boolean; title?: string; onBack?: () => void; onTempReset?: () => void; /** Learn tab: whether the Road look of Home is on, and the switch for it. */ roadHome?: boolean; onToggleRoadHome?: () => void }) {
   return (
     <View style={{ paddingTop: topInset, backgroundColor: offWhite && !p.isDark ? OFFWHITE_BAR.bg : p.page, borderBottomWidth: BW, borderBottomColor: offWhite && !p.isDark ? OFFWHITE_BAR.border : p.headerBorder, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: p.isDark ? 0.28 : 0.14, shadowRadius: 3, zIndex: 10 }}>
       <View style={s.headerInner}>
@@ -113,6 +113,14 @@ export function Header({ p, gap = 12, onGap, onToggleTheme, topInset, badge = 'L
               <ShadowStack r={12} shadows={raisedShadows(p.isDark)} />
               <Pressable accessibilityLabel="Reset quiz progress (testing)" onPress={onTempReset} style={[s.themeBtn, { backgroundColor: p.card, borderColor: p.cardBorder }]}>
                 <Icon name="refresh" size={17} color="#EF4444" />
+              </Pressable>
+            </View>
+          )}
+          {onToggleRoadHome && (
+            <View>
+              <ShadowStack r={12} shadows={raisedShadows(p.isDark)} />
+              <Pressable accessibilityLabel={roadHome ? 'Switch to the classic Home' : 'Switch to the Road Home'} onPress={onToggleRoadHome} style={[s.themeBtn, { backgroundColor: roadHome ? '#4F46E5' : p.card, borderColor: roadHome ? '#4F46E5' : p.cardBorder }]}>
+                <Icon name="explore" size={17} color={roadHome ? '#FFFFFF' : p.isDark ? '#A5B4FC' : '#4F46E5'} />
               </Pressable>
             </View>
           )}

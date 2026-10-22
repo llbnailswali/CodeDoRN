@@ -1,0 +1,64 @@
+Accuracy
+11. Perfect Run	Solve 5 exercises on the first try
+12. Sharp Mind	Solve 25 exercises on the first try
+19. First Strike	Get 10 quiz questions right on the first try
+20. Perfect Score	Get all 10 quiz questions right on the first try
+21. Sharp Thinker	Get 50 quiz questions right on the first try
+22. Flawless Mind	Get 100 quiz questions right on the first try
+44. Perfectionist	Master 10 flawless lessons
+
+Coding
+2. Code Initiate	Complete 1 Write & Run exercise
+3. Bug Squasher	Complete 1 Fix Code exercise
+5. Code Warrior	Complete 10 Write & Run exercises
+6. Code Ninja	Complete 50 Write & Run exercises
+7. Code Master	Complete 100 Write & Run exercises
+8. Bug Hunter	Complete 10 Fix Code exercises
+9. Bug Exterminator	Complete 50 Fix Code exercises
+10. Debug Legend	Complete 100 Fix Code exercises
+43. All-Rounder	Complete 10 Write & Run and 10 Fix Code exercises
+46. Problem Solver	Complete 200 unique practice exercises
+49. Debug Guardian	Complete 200 unique Fix Code exercises
+
+Quizzes
+13. Quiz Rookie	Answer 10 quiz questions correctly
+14. Quiz Explorer	Answer 50 quiz questions correctly
+15. Quiz Challenger	Answer 100 quiz questions correctly
+16. Quiz Warrior	Answer 250 quiz questions correctly
+17. Quiz Master	Answer 500 quiz questions correctly
+18. Quiz Legend	Answer 1,000 quiz questions correctly
+23. Quiz Scholar	Answer 10 questions in each of 5 quiz topics
+24. Quiz Grandmaster	Answer 2,000 quiz questions correctly
+
+Challenges
+41. Daily Challenger	Complete 7 Daily Challenges
+42. Challenge Champion	Complete 30 Daily Challenges
+48. Prediction Pro	Complete 25 perfect Predict stages
+50. Challenge Ace	Ace 10 Daily Challenges
+51. CodeDo Legend	Master all Worlds, complete all Bosses, and finish 100 practice exercises
+
+Consistency
+1. Hello, World!	Master your first lesson
+4. Knowledge Seeker	Master 5 lessons
+25. Spark Starter	3 consecutive learning days
+26. On Fire	7 consecutive learning days
+27. Habit Builder	14 consecutive learning days
+28. Unstoppable	30 consecutive learning days
+29. Century Coder	100 consecutive learning days
+30. Coding Veteran	Learn on 365 days
+35. Lesson Collector	Master 25 lessons
+36. Knowledge Champion	Master 100 lessons
+40. Comeback Kid	Return after a 14-day break and master a lesson
+
+Worlds
+31. First Conquest	Master every lesson in World 1, including its boss lesson
+32. World Explorer	Unlock 3 Worlds
+33. World Conqueror	Master 5 Worlds
+34. Realm Master	Master every World in the learning path
+45. Kotlin Champion	Master all Kotlin lessons in the current learning path
+47. Code Scientist	Complete 50 Explore stages
+
+Bosses
+37. Boss Slayer	Complete 1 World Boss lesson
+38. Boss Hunter	Complete 5 World Boss lessons
+39. Boss Legend	Complete every World Boss in the learning path

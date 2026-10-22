@@ -211,8 +211,8 @@ function SliceStreaks({ streaks, top, color, opacity, progress }: { streaks: Str
 }
 
 const TrailSlice = React.memo(function TrailSlice({
-  geo, top, height, isDark: d, page, progress,
-}: { geo: Geometry; top: number; height: number; isDark: boolean; page: string; progress: Animated.Value }) {
+  geo, top, height, isDark: d, page, progress, road,
+}: { geo: Geometry; top: number; height: number; isDark: boolean; page: string; progress: Animated.Value; road: boolean }) {
   const bottom = top + height;
   const fullPath = React.useMemo(() => slicePath(geo, top, bottom, Infinity), [geo, top, bottom]);
   const activePath = React.useMemo(() => (geo.activeIndex > 0 ? slicePath(geo, top, bottom, geo.activeIndex) : ''), [geo, top, bottom]);
@@ -247,9 +247,17 @@ const TrailSlice = React.memo(function TrailSlice({
             <Stop offset="1" stopColor={page} stopOpacity="0" />
           </LinearGradient>
         </Defs>
-        <Path d={fullPath} fill="none" stroke="url(#highlightGrad)" strokeWidth={12} strokeLinecap="round" opacity={d ? 0.35 : 0.85} />
-        <Path d={fullPath} fill="none" stroke="url(#baseGrad)" strokeWidth={6} strokeLinecap="round" opacity={0.75} />
-        {activePath !== '' && (
+        {road && (
+          <>
+            <Path d={fullPath} fill="none" stroke="#5B50F0" strokeWidth={30} strokeLinecap="round" opacity={d ? 0.28 : 0.2} />
+            <Path d={fullPath} fill="none" stroke="#5B50F0" strokeWidth={22} strokeLinecap="round" opacity={d ? 0.4 : 0.3} />
+            <Path d={fullPath} fill="none" stroke={d ? '#4F46E5' : '#3F36C9'} strokeWidth={14} strokeLinecap="round" />
+            <Path d={fullPath} fill="none" stroke="#FFFFFF" strokeWidth={2.500} strokeLinecap="round" strokeDasharray="7 8" opacity={0.95} />
+          </>
+        )}
+        {!road && <Path d={fullPath} fill="none" stroke="url(#highlightGrad)" strokeWidth={12} strokeLinecap="round" opacity={d ? 0.35 : 0.85} />}
+        {!road && <Path d={fullPath} fill="none" stroke="url(#baseGrad)" strokeWidth={6} strokeLinecap="round" opacity={0.75} />}
+        {!road && activePath !== '' && (
           <>
             <Path d={activePath} fill="none" stroke={d ? '#6366F1' : '#818CF8'} strokeWidth={8} strokeLinecap="round" opacity={d ? 0.25 : 0.3} />
             <Path d={activePath} fill="none" stroke="url(#activeGrad)" strokeWidth={4} strokeLinecap="round" strokeDasharray="4 4" />
@@ -257,8 +265,8 @@ const TrailSlice = React.memo(function TrailSlice({
         )}
         {fadeEndY > startY && fadeEndY > top && startY < bottom && <Rect x={0} y={startY} width={geo.width} height={fadeEndY - startY} fill="url(#startFade)" />}
       </Svg>
-      {SHOW_STREAKS && <SliceStreaks streaks={streaks} top={top} color={d ? '#94A3B8' : '#FFFFFF'} opacity={d ? 0.5 : 0.7} progress={progress} />}
-      {SHOW_STREAKS && <SliceStreaks streaks={activeStreaks} top={top} color={d ? '#C7D2FE' : '#FFFFFF'} opacity={d ? 0.95 : 1} progress={progress} />}
+      {SHOW_STREAKS && !road && <SliceStreaks streaks={streaks} top={top} color={d ? '#94A3B8' : '#FFFFFF'} opacity={d ? 0.5 : 0.7} progress={progress} />}
+      {SHOW_STREAKS && !road && <SliceStreaks streaks={activeStreaks} top={top} color={d ? '#C7D2FE' : '#FFFFFF'} opacity={d ? 0.95 : 1} progress={progress} />}
     </View>
   );
 });
@@ -282,6 +290,7 @@ type RowProps = {
   gap: number;
   currentOrder: number;
   shape: Shape;
+  road: boolean;
   quizActivityCounts: Record<number, number>;
   writeRunActivityCounts: Record<number, number>;
   debugActivityCounts: Record<number, number>;
@@ -293,7 +302,7 @@ type RowProps = {
 };
 
 function WorldBlock({ order, ...r }: { order: number } & Omit<RowProps, 'item' | 'geo' | 'progress' | 'bandOpacity' | 'sectionWidth' | 'onRowLayout' | 'onBandLayout'>) {
-  const { p, gap, currentOrder, shape, onOpenWorld, onOpenActivity } = r;
+  const { p, gap, currentOrder, shape, road, onOpenWorld, onOpenActivity } = r;
   const world = HOME_WORLDS[order - 1];
   const completed = COMPLETED_WORLDS;
   const node = order === 15 ? (
@@ -303,7 +312,7 @@ function WorldBlock({ order, ...r }: { order: number } & Omit<RowProps, 'item' |
   ) : order === currentOrder ? (
     <CurrentCard p={p} world={world} paddingTop={worldPaddingTop(order)} gap={gap + 14} anchors={NO_ANCHORS} onOpenWorld={onOpenWorld} />
   ) : (
-    <StandardNode p={p} world={world} align={alignmentFor(order)} paddingTop={worldPaddingTop(order)} gap={gap + 14} pathStyle={getPathStyle(DEVICE_PATH_STYLE)} completed={completed} anchors={NO_ANCHORS} onOpenWorld={onOpenWorld} />
+    <StandardNode p={p} world={world} align={alignmentFor(order)} paddingTop={worldPaddingTop(order)} gap={gap + 14} pathStyle={getPathStyle(DEVICE_PATH_STYLE)} completed={completed} anchors={NO_ANCHORS} onOpenWorld={onOpenWorld} road={road} />
   );
   return (
     <>
@@ -323,6 +332,7 @@ function WorldBlock({ order, ...r }: { order: number } & Omit<RowProps, 'item' |
             anchors={NO_ANCHORS}
             onOpen={onOpenActivity}
             shape={shape}
+            road={road}
           />
         );
       })}
@@ -336,7 +346,7 @@ const ListRow = React.memo(function ListRow(props: RowProps) {
   // Each chapter sits on its own faint tint over the page (the middle chapter a little deeper), as on the Quiz tab.
   const chapter = item.type === 'band' ? item.chapter : item.spec.worlds[0] <= 8 ? 1 : item.spec.worlds[0] <= 15 ? 2 : 3;
   const tint = p.isDark ? (chapter === 2 ? 'rgba(148,163,184,0.09)' : 'rgba(148,163,184,0.05)') : (chapter === 2 ? 'rgba(120,98,60,0.10)' : 'rgba(120,98,60,0.05)');
-  const slice = <TrailSlice geo={geo} top={item.top} height={item.height} isDark={p.isDark} page={p.page} progress={progress} />;
+  const slice = <TrailSlice geo={geo} top={item.top} height={item.height} isDark={p.isDark} page={p.page} progress={progress} road={props.road} />;
   if (item.type === 'band') {
     const { currentOrder } = props;
     return (
@@ -378,11 +388,13 @@ const ListRow = React.memo(function ListRow(props: RowProps) {
 
 /** Drop-in replacement for HomeContent (same props), rendered as a virtualized list. */
 export const HomeListContent = React.memo(function HomeListContent({
-  p, gap, journeyVariant = 'milestones', onOpenWorld, onOpenActivity, quizActivityCounts = EMPTY_COUNTS, writeRunActivityCounts = EMPTY_COUNTS, debugActivityCounts = EMPTY_COUNTS,
+  p, gap, journeyVariant = 'milestones', road = false, onOpenWorld, onOpenActivity, quizActivityCounts = EMPTY_COUNTS, writeRunActivityCounts = EMPTY_COUNTS, debugActivityCounts = EMPTY_COUNTS,
 }: {
   p: Palette;
   gap: number;
   journeyVariant?: JourneyVariant;
+  /** The "Road" look: a bold indigo road with a dashed centre line and larger milestones. */
+  road?: boolean;
   onOpenWorld?: (order: number) => void;
   onOpenActivity?: (order: number, activity: WorldActivity) => void;
   quizActivityCounts?: Record<number, number>;
@@ -525,6 +537,7 @@ export const HomeListContent = React.memo(function HomeListContent({
         gap={gap}
         currentOrder={currentOrder}
         shape={shape}
+        road={road}
         quizActivityCounts={quizActivityCounts}
         writeRunActivityCounts={writeRunActivityCounts}
         debugActivityCounts={debugActivityCounts}
@@ -535,7 +548,7 @@ export const HomeListContent = React.memo(function HomeListContent({
         onPreparedRow={onPreparedRow}
       />
     ),
-    [geo, p, progress, bandSliceOpacity, sectionWidth, gap, currentOrder, shape, quizActivityCounts, writeRunActivityCounts, debugActivityCounts, onOpenWorld, onOpenActivity, onRowLayout, onBandLayout, onPreparedRow]
+    [geo, p, progress, bandSliceOpacity, sectionWidth, gap, currentOrder, shape, road, quizActivityCounts, writeRunActivityCounts, debugActivityCounts, onOpenWorld, onOpenActivity, onRowLayout, onBandLayout, onPreparedRow]
   );
 
   const onHeaderLayout = React.useCallback((e: { nativeEvent: { layout: { height: number } } }) => {

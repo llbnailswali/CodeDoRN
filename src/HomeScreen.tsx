@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BW, Icon, MAIN, fz, pressedShadows, raisedShadows } from './shell';
 import { HOME_WORLDS } from './homeData';
@@ -271,7 +271,22 @@ export const worldPointIndex = (order: number) => 1 + (order - 1) * (WORLD_ACTIV
 export const activityPointIndex = (order: number, activityIndex: number) => worldPointIndex(order) + activityIndex + 1;
 export const TOTAL_PATH_POINTS = 1 + TOTAL_WORLDS * (WORLD_ACTIVITIES.length + 1);
 
-export function ActivityNode({ p, order, activity, position, locked, count, anchors, onOpen, shape = 'square' }: {
+
+/** The "Road" Home's milestone art: a flask (Quiz), angle brackets (Write & Run) and a sun (Debug), drawn because the icon font lacks them. */
+export const ROAD_ACTIVITY: Record<WorldActivity, { border: string; bg: string; icon: string; badge: string; darkBorder: string }> = {
+  quiz: { border: '#B79CF5', bg: '#FAF7FF', icon: '#7C3AED', badge: '#6D28D9', darkBorder: '#8B6FE0' },
+  writeRun: { border: '#6AD3EE', bg: '#F0FCFF', icon: '#3A8DB0', badge: '#3B82C4', darkBorder: '#4FB6D6' },
+  debug: { border: '#F5A24B', bg: '#FFF8F0', icon: '#EE7B1F', badge: '#D9601E', darkBorder: '#E08A38' },
+};
+function RoadActivityArt({ activity, color, locked }: { activity: WorldActivity; color: string; locked: boolean }) {
+  if (locked) return <Icon name="lock" size={20} exact color={color} />;
+  if (activity === 'quiz') return <Svg width={24} height={24} viewBox="0 0 24 24"><Path d="M9.500 3.500h5M10.500 3.500v5.400L5 18.500a1.800 1.800 0 0 0 1.600 2.700h10.800a1.800 1.800 0 0 0 1.600-2.700l-5.500-9.600V3.500M8 14.500h8" fill="none" stroke={color} strokeWidth={1.900} strokeLinecap="round" strokeLinejoin="round" /></Svg>;
+  if (activity === 'writeRun') return <Svg width={24} height={24} viewBox="0 0 24 24"><Path d="M8.500 7L3.500 12l5 5M15.500 7l5 5-5 5" fill="none" stroke={color} strokeWidth={2.400} strokeLinecap="round" strokeLinejoin="round" /></Svg>;
+  return <Svg width={24} height={24} viewBox="0 0 24 24"><Circle cx={12} cy={12} r={3.800} fill="none" stroke={color} strokeWidth={1.900} /><Path d="M12 2.800v2.600M12 18.600v2.600M2.800 12h2.600M18.600 12h2.600M5.500 5.500l1.800 1.800M16.700 16.700l1.800 1.800M5.500 18.500l1.800-1.800M16.700 7.300l1.800-1.800" fill="none" stroke={color} strokeWidth={1.900} strokeLinecap="round" /></Svg>;
+}
+
+export function ActivityNode({ p, order, activity, position, locked, count, anchors, onOpen, shape = 'square', road = false }: {
+  road?: boolean;
   shape?: 'square' | 'circle' | 'diamond' | 'pill';
   p: Palette;
   order: number;
@@ -301,6 +316,34 @@ export function ActivityNode({ p, order, activity, position, locked, count, anch
         borderColor: p.isDark ? 'rgba(148,163,184,0.22)' : 'rgba(148,163,184,0.38)',
         icon: p.muted,
       };
+
+  if (road) {
+    const tone = ROAD_ACTIVITY[activity.id];
+    const rBorder = enabled ? (p.isDark ? tone.darkBorder : tone.border) : p.isDark ? 'rgba(148,163,184,0.3)' : 'rgba(148,163,184,0.5)';
+    return (
+      <View style={[s.activityNodeRow, placement]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${activity.label}, ${count} activities, World ${order}${enabled ? '' : ', locked'}`}
+          accessibilityState={{ disabled: !enabled }}
+          disabled={!enabled}
+          onPress={() => onOpen?.(order, activity.id)}
+          style={[s.activityNodePressable, { opacity: locked ? 0.58 : 1 }]}
+        >
+          <View
+            ref={anchors.activity(order, activity.id)}
+            collapsable={false}
+            style={[s.activityNodeBox, { backgroundColor: p.isDark ? '#161D2C' : tone.bg, borderColor: rBorder, borderWidth: 2, transform: [{ scale: 1.5 }], shadowColor: tone.icon, shadowOpacity: p.isDark ? 0.4 : 0.22, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 3 }]}
+          >
+            <RoadActivityArt activity={activity.id} color={enabled ? tone.icon : p.muted} locked={locked} />
+            <View style={[s.activityCountBadge, { backgroundColor: enabled ? tone.badge : p.muted, borderColor: '#FFFFFF', borderWidth: 1.5 }]}>
+              <Text style={[s.activityCountText, { color: '#FFFFFF' }]}>{count}</Text>
+            </View>
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={[s.activityNodeRow, placement]}>
@@ -391,8 +434,9 @@ function nodeBoxColors(p: Palette, order: number, kind: 'done' | 'locked' | 'cur
 }
 
 export function StandardNode({
-  p, world, align, paddingTop, gap, pathStyle, completed, anchors, onOpenWorld,
+  p, world, align, paddingTop, gap, pathStyle, completed, anchors, onOpenWorld, road = false,
 }: {
+  road?: boolean;
   p: Palette;
   world: (typeof HOME_WORLDS)[number];
   align: 'left' | 'right';
@@ -428,9 +472,13 @@ export function StandardNode({
         <View
           ref={anchors.box(world.order)}
           collapsable={false}
-          style={[s.nodeBox, { backgroundColor: c.bg, borderColor: c.border, borderWidth: c.bw }]}
+          style={[s.nodeBox, road
+            ? { backgroundColor: p.isDark ? '#161D2C' : '#FFFFFF', borderColor: locked ? c.border : p.isDark ? '#6366F1' : '#8A8FF0', borderWidth: 2, transform: [{ scale: 1.5 }], marginHorizontal: 11, shadowColor: '#4F46E5', shadowOpacity: p.isDark ? 0.5 : 0.28, shadowRadius: 7, shadowOffset: { width: 0, height: 3 }, elevation: 4 }
+            : { backgroundColor: c.bg, borderColor: c.border, borderWidth: c.bw }]}
         >
-          <Icon name={iconName} size={20} color={c.icon} />
+          {road && !locked
+            ? <Svg width={26} height={26} viewBox="0 0 24 24"><Path d="M8.500 7L3.500 12l5 5M15.500 7l5 5-5 5M13.500 5.500l-3 13" fill="none" stroke={p.isDark ? '#A5B4FC' : '#4338CA'} strokeWidth={2.400} strokeLinecap="round" strokeLinejoin="round" /></Svg>
+            : <Icon name={iconName} size={20} color={c.icon} />}
         </View>
         <View style={{ alignItems: left ? 'flex-start' : 'flex-end' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
