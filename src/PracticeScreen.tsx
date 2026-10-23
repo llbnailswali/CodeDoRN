@@ -1,7 +1,7 @@
 import React from 'react';
-import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import { BW, Icon, MAIN, fz } from './shell';
+import { BW, Icon, MAIN, fz, navScrollHandlers, useNavClearance } from './shell';
 import { EditorPanel, WorldsDivider, accentFor, hexAlpha, lh } from './parts';
 import { HELP_OPTIONS, HelpLevel } from './HelpSheet';
 import { ShadowStack } from './shadows';
@@ -128,8 +128,11 @@ function WorldCard({ world, dark, onOpen, showAccentBorder }: { world: PracticeW
   );
 }
 
+const WorldSeparator = () => <View style={{ height: 12 }} />;
+
 export const PracticeContent = React.memo(function PracticeContent({ p, helpLevel, onOpenHelp, onOpenWorld, onOpenAchievements, showAccentBorder = true }: { p: Palette; helpLevel: HelpLevel; onOpenHelp: () => void; onOpenWorld: (order: number) => void; onOpenAchievements?: () => void; showAccentBorder?: boolean }) {
   const dark = p.isDark;
+  const navClearance = useNavClearance();
   const t = tokens(dark);
   const helpLabel = HELP_OPTIONS.find((o) => o.level === helpLevel)?.label ?? 'Beginner';
   const slate400 = '#94A3B8';
@@ -138,13 +141,28 @@ export const PracticeContent = React.memo(function PracticeContent({ p, helpLeve
   const bandList = dark ? 'rgba(148,163,184,0.05)' : 'rgba(120,98,60,0.05)';
   const bandTop = dark ? 'rgba(148,163,184,0.05)' : 'rgba(120,98,60,0.05)';
 
+  // Like Home and Quiz: a loader covers the tab until the first world cards are laid out, plus two frames to draw them.
+  const [ready, setReady] = React.useState(false);
+  const readyFrames = React.useRef<number[]>([]);
+  React.useEffect(() => () => readyFrames.current.forEach(cancelAnimationFrame), []);
+  const onFirstCardLayout = React.useCallback(() => {
+    if (readyFrames.current.length) return;
+    readyFrames.current.push(requestAnimationFrame(() => { readyFrames.current.push(requestAnimationFrame(() => setReady(true))); }));
+  }, []);
+
   return (
+    <View style={{ flex: 1 }}>
     <FlatList
       style={{ backgroundColor: bandList }}
       data={WORLDS}
+      {...navScrollHandlers}
+      // The first 4 world cards render with the tab; the rest are added in small batches as you scroll.
+      initialNumToRender={4}
+      maxToRenderPerBatch={2}
+      windowSize={5}
       keyExtractor={(world) => String(world.order)}
-      renderItem={({ item: world }) => <WorldCard world={world} dark={dark} onOpen={onOpenWorld} showAccentBorder={showAccentBorder} />}
-      ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+      renderItem={({ item: world, index }) => <View onLayout={index === 0 ? onFirstCardLayout : undefined}><WorldCard world={world} dark={dark} onOpen={onOpenWorld} showAccentBorder={showAccentBorder} /></View>}
+      ItemSeparatorComponent={WorldSeparator}
       ListHeaderComponent={
         <>
       <View style={{ marginHorizontal: -16, marginTop: -8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, backgroundColor: bandTop, marginBottom: 4 }}>
@@ -207,9 +225,16 @@ export const PracticeContent = React.memo(function PracticeContent({ p, helpLeve
       <View style={{ height: 12 }} />
         </>
       }
-      contentContainerStyle={{ paddingTop: 8, paddingHorizontal: 16, paddingBottom: 32 }}
+      contentContainerStyle={{ paddingTop: 8, paddingHorizontal: 16, paddingBottom: 32 + navClearance }}
       showsVerticalScrollIndicator={false}
     />
+    {!ready && (
+      <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: p.page }]}>
+        <ActivityIndicator size="large" color={dark ? '#818CF8' : '#4F46E5'} />
+        <Text style={{ color: p.pageText, fontFamily: FONT.body, fontSize: fz(14 * MAIN) }}>Preparing your practice…</Text>
+      </View>
+    )}
+    </View>
   );
 });
 

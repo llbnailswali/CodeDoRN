@@ -543,6 +543,20 @@ export const KotlinCodeEditor = forwardRef<KotlinCodeEditorHandle, KotlinCodeEdi
           return;
         }
 
+        // In a line's leading spaces, Backspace removes one indent step (back to the previous multiple of the indent width).
+        const lineStart = code.lastIndexOf('\n', start - 1) + 1;
+        const leading = code.slice(lineStart, start);
+        if (leading.length > 0 && /^ +$/.test(leading)) {
+          // On an otherwise empty line, skip the column 0 stop: remove the indent and the line break, landing on the previous line's end.
+          if (lineStart > 0 && (code[start] === undefined || code[start] === '\n')) {
+            updateCodeWithHistory(code.slice(0, lineStart - 1) + code.slice(start), lineStart - 1);
+            return;
+          }
+          const step = leading.length % EDITOR_INDENT.length || EDITOR_INDENT.length;
+          updateCodeWithHistory(code.slice(0, start - step) + code.slice(start), start - step);
+          return;
+        }
+
         const before = code.slice(0, start - 1);
         const after = code.slice(start);
         updateCodeWithHistory(before + after, start - 1);

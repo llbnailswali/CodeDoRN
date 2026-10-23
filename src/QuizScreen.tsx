@@ -1,7 +1,7 @@
 import React from 'react';
-import { Animated, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { BW, Icon, MAIN, fz } from './shell';
+import { BW, Icon, MAIN, fz, navScrollHandlers, useNavClearance } from './shell';
 import { accentFor, lh } from './parts';
 import { ShadowStack } from './shadows';
 import { FONT, Palette } from './theme';
@@ -649,6 +649,7 @@ function WorldCard({ world, dark, onOpen, onReview, showAccentBorder }: { world:
 /** The Quiz tab's content (the shared top bar and tab bar live in App.tsx). */
 export const QuizContent = React.memo(function QuizContent({ p, progress, onOpenQuiz, onOpenType, onOpenSession, onOpenSpeedRound, onOpenSurvival, onOpenStakes, sessionOpen = false, showAccentBorder = true }: { p: Palette; progress: QuizProgress; onOpenType?: (filter: QuizFilter, label: string) => void; onOpenSession?: (questions: QuizQuestion[], label: string) => void; onOpenSpeedRound?: (seconds: number) => void; onOpenSurvival?: () => void; onOpenStakes?: () => void; /** True while a quiz session covers the tab; the cards' best scores are re-read when it closes. */ sessionOpen?: boolean; onOpenQuiz: (world?: { order: number; title: string }, review?: boolean) => void; showAccentBorder?: boolean }) {
   const isDark = p.isDark;
+  const navClearance = useNavClearance();
   const title = isDark ? '#E2E8F0' : '#203047';
   const muted = isDark ? '#94A3B8' : '#52647B';
 
@@ -657,16 +658,21 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
     ? { modes: 'rgba(148,163,184,0.05)', format: 'rgba(148,163,184,0.09)', world: 'rgba(148,163,184,0.05)' }
     : { modes: 'rgba(120,98,60,0.05)', format: 'rgba(120,98,60,0.10)', world: 'rgba(120,98,60,0.05)' };
   const quizWorlds = getQuizWorlds();
-  // The Quick Mix and Daily Challenge cards pick their questions up front, so a tap starts exactly that set.
-  // Quick Mix is re-picked whenever your answers change (so a finished quiz is not offered again); Daily is fixed for the day.
-  const dayKey = new Date().toDateString();
-  const sessions = React.useMemo(() => ({ 'quick-mix': buildSession(quizWorlds, undefined, progress), daily: buildDailySession(quizWorlds) }), [progress, dayKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const worlds = CURRICULUM_WORLDS.map((catalogWorld) => {
+  // Quick Mix (re-picked from your answers, so a finished quiz is not offered again) and the Daily Challenge are built when tapped, not on every render.
+  const worlds = React.useMemo(() => CURRICULUM_WORLDS.map((catalogWorld) => {
     const world = quizWorlds.find((candidate) => candidate.order === catalogWorld.order);
     const stats = world ? worldStats(world, progress) : { total: 0, correct: 0, missed: 0, seen: 0 };
     return { order: catalogWorld.order, title: catalogWorld.title, total: stats.total, correct: stats.correct, missed: stats.missed, seen: stats.seen };
-  });
+  }), [quizWorlds, progress]);
   const missed = worlds.reduce((total, world) => total + world.missed, 0);
+  // Like Home: a loader covers the tab until the first world cards are laid out, plus two frames to draw them.
+  const [ready, setReady] = React.useState(false);
+  const readyFrames = React.useRef<number[]>([]);
+  React.useEffect(() => () => readyFrames.current.forEach(cancelAnimationFrame), []);
+  const onFirstRowLayout = React.useCallback(() => {
+    if (readyFrames.current.length) return;
+    readyFrames.current.push(requestAnimationFrame(() => { readyFrames.current.push(requestAnimationFrame(() => setReady(true))); }));
+  }, []);
   const [speedMode, setSpeedMode] = React.useState<QuizMode | null>(null);
   const [rulesMode, setRulesMode] = React.useState<QuizMode | null>(null);
   // Personal bests on the Speed Round and Survival cards, refreshed each time a session closes so a new record shows at once.
@@ -704,9 +710,14 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
     <View style={{ flex: 1, backgroundColor: p.page }}>
       <FlatList
         data={rows}
+        {...navScrollHandlers}
         keyExtractor={(_, index) => `world-row-${index}`}
-        renderItem={({ item: row }) => (
-          <View style={[s.band, { backgroundColor: bands.world, paddingBottom: 12 }]}>
+        // First 4 world cards (2 rows) render with the tab; the rest are added in small batches as you scroll.
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={5}
+        renderItem={({ item: row, index }) => (
+          <View style={[s.band, { backgroundColor: bands.world, paddingBottom: 12 }]} onLayout={index === 0 ? onFirstRowLayout : undefined}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               {row.map((w) => (
                 <WorldCard key={w.order} world={w} dark={isDark} onOpen={onOpenQuiz} onReview={(world) => onOpenQuiz(world, true)} showAccentBorder={showAccentBorder} />
@@ -719,8 +730,8 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
           <>
             <View style={[s.band, { backgroundColor: bands.modes, paddingTop: 20, paddingBottom: 14 }]}>
               <QuizModeRail dark={isDark} missed={missed} bests={bests} survivalBonus={survivalBonus} stakesShield={stakesShield} speedBest={speedBest} onStart={(mode) => {
-                if (mode.id === 'quick-mix' && onOpenSession) onOpenSession(sessions['quick-mix'], 'Quick quiz');
-                else if (mode.id === 'daily' && onOpenSession) onOpenSession(sessions.daily, 'Daily challenge');
+                if (mode.id === 'quick-mix' && onOpenSession) onOpenSession(buildSession(quizWorlds, undefined, progress), 'Quick quiz');
+                else if (mode.id === 'daily' && onOpenSession) onOpenSession(buildDailySession(quizWorlds), 'Daily challenge');
                 else if (mode.kind === 'speed') setSpeedMode(mode);
                 else if (mode.kind === 'survival' || mode.kind === 'stakes') setRulesMode(mode);
                 else onOpenQuiz(undefined, mode.kind === 'review');
@@ -743,10 +754,16 @@ export const QuizContent = React.memo(function QuizContent({ p, progress, onOpen
             </View>
           </>
         }
-        ListFooterComponent={<View style={{ height: 32, marginHorizontal: -PAGE_X, backgroundColor: bands.world }} />}
+        ListFooterComponent={<View style={{ height: 32 + navClearance, marginHorizontal: -PAGE_X, backgroundColor: bands.world }} />}
         contentContainerStyle={{ paddingHorizontal: PAGE_X }}
         showsVerticalScrollIndicator={false}
       />
+      {!ready && (
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: p.page }]}>
+          <ActivityIndicator size="large" color={isDark ? '#818CF8' : '#4F46E5'} />
+          <Text style={{ color: p.pageText, fontFamily: FONT.body, fontSize: fz(14 * MAIN) }}>Preparing your quizzes…</Text>
+        </View>
+      )}
       <ModeRulesDialog mode={rulesMode} dark={isDark} bonusHearts={survivalBonus} stakesShield={stakesShield} onClose={() => setRulesMode(null)} onStart={() => { const kind = rulesMode?.kind; setRulesMode(null); if (kind === 'stakes') onOpenStakes?.(); else onOpenSurvival?.(); }} />
       <SpeedDurationDialog mode={speedMode} dark={isDark} onClose={() => setSpeedMode(null)} onStart={(seconds) => { setSpeedMode(null); onOpenSpeedRound?.(seconds); }} />
     </View>

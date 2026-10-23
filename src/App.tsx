@@ -1,6 +1,6 @@
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, BackHandler, LayoutAnimation, Platform, StatusBar, StyleSheet, Text, UIManager, View } from 'react-native';
+import { Alert, BackHandler, LayoutAnimation, NativeModules, Platform, StatusBar, StyleSheet, Text, UIManager, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurriculumScreen } from './CurriculumScreen';
 import { HomeListContent } from './HomeListScreen';
@@ -53,7 +53,8 @@ export function App({ dark = true }: { dark?: boolean }) {
   const [themeLoaded, setThemeLoaded] = React.useState(false);
   const [tab, setTab] = React.useState<TabId>('learn');
   const [visitedTabs, setVisitedTabs] = React.useState<Set<TabId>>(() => new Set(['learn']));
-  const [gap, setGap] = React.useState(12);
+  // The Home's spacing between worlds is fixed at 0 (the toolbar's +/- control was removed).
+  const gap = 0;
   const [roadHome, setRoadHome] = React.useState(false);
   const [journeyVariant, setJourneyVariant] = React.useState<JourneyVariant>('milestones');
   const [showAccentBorder, setShowAccentBorder] = React.useState(false);
@@ -175,6 +176,14 @@ export function App({ dark = true }: { dark?: boolean }) {
     });
     setTab(nextTab);
   }, []);
+  const openQuizSession = React.useCallback((questions: QuizQuestion[], label: string) => setQuiz({ questions, label }), []);
+  // The centre tab opens the web editor (the same Write & Run activity as Practice) as a blank Kotlin scratch file.
+  const openEditor = React.useCallback(() => {
+    const stage = NativeModules.WebStage;
+    if (!stage) return;
+    stage.open('what-is-kotlin', 'writeRun', isDark, false, true, 'fun main() {\n  println("Hello, Kotlin!")\n}\n', null).catch(() => {});
+  }, [isDark]);
+  const openBadges = React.useCallback(() => setBadgesOpen(true), []);
   const openHelp = React.useCallback(() => setHelpOpen(true), []);
   const openTaskWorld = React.useCallback((order: number) => setTaskWorld({ order, mode: 'writeRun' }), []);
   const openCurriculumWorld = React.useCallback((order: number) => setCurriculumWorld(order), []);
@@ -296,9 +305,7 @@ export function App({ dark = true }: { dark?: boolean }) {
       <Header
         p={tp}
         badge={BADGES[tab]}
-        showGap={tab === 'learn'}
-        gap={gap}
-        onGap={setGap}
+        showGap={false}
         onToggleTheme={toggleTheme}
         onTempReset={tab === 'quiz' ? confirmResetQuiz : undefined}
         offWhite
@@ -321,16 +328,16 @@ export function App({ dark = true }: { dark?: boolean }) {
           />
         </View>
         <View pointerEvents={tab === 'quiz' ? 'auto' : 'none'} style={show('quiz')}>
-          <QuizContent p={tp} progress={quizProgress} onOpenQuiz={openQuizCard} onOpenType={openQuizType} onOpenSession={(questions, label) => setQuiz({ questions, label })} onOpenSpeedRound={startSpeedRound} onOpenSurvival={startSurvival} onOpenStakes={startStakes} sessionOpen={quiz !== null} showAccentBorder={showAccentBorder} />
+          <QuizContent p={tp} progress={quizProgress} onOpenQuiz={openQuizCard} onOpenType={openQuizType} onOpenSession={openQuizSession} onOpenSpeedRound={startSpeedRound} onOpenSurvival={startSurvival} onOpenStakes={startStakes} sessionOpen={quiz !== null} showAccentBorder={showAccentBorder} />
         </View>
         <View pointerEvents={tab === 'practice' ? 'auto' : 'none'} style={show('practice')}>
-          <PracticeContent p={tp} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} onOpenAchievements={() => setBadgesOpen(true)} showAccentBorder={showAccentBorder} />
+          <PracticeContent p={tp} helpLevel={helpLevel} onOpenHelp={openHelp} onOpenWorld={openTaskWorld} onOpenAchievements={openBadges} showAccentBorder={showAccentBorder} />
         </View>
         <View pointerEvents={tab === 'profile' ? 'auto' : 'none'} style={show('profile')}>
           <ProfileScreen p={tp} quizProgress={quizProgress} journeyVariant={journeyVariant} onJourneyVariant={setJourneyVariant} onToggleTheme={toggleTheme} onOpenStats={() => setStatsOpen(true)} onOpenBadges={() => setBadgesOpen(true)} showAccentBorder={showAccentBorder} onAccentBorder={setShowAccentBorder} />
         </View>
       </View>
-      <BottomNav p={p} active={tab} onSelect={selectTab} />
+      <BottomNav p={p} active={tab} onSelect={selectTab} onCenter={openEditor} />
       </View>
       {badgesOpen && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: tp.page }]}>

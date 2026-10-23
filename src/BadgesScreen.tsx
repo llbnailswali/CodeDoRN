@@ -2,7 +2,7 @@ import React from 'react';
 import { Animated, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Polygon, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BW, Icon, TabId, fz } from './shell';
+import { BW, BackButton, Icon, TabId, fz, toolbarTitleStyle } from './shell';
 import { FONT, Palette } from './theme';
 import { BADGES, BADGE_PROGRESS_FOR_TESTING as PROGRESS, BadgeCategory, BadgeDef, RARITY_COLOR, UNLOCK_DATE_FOR_TESTING, UNLOCKED_FOR_TESTING as UNLOCKED } from './badges';
 import { badgeHasArt, badgeImageFor } from './badgeImages';
@@ -54,41 +54,43 @@ function rarityTone(rc: string, dark: boolean) {
   return { ...chip, ...card };
 }
 const TOOLBAR_H = 56;
-const CHIPS_H = 65;
+const CHIPS_H = 52;
 
 const BADGE_GLOW = require('../assets/achievements/badge_glow.png');
 
 // One badge in the grid. An earned badge gets a soft wash and glow in its rarity colour, a rarity pill and a tinted shadow;
 // a locked one is quiet and flat, with a "Locked" pill (or its progress bar).
-function BadgeTile({ badge, width, dark, unlocked, onPress }: { badge: BadgeDef; width: number; dark: boolean; unlocked: boolean; onPress: () => void }) {
+/** `compact` (Profile's strip): a one-line title and less padding, so the tile has no spare space at the bottom. */
+export function BadgeTile({ badge, width, dark, unlocked, onPress, compact = false }: { badge: BadgeDef; width: number; dark: boolean; unlocked: boolean; onPress: () => void; compact?: boolean }) {
   const rc = RARITY_COLOR[badge.rarity][dark ? 'dark' : 'light'];
   const text = dark ? '#E2E8F0' : '#1F2437';
   const surface = dark ? '#171B25' : '#FFFFFF';
   const progress = !unlocked ? PROGRESS[badge.id] : undefined;
   const gradId = `tile-${badge.id}`;
   return <Pressable onPress={onPress} disabled={!unlocked} accessibilityState={{ disabled: !unlocked }}
-    style={({ pressed }) => [s.tile, { width, backgroundColor: surface }, unlocked
+    style={({ pressed }) => [s.tile, compact && { paddingTop: 16, paddingBottom: 10 }, { width, backgroundColor: surface }, unlocked
       ? { shadowColor: rc, shadowOpacity: dark ? 0.35 : 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 4 }
       : { shadowColor: '#3A3226', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
     pressed && { transform: [{ scale: 0.97 }] }]}>
-    <View pointerEvents="none" style={[s.tileClip, { borderColor: unlocked ? `${rc}50` : dark ? 'rgba(255,255,255,0.08)' : '#ECEAE6' }]}>
+    <View pointerEvents="none" style={s.tileClip}>
       {unlocked && <>
         <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-          <Defs><LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={rc} stopOpacity={dark ? 0.22 : 0.16} />
-            <Stop offset="0.55" stopColor={rc} stopOpacity={dark ? 0.06 : 0.04} />
+          <Defs><LinearGradient id={gradId} x1="0" y1="100%" x2="0" y2="0%" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={rc} stopOpacity={dark ? 0.24 : 0.16} />
+            <Stop offset="0.5" stopColor={rc} stopOpacity={dark ? 0.1 : 0.06} />
             <Stop offset="1" stopColor={rc} stopOpacity="0" />
           </LinearGradient></Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gradId})`} />
+          <Rect x="-10%" y="-10%" width="120%" height="120%" fill={`url(#${gradId})`} />
         </Svg>
         <Image source={BADGE_GLOW} resizeMode="contain" style={[s.tileGlow, { opacity: dark ? 0.5 : 0.4 }, badge.rarity !== 'Legendary' && { tintColor: rc }]} />
       </>}
     </View>
+    <View pointerEvents="none" style={[s.tileBorder, { borderColor: unlocked ? `${rc}50` : dark ? 'rgba(255,255,255,0.08)' : '#ECEAE6' }]} />
     {unlocked
       ? <View style={s.statusDot}><Icon name="check" size={10} exact color="#FFFFFF" /></View>
       : <View style={[s.statusDot, { backgroundColor: dark ? '#303847' : '#ECEAE6' }]}><Icon name="lock" size={9} exact color={dark ? '#CBD5E1' : '#7A8094'} /></View>}
-    <Image source={badgeImageFor(badge.id)} resizeMode="contain" style={[s.art, !unlocked && badgeHasArt(badge.id) && { opacity: 0.42 }]} />
-    <Text numberOfLines={2} style={[s.tileTitle, { color: unlocked ? text : dark ? '#7C8599' : '#8A90A3' }]}>{badge.title}</Text>
+    <Image source={badgeImageFor(badge.id)} resizeMode="contain" resizeMethod="resize" fadeDuration={0} style={[s.art, !unlocked && badgeHasArt(badge.id) && { opacity: 0.42 }]} />
+    <Text numberOfLines={compact ? 1 : 2} style={[s.tileTitle, { color: unlocked ? text : dark ? '#7C8599' : '#8A90A3' }]}>{badge.title}</Text>
     {progress
       ? <View style={s.progressWrap}>
         <View style={[s.track, { backgroundColor: dark ? '#252C3A' : '#EDEFF5' }]}><View style={[s.fill, { width: `${(progress[0] / progress[1]) * 100}%` }]} /></View>
@@ -131,11 +133,11 @@ export function BadgesScreen({ p, topInset, onBack, onGoTab }: { p: Palette; top
   const toolbarShift = React.useRef(Animated.diffClamp(scrollY, 0, TOOLBAR_H)).current.interpolate({ inputRange: [0, TOOLBAR_H], outputRange: [0, -TOOLBAR_H], extrapolate: 'clamp' });
   const stickyShadow = toolbarShift.interpolate({ inputRange: [-TOOLBAR_H, -TOOLBAR_H + 10], outputRange: [1, 0], extrapolate: 'clamp' });
 
-  return <View style={{ flex: 1, backgroundColor: p.page }}>
+  return <View style={{ flex: 1, backgroundColor: p.page, paddingBottom: bottomInset }}>
     <Animated.View style={[s.toolbar, { top: topInset, backgroundColor: p.page, shadowOpacity: dark ? 0.4 : 0.08, transform: [{ translateY: toolbarShift }] }]}>
       <View style={s.headerRow}>
-        <Pressable onPress={onBack} accessibilityLabel="Back" hitSlop={10} style={[s.back, { backgroundColor: dark ? '#252C3A' : '#FFFFFF', borderColor: dark ? 'rgba(255,255,255,0.1)' : '#E8E8F0' }]}><Icon name="arrow_back" size={22} exact color={text} /></Pressable>
-        <Text style={[s.title, { color: text }]}>Achievements</Text>
+        <BackButton p={p} onPress={onBack} />
+        <Text style={[toolbarTitleStyle(), s.title, { color: p.pageText }]}>Achievements</Text>
         <View style={[s.countPill, { backgroundColor: dark ? 'rgba(99,102,241,0.2)' : '#ECEBFF', borderColor: dark ? 'rgba(129,140,248,0.4)' : '#CFCBFA' }]}><View style={s.countDot} /><Text style={[s.countText, { color: dark ? '#C7D2FE' : INDIGO }]}>{UNLOCKED.size} / {BADGES.length}</Text></View>
       </View>
     </Animated.View>
@@ -160,14 +162,14 @@ export function BadgesScreen({ p, topInset, onBack, onGoTab }: { p: Palette; top
       showsVerticalScrollIndicator={false}
       scrollEventThrottle={16}
       onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
-      contentContainerStyle={[s.content, { paddingTop: topInset + TOOLBAR_H + CHIPS_H + 4, paddingBottom: bottomInset + 32 }]}
+      contentContainerStyle={[s.content, { paddingTop: topInset + TOOLBAR_H + CHIPS_H + 4, paddingBottom: 32 }]}
       renderItem={({ item: category }) => {
         const badges = BADGES.filter((badge) => badge.category === category);
         const done = badges.filter((badge) => UNLOCKED.has(badge.id)).length;
         return <View style={s.section}>
           <View style={s.sectionHead}>
             <View style={s.sectionTitleWrap}>
-              <View style={[s.categoryTile, { backgroundColor: `${CATEGORY_TINT[category]}${dark ? '2A' : '1C'}` }]}><Text style={s.categoryIcon}>{CATEGORY_ICONS[category]}</Text></View>
+              <Text style={s.categoryIcon}>{CATEGORY_ICONS[category]}</Text>
               <View style={{ flex: 1 }}><Text style={[s.sectionTitle, { color: text }]}>{category}</Text><Text numberOfLines={1} style={[s.sectionSub, { color: muted }]}>{CATEGORY_SUB[category]}</Text></View>
             </View>
             <View style={[s.countChip, { backgroundColor: dark ? '#252C3A' : '#EDEEF3' }]}><Text style={[s.sectionCount, { color: dark ? '#CBD5E1' : '#6B7188' }]}>{done}/{badges.length} Unlocked</Text></View>
@@ -224,37 +226,37 @@ const s = StyleSheet.create({
   toolbar: { position: 'absolute', left: 0, right: 0, height: TOOLBAR_H, zIndex: 25, elevation: 4, shadowColor: '#3A3226', shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
   stickyShadow: { position: 'absolute', left: 0, right: 0, top: CHIPS_H, height: 12 },
   statusCover: { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30 },
-  headerRow: { height: TOOLBAR_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 8, paddingHorizontal: 12 },
+  headerRow: { height: TOOLBAR_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 10, paddingHorizontal: 16 },
   back: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 6, shadowColor: '#3A3226', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  title: { flex: 1, fontFamily: FONT.outfit.b, fontSize: fz(21) },
-  countPill: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, height: 34 },
-  countDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#6C63F0' },
-  countText: { fontFamily: FONT.outfit.sb, fontSize: fz(14) },
+  title: { flex: 1 },
+  countPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, height: 24 },
+  countDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#6C63F0' },
+  countText: { fontFamily: FONT.outfit.sb, fontSize: fz(12) },
   chipBar: { position: 'absolute', left: 0, right: 0, height: CHIPS_H, zIndex: 20, justifyContent: 'center' },
   chipScroll: { flexGrow: 0 },
-  chips: { gap: 10, paddingHorizontal: 16, alignItems: 'center' },
-  chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 20, height: 40, alignItems: 'center', justifyContent: 'center' },
+  chips: { gap: 8, paddingHorizontal: 16, alignItems: 'center' },
+  chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 13, height: 30, alignItems: 'center', justifyContent: 'center' },
   chipOn: { shadowColor: INDIGO, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
-  chipText: { fontFamily: FONT.outfit.md, fontSize: fz(15) },
+  chipText: { fontFamily: FONT.outfit.md, fontSize: fz(12.5) },
   content: { paddingHorizontal: 16 },
   section: { marginTop: 10, marginBottom: 14 },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2, gap: 8 },
-  sectionTitleWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  categoryTile: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  categoryIcon: { fontSize: fz(18) },
-  sectionTitle: { fontFamily: FONT.outfit.b, fontSize: fz(18) },
-  sectionSub: { fontFamily: FONT.body, fontSize: fz(12.5), marginTop: 1 },
+  sectionTitleWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  categoryIcon: { fontSize: fz(20) },
+  sectionTitle: { fontFamily: FONT.outfit.b, fontSize: fz(15) },
+  sectionSub: { fontFamily: FONT.body, fontSize: fz(11), marginTop: 0 },
   countChip: { borderRadius: 999, paddingHorizontal: 12, height: 30, justifyContent: 'center' },
   sectionCount: { fontFamily: FONT.outfit.sb, fontSize: fz(12.5) },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { borderRadius: 22, alignItems: 'center', paddingHorizontal: 8, paddingTop: 22, paddingBottom: 16 },
-  tileClip: { ...StyleSheet.absoluteFill, borderRadius: 22, borderWidth: 1, overflow: 'hidden' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, rowGap: 16, paddingBottom: 8 },
+  tile: { borderRadius: 22, alignItems: 'center', paddingHorizontal: 8, paddingTop: 22, paddingBottom: 12 },
+  tileClip: { ...StyleSheet.absoluteFill, borderRadius: 22, overflow: 'hidden' },
+  tileBorder: { ...StyleSheet.absoluteFill, borderRadius: 22, borderWidth: 1 },
   tileGlow: { position: 'absolute', width: 170, height: 170, top: -30, alignSelf: 'center' },
   statusDot: { position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#3E8E64', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  rarityPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, height: 24, marginTop: 8 },
-  pillDot: { width: 7, height: 7, borderRadius: 4 },
-  pillText: { fontFamily: FONT.outfit.b, fontSize: fz(10.5), letterSpacing: 0.8 },
-  art: { width: 80, height: 80 },
+  rarityPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, height: 16, marginTop: 8 },
+  pillDot: { width: 5, height: 5, borderRadius: 3 },
+  pillText: { fontFamily: FONT.outfit.b, fontSize: fz(7.5), letterSpacing: 0.5 },
+  art: { width: 80, height: 80, zIndex: 3 },
   tileTitle: { fontFamily: FONT.outfit.sb, fontSize: fz(13.5), lineHeight: fz(17), textAlign: 'center', marginTop: 10, minHeight: fz(17) },
   progressWrap: { alignSelf: 'stretch', alignItems: 'center', marginTop: 8, gap: 4 },
   track: { alignSelf: 'stretch', height: 5, borderRadius: 3, overflow: 'hidden' },

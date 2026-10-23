@@ -1,14 +1,14 @@
 import React from 'react';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { ActivityIndicator, Animated, Easing, FlatList, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { BW, MAIN } from './shell';
+import { BW, MAIN, navScrollHandlers, useNavClearance } from './shell';
 import { HOME_WORLDS } from './homeData';
 import { DEVICE_PATH_STYLE, buildTrail, getPathStyle, nodeDrift, nodeInset } from './pathStyles';
 import type { JourneyVariant } from './App';
 import { Palette } from './theme';
 import {
   ActivityNode, ActivityPosition, Anchors, Band, BossNode, COMPLETED_WORLDS, CURRENT_CARD_HEIGHT, CurrentCard, FinalCard, JourneyCard, SHOW_LEVEL_STRIPS,
-  NODE_COLUMN, Pt, SHOW_STREAKS, SHIMMER_LEN, SHIMMER_W, StandardNode, StreakKeys, TOTAL_PATH_POINTS, TOTAL_WORLDS, UNLOCK_ALL, UNLOCK_THROUGH,
+  NODE_COLUMN, Pt, ROAD_ACTIVITY_GAP, SHOW_STREAKS, SHIMMER_LEN, SHIMMER_W, StandardNode, StreakKeys, TOTAL_PATH_POINTS, TOTAL_WORLDS, UNLOCK_ALL, UNLOCK_THROUGH,
   WORLD_ACTIVITIES, WorldActivity, activityPointIndex, computeStreaks, resample, trailToPolyline, worldPointIndex,
 } from './HomeScreen';
 
@@ -59,6 +59,9 @@ const ACTIVITY_H = 4 + 52; // activityNodeRow: marginTop 4 + height 52
 
 const worldPaddingTop = (order: number) => (order <= 8 ? 64 : order === 9 || order === 16 ? 40 : 60);
 const alignmentFor = (order: number): 'left' | 'right' => ((order <= 15 ? order % 2 === 1 : order % 2 === 0) ? 'left' : 'right');
+/** How far (dp, negative = left) each block's label shifts sideways to clear the trail, which leaves the block towards the next one. */
+const activityLabelShift = (order: number): number[] =>
+  alignmentFor(order) === 'left' ? [8, 8, -14] : [-8, -8, 17];
 const activityPositions = (order: number): ActivityPosition[] =>
   alignmentFor(order) === 'left' ? ['midLeft', 'center', 'midRight'] : ['midRight', 'center', 'midLeft'];
 
@@ -80,7 +83,8 @@ interface Geometry {
   activeStreaks: Streak[];
 }
 
-function buildGeometry(width: number, gap: number, currentOrder: number, fixes: Record<string, number>): Geometry {
+function buildGeometry(width: number, gap: number, currentOrder: number, fixes: Record<string, number>, road = false): Geometry {
+  const extra = road ? ROAD_ACTIVITY_GAP : 0;
   const pathStyle = getPathStyle(DEVICE_PATH_STYLE);
   const W = Math.min(360, width);
   const off = (width - W) / 2;
@@ -136,8 +140,8 @@ function buildGeometry(width: number, gap: number, currentOrder: number, fixes: 
       points[worldPointIndex(order)] = { x, y: y + cursor + pointAt };
       cursor += h;
       activityPositions(order).forEach((position, index) => {
-        points[activityPointIndex(order, index)] = { x: actX[position], y: y + cursor + 4 + 26 };
-        cursor += ACTIVITY_H;
+        points[activityPointIndex(order, index)] = { x: actX[position], y: y + cursor + 4 + extra + 26 };
+        cursor += ACTIVITY_H + extra;
       });
     }
     const content = cursor - spec.marginTop + spec.padBottom;
@@ -333,6 +337,7 @@ function WorldBlock({ order, ...r }: { order: number } & Omit<RowProps, 'item' |
             onOpen={onOpenActivity}
             shape={shape}
             road={road}
+            labelShift={activityLabelShift(order)[index]}
           />
         );
       })}
@@ -409,7 +414,7 @@ export const HomeListContent = React.memo(function HomeListContent({
 
   // Measured-minus-model height of the rows whose text could wrap (current card, boss, final card).
   const [fixes, setFixes] = React.useState<Record<string, number>>({});
-  const geo = React.useMemo(() => buildGeometry(width, gap, currentOrder, fixes), [width, gap, currentOrder, fixes]);
+  const geo = React.useMemo(() => buildGeometry(width, gap, currentOrder, fixes, road), [width, gap, currentOrder, fixes, road]);
 
   // The journey card is the list header; item offsets and band pin points include its height, so it is measured before the list mounts.
   const [headerH, setHeaderH] = React.useState(0);
@@ -563,7 +568,8 @@ export const HomeListContent = React.memo(function HomeListContent({
     ),
     [p, current, completed, onHeaderLayout]
   );
-  const footer = React.useMemo(() => <View style={{ height: 48 }} />, []);
+  const navClearance = useNavClearance();
+  const footer = React.useMemo(() => <View style={{ height: 48 + navClearance }} />, [navClearance]);
 
   return (
     <View style={{ flex: 1, backgroundColor: p.page }}>
@@ -590,6 +596,7 @@ export const HomeListContent = React.memo(function HomeListContent({
           ListHeaderComponent={header}
           ListFooterComponent={footer}
           onScroll={onScroll}
+          {...navScrollHandlers}
           scrollEventThrottle={16}
           style={{ flex: 1 }}
         />

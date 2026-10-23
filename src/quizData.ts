@@ -96,13 +96,17 @@ export type QuizPass = Record<string, true>;
 /** EVERY question of a World's bank, unfiltered (the review filter below hides some lessons from the Quiz): used to reset all of a World's stats. */
 export const getQuizWorldBank = (order: number): QuizQuestion[] => ({ 1: WORLD_1_QUIZ, 2: [...WORLD_2_QUIZ, ...WORLD_2_BOSS_QUIZ], 3: [...WORLD_3_QUIZ, ...WORLD_3_BOSS_QUIZ], 4: [...WORLD_4_QUIZ, ...WORLD_4_BOSS_QUIZ], 5: [...WORLD_5_QUIZ, ...WORLD_5_BOSS_QUIZ], 6: [...WORLD_6_QUIZ, ...WORLD_6_BOSS_QUIZ], 7: [...WORLD_7_QUIZ, ...WORLD_7_BOSS_QUIZ], 8: [...WORLD_8_QUIZ, ...WORLD_8_BOSS_QUIZ], 9: [...WORLD_9_QUIZ, ...WORLD_9_BOSS_QUIZ], 10: [...WORLD_10_QUIZ, ...WORLD_10_BOSS_QUIZ], 11: [...WORLD_11_QUIZ, ...WORLD_11_BOSS_QUIZ], 12: [...WORLD_12_QUIZ, ...WORLD_12_BOSS_QUIZ], 13: [...WORLD_13_QUIZ, ...WORLD_13_BOSS_QUIZ], 14: [...WORLD_14_QUIZ, ...WORLD_14_BOSS_QUIZ], 15: [...WORLD_15_QUIZ, ...WORLD_15_BOSS_QUIZ], 16: [...WORLD_16_QUIZ, ...WORLD_16_BOSS_QUIZ] }[order] ?? []);
 
+let quizWorldsCache: QuizWorld[] | null = null;
+/** Built once: the banks never change at runtime, and callers only read (or copy) the arrays, so the same list is returned every time. */
 export function getQuizWorlds(): QuizWorld[] {
+  if (quizWorldsCache) return quizWorldsCache;
   // Only authored quiz banks belong in QuizTab. Lesson prediction questions are
   // used by the lesson flow and must not be presented as a separate quiz bank.
   const banks: Record<number, QuizQuestion[]> = { 1: WORLD_1_QUIZ, 2: [...WORLD_2_QUIZ, ...WORLD_2_BOSS_QUIZ], 3: [...WORLD_3_QUIZ, ...WORLD_3_BOSS_QUIZ], 4: [...WORLD_4_QUIZ, ...WORLD_4_BOSS_QUIZ], 5: [...WORLD_5_QUIZ, ...WORLD_5_BOSS_QUIZ], 6: [...WORLD_6_QUIZ, ...WORLD_6_BOSS_QUIZ], 7: [...WORLD_7_QUIZ, ...WORLD_7_BOSS_QUIZ], 8: [...WORLD_8_QUIZ, ...WORLD_8_BOSS_QUIZ], 9: [...WORLD_9_QUIZ, ...WORLD_9_BOSS_QUIZ], 10: [...WORLD_10_QUIZ, ...WORLD_10_BOSS_QUIZ], 11: [...WORLD_11_QUIZ, ...WORLD_11_BOSS_QUIZ], 12: [...WORLD_12_QUIZ, ...WORLD_12_BOSS_QUIZ], 13: [...WORLD_13_QUIZ, ...WORLD_13_BOSS_QUIZ], 14: [...WORLD_14_QUIZ, ...WORLD_14_BOSS_QUIZ], 15: [...WORLD_15_QUIZ, ...WORLD_15_BOSS_QUIZ], 16: [...WORLD_16_QUIZ, ...WORLD_16_BOSS_QUIZ] };
-  return CURRICULUM_WORLDS
+  quizWorldsCache = CURRICULUM_WORLDS
     .filter((world) => Boolean(banks[world.order]))
     .map((world) => ({ order: world.order, title: world.title, questions: banks[world.order] }));
+  return quizWorldsCache;
 }
 
 export function worldStats(world: QuizWorld, progress: QuizProgress) {

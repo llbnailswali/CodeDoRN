@@ -285,8 +285,13 @@ function RoadActivityArt({ activity, color, locked }: { activity: WorldActivity;
   return <Svg width={24} height={24} viewBox="0 0 24 24"><Circle cx={12} cy={12} r={3.800} fill="none" stroke={color} strokeWidth={1.900} /><Path d="M12 2.800v2.600M12 18.600v2.600M2.800 12h2.600M18.600 12h2.600M5.500 5.500l1.800 1.800M16.700 16.700l1.800 1.800M5.500 18.500l1.800-1.800M16.700 7.300l1.800-1.800" fill="none" stroke={color} strokeWidth={1.900} strokeLinecap="round" /></Svg>;
 }
 
-export function ActivityNode({ p, order, activity, position, locked, count, anchors, onOpen, shape = 'square', road = false }: {
+/** Extra space above each milestone of the Road look, so a world and its three milestones fit before the road turns. */
+export const ROAD_ACTIVITY_GAP = 28;
+
+export function ActivityNode({ p, order, activity, position, locked, count, anchors, onOpen, shape = 'square', road = false, labelShift }: {
   road?: boolean;
+  /** Moves the label sideways by this many dp (negative = left), away from the trail that leaves the block. */
+  labelShift?: number;
   shape?: 'square' | 'circle' | 'diamond' | 'pill';
   p: Palette;
   order: number;
@@ -321,7 +326,7 @@ export function ActivityNode({ p, order, activity, position, locked, count, anch
     const tone = ROAD_ACTIVITY[activity.id];
     const rBorder = enabled ? (p.isDark ? tone.darkBorder : tone.border) : p.isDark ? 'rgba(148,163,184,0.3)' : 'rgba(148,163,184,0.5)';
     return (
-      <View style={[s.activityNodeRow, placement]}>
+      <View style={[s.activityNodeRow, placement, { marginTop: 4 + ROAD_ACTIVITY_GAP }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${activity.label}, ${count} activities, World ${order}${enabled ? '' : ', locked'}`}
@@ -375,6 +380,24 @@ export function ActivityNode({ p, order, activity, position, locked, count, anch
           <View style={[s.activityCountBadge, { backgroundColor: enabled ? accent : p.muted }]}>
             <Text style={[s.activityCountText, { color: p.isDark ? '#0F172A' : '#FFFFFF' }]}>{count}</Text>
           </View>
+          {shape !== 'pill' && (
+            <View pointerEvents="none" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2, alignItems: 'center', transform: [{ translateX: labelShift ?? 0 }] }}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: box.icon,
+                  textShadowColor: p.page,
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 4,
+                  fontFamily: FONT.jakarta.b,
+                  fontSize: fz(10),
+                  includeFontPadding: false,
+                }}
+              >
+                {activity.id === 'quiz' ? 'Quiz' : activity.id === 'writeRun' ? 'Code' : 'Debug'}
+              </Text>
+            </View>
+          )}
         </View>
       </Pressable>
     </View>

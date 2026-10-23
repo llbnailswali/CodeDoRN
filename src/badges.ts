@@ -7,7 +7,7 @@ export const RARITY_COLOR: Record<BadgeRarity, { light: string; dark: string }> 
   Common: { light: '#6B7280', dark: '#9CA3AF' },
   Uncommon: { light: '#2E7D4F', dark: '#6EE7A0' },
   Rare: { light: '#2563EB', dark: '#7DB4FF' },
-  Epic: { light: '#7C3AED', dark: '#C4A8FF' },
+  Epic: { light: '#C026D3', dark: '#F0ABFC' },
   Legendary: { light: '#B7791F', dark: '#F5C76B' },
 };
 
